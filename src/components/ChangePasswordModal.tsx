@@ -1,0 +1,150 @@
+import React, { useState } from 'react';
+import { useApp } from '../context/AppContext';
+import { Check, Eye, EyeOff, KeyRound, Lock, X } from 'lucide-react';
+import { UserAccount } from '../types';
+
+interface ChangePasswordModalProps {
+  userToEdit?: UserAccount; // If passed, admin is changing someone else's password. Otherwise changes current user's.
+  onClose: () => void;
+}
+
+export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
+  userToEdit,
+  onClose,
+}) => {
+  const { currentUser, changePassword } = useApp();
+  const target = userToEdit || currentUser;
+
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [message, setMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(
+    null
+  );
+
+  if (!target) return null;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPassword.trim()) {
+      setMessage({ type: 'error', text: 'Inserisci la nuova password.' });
+      return;
+    }
+    if (newPassword.trim().length < 4) {
+      setMessage({
+        type: 'error',
+        text: 'La password deve avere almeno 4 caratteri o cifre.',
+      });
+      return;
+    }
+    if (newPassword.trim() !== confirmPassword.trim()) {
+      setMessage({ type: 'error', text: 'Le due password non corrispondono.' });
+      return;
+    }
+
+    const res = changePassword(target.id, newPassword.trim());
+    if (res.success) {
+      setMessage({
+        type: 'success',
+        text: `Password di @${target.username} aggiornata con successo!`,
+      });
+      setTimeout(() => {
+        onClose();
+      }, 900);
+    } else {
+      setMessage({ type: 'error', text: res.message || 'Errore durante il salvataggio.' });
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-5 animate-fadeIn">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+          <div className="flex items-center gap-2">
+            <KeyRound className="w-5 h-5 text-cyan-400" />
+            <h3 className="font-bold text-white text-base">Modifica Password</h3>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-white">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="text-xs text-slate-400">
+          Stai modificando la password per:{' '}
+          <strong className="text-white">
+            {target.displayName} (@{target.username})
+          </strong>
+        </div>
+
+        {message && (
+          <div
+            className={`p-3 rounded-2xl text-xs font-semibold ${
+              message.type === 'success'
+                ? 'bg-emerald-950/60 border border-emerald-500/40 text-emerald-300'
+                : 'bg-rose-950/60 border border-rose-500/40 text-rose-300'
+            }`}
+          >
+            {message.text}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
+          <div>
+            <label className="text-slate-300 font-semibold block mb-1">
+              Nuova Password / PIN *:
+            </label>
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                required
+                minLength={4}
+                placeholder="Almeno 4 caratteri o cifre..."
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white pr-10 focus:outline-none focus:border-cyan-500 font-mono text-sm"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-3 text-slate-400 hover:text-white"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-slate-300 font-semibold block mb-1">
+              Conferma Nuova Password *:
+            </label>
+            <input
+              type={showPassword ? 'text' : 'password'}
+              required
+              minLength={4}
+              placeholder="Ripeti la password..."
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-cyan-500 font-mono text-sm"
+            />
+          </div>
+
+          <div className="pt-2 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-xl text-slate-400 hover:text-white font-semibold"
+            >
+              Annulla
+            </button>
+            <button
+              type="submit"
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-slate-950 font-bold transition-all shadow-md shadow-cyan-500/20"
+            >
+              Aggiorna Password
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};

@@ -1,0 +1,230 @@
+import React, { useState } from 'react';
+import { useApp } from '../context/AppContext';
+import {
+  BarChart3,
+  ChefHat,
+  CreditCard,
+  Database,
+  Grid,
+  Home,
+  KeyRound,
+  LogOut,
+  Package,
+  Users,
+  Waves,
+  Wifi,
+} from 'lucide-react';
+import { ActiveView } from '../context/AppContext';
+import { BackupModal } from './BackupModal';
+import { WifiModal } from './WifiModal';
+import { ChangePasswordModal } from './ChangePasswordModal';
+
+export const Navbar: React.FC = () => {
+  const {
+    currentUser,
+    logout,
+    activeView,
+    setActiveView,
+    profile,
+    lowStockItems,
+    tables,
+    wifiConnected,
+  } = useApp();
+
+  const [showBackupModal, setShowBackupModal] = useState(false);
+  const [showWifiModal, setShowWifiModal] = useState(false);
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+
+  if (!currentUser) return null;
+
+  const permissions = currentUser.permissions;
+  const activeTablesCount = tables.filter((t) => t.status === 'occupato' || t.status === 'in_conto').length;
+
+  const navItems: { id: ActiveView; label: string; icon: React.ReactNode; badge?: number; visible: boolean }[] = [
+    {
+      id: 'home',
+      label: 'Home',
+      icon: <Home className="w-3.5 h-3.5" />,
+      visible: true,
+    },
+    {
+      id: 'tavoli',
+      label: 'Tavoli',
+      icon: <Grid className="w-3.5 h-3.5" />,
+      badge: activeTablesCount,
+      visible: permissions.canAccessTavoli,
+    },
+    {
+      id: 'cassa',
+      label: 'Cassa & Conto',
+      icon: <CreditCard className="w-3.5 h-3.5" />,
+      visible: permissions.canAccessCassa,
+    },
+    {
+      id: 'magazzino',
+      label: 'Magazzino',
+      icon: <Package className="w-3.5 h-3.5" />,
+      badge: lowStockItems.length,
+      visible: permissions.canAccessMagazzino,
+    },
+    {
+      id: 'cucina',
+      label: 'Dispensa Cucina',
+      icon: <ChefHat className="w-3.5 h-3.5" />,
+      visible: permissions.canAccessCucina,
+    },
+    {
+      id: 'report',
+      label: 'Chiusura & Report',
+      icon: <BarChart3 className="w-3.5 h-3.5" />,
+      visible: permissions.canViewReports,
+    },
+    {
+      id: 'utenti',
+      label: 'Personale',
+      icon: <Users className="w-3.5 h-3.5" />,
+      visible: permissions.canManageUsers,
+    },
+  ];
+
+  return (
+    <>
+      <header className="sticky top-0 z-40 bg-[#0a1122]/90 backdrop-blur-md border-b border-slate-800/80 text-slate-100 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="flex items-center justify-between h-16 gap-4">
+            {/* Zone 1: Brand Wordmark & Local Wi-Fi badge */}
+            <div
+              onClick={() => setActiveView('home')}
+              className="flex items-center gap-3 cursor-pointer group shrink-0"
+            >
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-600 via-teal-500 to-sky-400 flex items-center justify-center text-slate-950 font-black shadow-md shadow-cyan-500/20 group-hover:scale-105 transition-transform duration-200">
+                <Waves className="w-5 h-5 text-slate-950" />
+              </div>
+              <div className="leading-tight">
+                <div className="flex items-center gap-2">
+                  <span className="font-extrabold text-base tracking-tight text-white font-sans">
+                    Sea
+                  </span>
+                  <span className="text-[10px] uppercase font-semibold text-cyan-400/90 tracking-wider">
+                    POS
+                  </span>
+                </div>
+                <div className="text-[11px] text-slate-400 font-normal hidden sm:block">
+                  {profile.name}
+                </div>
+              </div>
+            </div>
+
+            {/* Zone 2: Navigation Links */}
+            <nav className="flex items-center gap-1 overflow-x-auto py-1 scrollbar-none">
+              {navItems
+                .filter((item) => item.visible)
+                .map((item) => {
+                  const isActive = activeView === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => setActiveView(item.id)}
+                      className={`relative flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap shrink-0 ${
+                        isActive
+                          ? 'bg-slate-800 text-white shadow-sm border border-slate-700/80'
+                          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                      }`}
+                    >
+                      <span className={isActive ? 'text-cyan-400' : 'text-slate-400'}>
+                        {item.icon}
+                      </span>
+                      <span>{item.label}</span>
+                      {item.badge !== undefined && item.badge > 0 && (
+                        <span
+                          className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md ${
+                            isActive
+                              ? 'bg-cyan-500/20 text-cyan-300'
+                              : 'bg-rose-500/20 text-rose-300'
+                          }`}
+                        >
+                          {item.badge}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+            </nav>
+
+            {/* Zone 3: Wi-Fi, Tools & User Profile */}
+            <div className="flex items-center gap-2 shrink-0">
+              {/* Wi-Fi Status Button */}
+              <button
+                onClick={() => setShowWifiModal(true)}
+                title="Stato Rete Wi-Fi Locale"
+                className={`px-2.5 py-1.5 rounded-lg border text-xs flex items-center gap-1.5 transition-colors ${
+                  wifiConnected
+                    ? 'border-emerald-500/20 bg-emerald-950/30 text-emerald-400 hover:bg-emerald-950/50'
+                    : 'border-rose-500/20 bg-rose-950/30 text-rose-400 hover:bg-rose-950/50'
+                }`}
+              >
+                <Wifi className="w-3.5 h-3.5" />
+                <span className="hidden xl:inline text-[11px] font-medium font-mono">
+                  {wifiConnected ? profile.wifiSsid : 'Offline'}
+                </span>
+              </button>
+
+              {/* Backup & System Data */}
+              {permissions.canManageBackup && (
+                <button
+                  onClick={() => setShowBackupModal(true)}
+                  title="Backup & Ripristino Dati"
+                  className="p-1.5 rounded-lg border border-slate-800 bg-slate-900/80 text-slate-400 hover:text-slate-200 hover:border-slate-700 transition-colors"
+                >
+                  <Database className="w-4 h-4" />
+                </button>
+              )}
+
+              {/* Staff Profile and Actions */}
+              <div className="flex items-center gap-2 pl-2 border-l border-slate-800">
+                <div className="flex items-center gap-2">
+                  <div
+                    className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs text-white shadow-sm ${currentUser.avatarColor}`}
+                  >
+                    {currentUser.displayName.charAt(0)}
+                  </div>
+                  <div className="hidden lg:block text-left">
+                    <div className="text-xs font-semibold text-white leading-tight">
+                      {currentUser.displayName}
+                    </div>
+                    <div className="text-[10px] text-slate-400 capitalize">
+                      {currentUser.role.replace('_', ' ')}
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setShowChangePasswordModal(true)}
+                  title="Modifica password personale"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-300 hover:bg-slate-800 transition-colors"
+                >
+                  <KeyRound className="w-3.5 h-3.5" />
+                </button>
+
+                <button
+                  onClick={logout}
+                  title="Esci dal turno"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-950/30 transition-colors"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Modals */}
+      {showBackupModal && <BackupModal onClose={() => setShowBackupModal(false)} />}
+      {showWifiModal && <WifiModal onClose={() => setShowWifiModal(false)} />}
+      {showChangePasswordModal && (
+        <ChangePasswordModal onClose={() => setShowChangePasswordModal(false)} />
+      )}
+    </>
+  );
+};

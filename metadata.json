@@ -1,0 +1,6 @@
+{
+  "name": "Ristorante POS & Magazzino",
+  "description": "Sistema gestionale per ristoranti e pizzerie: cassa veloce, calcolo resto, divisione conto, gestione scorte e magazzino su rete Wi-Fi locale.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
