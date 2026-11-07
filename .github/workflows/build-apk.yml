@@ -116,7 +116,7 @@ jobs:
           with open('android/settings.gradle', 'r') as f:
               content = f.read()
 
-          # إضافة repositoriesMode و pluginManagement إذا غير موجود
+          # إضافة pluginManagement و dependencyResolutionManagement إذا غير موجود
           if 'pluginManagement' not in content:
               content = """pluginManagement {
               repositories {
@@ -126,7 +126,7 @@ jobs:
               }
           }
           dependencyResolutionManagement {
-              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
               repositories {
                   google()
                   mavenCentral()
@@ -135,10 +135,13 @@ jobs:
               }
           }
           """ + content
+          else:
+              # لو موجود، نغيّر FAIL_ON_PROJECT_REPOS إلى PREFER_SETTINGS
+              content = content.replace('FAIL_ON_PROJECT_REPOS', 'PREFER_SETTINGS')
 
           with open('android/settings.gradle', 'w') as f:
               f.write(content)
-          print("✅ تم تعديل settings.gradle مع Google Maven mirrors")
+          print("✅ تم تعديل settings.gradle (PREFER_SETTINGS + Google Maven mirrors)")
           PYEOF
           fi
 
