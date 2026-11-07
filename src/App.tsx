@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { LoginScreen } from './components/LoginScreen';
 import { Navbar } from './components/Navbar';
@@ -14,9 +14,11 @@ import { TavoliView } from './components/TavoliView';
 import { CucinaMagazzinoView } from './components/CucinaMagazzinoView';
 import { ReportView } from './components/ReportView';
 import { GestioneUtentiView } from './components/GestioneUtentiView';
+import { UpdateNotification } from './components/UpdateNotification';
 
 const MainAppContent: React.FC = () => {
   const { currentUser, activeView } = useApp();
+  const [showUpdateNotification, setShowUpdateNotification] = useState(true);
 
   // If not logged in, show initial login screen
   if (!currentUser) {
@@ -25,6 +27,11 @@ const MainAppContent: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#070c18] text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-slate-950 antialiased">
+      {/* 🔄 إشعار التحديث التلقائي */}
+      {showUpdateNotification && (
+        <UpdateNotification onClose={() => setShowUpdateNotification(false)} />
+      )}
+
       {/* Top Navigation */}
       <Navbar />
 

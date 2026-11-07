@@ -1,11 +1,12 @@
 # 🌊 Sea POS
 
-Sistema gestionale per ristorante con **sincronizzazione Wi-Fi** tra dispositivi.
+Sistema gestionale per ristorante con **sincronizzazione Wi-Fi** tra dispositivi + **APK Android** con aggiornamenti automatici.
 
 ## ✨ Caratteristiche
 
-- 📱 **PWA** - Installabile come app su telefono/tablet
+- 📱 **PWA + APK** - Installabile come app su Android (con aggiornamenti auto)
 - 🌐 **Sync Wi-Fi** - Sincronizzazione reale tra dispositivi sulla stessa rete
+- 🔄 **Auto-Update** - Aggiornamenti automatici quando aggiorni il codice su GitHub
 - 💳 **Cassa** - Pagamenti contanti/carta/misto + divisione conto
 - 🍽️ **Tavoli** - Gestione tavoli con conti separati
 - 📦 **Magazzino** - Inventario materie prime e prodotti
@@ -14,7 +15,34 @@ Sistema gestionale per ristorante con **sincronizzazione Wi-Fi** tra dispositivi
 - 👥 **Utenti** - Gestione utenti con permessi (solo Admin)
 - 💾 **Backup** - Export/Import JSON
 
-## 🚀 Avvio Rapido
+## 📱 APK Android + Aggiornamenti Automatici
+
+### Ottenere APK
+
+1. Vai su: https://github.com/ahmed1p7/-Piccalo/actions
+2. Clicca su ultimo workflow "Build APK"
+3. Scarica l'artifact `sea-pos-apk`
+4. Installa il `.apk` sul telefono
+
+### Come funzionano gli aggiornamenti?
+
+```
+Tu aggiorni codice su GitHub
+      ↓
+GitHub Actions ricostruisce APK + deploya su Pages
+      ↓
+L'app installata rileva nuova versione (ogni 5 min)
+      ↓
+Mostra notifica "Aggiornamento disponibile"
+      ↓
+Utente clicca "Aggiorna ora" → app aggiornata!
+```
+
+### Setup APK (una volta sola)
+
+Vedi: [`twa/SETUP.md`](twa/SETUP.md) per configurazione completa.
+
+## 🌐 Deploy su GitHub Pages
 
 ### 1️⃣ Installazione dipendenze
 
