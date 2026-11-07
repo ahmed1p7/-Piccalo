@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#070c18"/>
+      <stop offset="100%" stop-color="#0d1527"/>
+    </linearGradient>
+    <linearGradient id="pizza" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="512" height="512" fill="url(#bg)" rx="100"/>
+  <!-- Pizza Circle -->
+  <circle cx="256" cy="256" r="160" fill="url(#pizza)"/>
+  <circle cx="256" cy="256" r="160" fill="none" stroke="#92400e" stroke-width="6"/>
+  <!-- Pizza toppings (pepperoni + basil) -->
+  <circle cx="200" cy="200" r="22" fill="#dc2626"/>
+  <circle cx="310" cy="200" r="22" fill="#dc2626"/>
+  <circle cx="256" cy="290" r="22" fill="#dc2626"/>
+  <circle cx="180" cy="290" r="14" fill="#16a34a"/>
+  <circle cx="330" cy="280" r="14" fill="#16a34a"/>
+  <circle cx="256" cy="180" r="12" fill="#16a34a"/>
+  <!-- Sea text below -->
+  <text x="256" y="460" font-family="Plus Jakarta Sans, Arial, sans-serif" font-size="48" font-weight="800" fill="#06b6d4" text-anchor="middle">SEA</text>
+</svg>

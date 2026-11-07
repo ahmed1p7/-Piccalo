@@ -18,6 +18,7 @@ import { ActiveView } from '../context/AppContext';
 import { BackupModal } from './BackupModal';
 import { WifiModal } from './WifiModal';
 import { ChangePasswordModal } from './ChangePasswordModal';
+import { SyncModal } from './SyncModal';
 
 export const Navbar: React.FC = () => {
   const {
@@ -33,6 +34,7 @@ export const Navbar: React.FC = () => {
 
   const [showBackupModal, setShowBackupModal] = useState(false);
   const [showWifiModal, setShowWifiModal] = useState(false);
+  const [showSyncModal, setShowSyncModal] = useState(false);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
 
   if (!currentUser) return null;
@@ -169,6 +171,24 @@ export const Navbar: React.FC = () => {
                 </span>
               </button>
 
+              {/* 🆕 Sync Button - تزامن الأجهزة */}
+              <button
+                onClick={() => setShowSyncModal(true)}
+                title="Sincronizzazione dispositivi (Wi-Fi LAN)"
+                className={`px-2.5 py-1.5 rounded-lg border text-xs flex items-center gap-1.5 transition-colors ${
+                  wifiConnected
+                    ? 'border-cyan-500/20 bg-cyan-950/30 text-cyan-400 hover:bg-cyan-950/50'
+                    : 'border-slate-700 bg-slate-900/30 text-slate-500 hover:bg-slate-800/50'
+                }`}
+              >
+                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m9 9c-2.5-2.5-3.5-5.5-3.5-9s1-6.5 3.5-9m0 18c2.5-2.5 3.5-5.5 3.5-9s-1-6.5-3.5-9"/>
+                </svg>
+                <span className="hidden xl:inline text-[11px] font-medium font-mono">
+                  {wifiConnected ? 'Sync ON' : 'Sync'}
+                </span>
+              </button>
+
               {/* Backup & System Data */}
               {permissions.canManageBackup && (
                 <button
@@ -222,6 +242,7 @@ export const Navbar: React.FC = () => {
       {/* Modals */}
       {showBackupModal && <BackupModal onClose={() => setShowBackupModal(false)} />}
       {showWifiModal && <WifiModal onClose={() => setShowWifiModal(false)} />}
+      {showSyncModal && <SyncModal onClose={() => setShowSyncModal(false)} />}
       {showChangePasswordModal && (
         <ChangePasswordModal onClose={() => setShowChangePasswordModal(false)} />
       )}

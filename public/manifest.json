@@ -1,0 +1,21 @@
+{
+  "name": "Sea Pizzeria POS",
+  "short_name": "Sea Pizzeria",
+  "description": "Sistema gestionale per pizzeria con sync Wi-Fi",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#070c18",
+  "theme_color": "#070c18",
+  "lang": "it",
+  "dir": "ltr",
+  "categories": ["business", "productivity", "food"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
