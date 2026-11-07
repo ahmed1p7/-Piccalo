@@ -221,7 +221,7 @@ export const SyncModal: React.FC<SyncModalProps> = ({ onClose }) => {
               <Users className="w-3 h-3" />
               <span>{connectedClients} dispositivi</span>
             </div>
-            <span className="font-mono">Sea Pizzeria POS v1.0</span>
+            <span className="font-mono">Sea POS v1.0</span>
           </div>
         </div>
       </div>

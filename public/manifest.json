@@ -1,7 +1,7 @@
 {
-  "name": "Sea Pizzeria POS",
-  "short_name": "Sea Pizzeria",
-  "description": "Sistema gestionale per pizzeria con sync Wi-Fi",
+  "name": "Sea POS",
+  "short_name": "Sea",
+  "description": "Sistema gestionale per ristorante con sync Wi-Fi",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait-primary",

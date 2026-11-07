@@ -1,9 +1,9 @@
 // ═══════════════════════════════════════════════════════════════════
-// 🔧 Sea Pizzeria POS - Service Worker
+// 🔧 Sea POS - Service Worker
 // ═══════════════════════════════════════════════════════════════════
 // يتيح للتطبيق العمل offline وكـ PWA على الهاتف
 
-const CACHE_NAME = 'sea-pizzeria-pos-v1';
+const CACHE_NAME = 'sea-pos-v1';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

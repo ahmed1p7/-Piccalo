@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════════
-// 🌐 Sea Pizzeria POS - Sync Server (Express + WebSocket)
+// 🌐 Sea POS - Sync Server (Express + WebSocket)
 // ═══════════════════════════════════════════════════════════════════════════════
 //
 // خادم بسيط للتزامن بين الأجهزة على نفس شبكة Wi-Fi
@@ -80,7 +80,7 @@ app.get('/api/clients', (req, res) => {
 app.get('/api/info', (req, res) => {
   res.json({
     success: true,
-    serverName: 'Sea Pizzeria POS Sync Server',
+    serverName: 'Sea POS Sync Server',
     version: '1.0.0',
     uptime: process.uptime(),
     clientsCount: connectedClients.size,
@@ -266,7 +266,7 @@ server.listen(PORT, '0.0.0.0', () => {
   const localIP = getLocalIP();
   console.log('');
   console.log('═══════════════════════════════════════════════════════');
-  console.log('  🍕 Sea Pizzeria POS - Sync Server v1.0.0');
+  console.log('  🌊 Sea POS - Sync Server v1.0.0');
   console.log('═══════════════════════════════════════════════════════');
   console.log(`  📍 Local IP:    ${localIP}`);
   console.log(`  🚀 HTTP:        http://${localIP}:${PORT}`);

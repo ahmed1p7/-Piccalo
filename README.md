@@ -1,6 +1,6 @@
-# 🍕 Sea Pizzeria POS
+# 🌊 Sea POS
 
-Sistema gestionale per pizzeria con **sincronizzazione Wi-Fi** tra dispositivi.
+Sistema gestionale per ristorante con **sincronizzazione Wi-Fi** tra dispositivi.
 
 ## ✨ Caratteristiche
 
@@ -41,7 +41,7 @@ npm run server
 Il server mostrerà qualcosa come:
 ```
 ═══════════════════════════════════════════════════════
-  🍕 Sea Pizzeria POS - Sync Server v1.0.0
+  🌊 Sea POS - Sync Server v1.0.0
 ═══════════════════════════════════════════════════════
   📍 Local IP:    192.168.1.100
   🚀 HTTP:        http://192.168.1.100:3001
@@ -49,7 +49,7 @@ Il server mostrerà qualcosa come:
 ═══════════════════════════════════════════════════════
 ```
 
-#### Sull'app principale ( stesso dispositivo):
+#### Sull'app principale (stesso dispositivo):
 
 ```bash
 npm run dev
@@ -99,7 +99,7 @@ PIN: 5555
         ↑                                       ↑
         │           Wi-Fi LAN                   │
         ↓                                       ↓
-┌─────────────────┘     WebSocket     ┌─────────────────┐
+┌─────────────────┐     WebSocket     ┌─────────────────┐
 │   Tablet 2      │ ←──────────────→ │   Tablet 3      │
 │   (Cucina)      │                   │   (Sala)        │
 └─────────────────┘                   └─────────────────┘
@@ -126,8 +126,8 @@ npm run lint      # Controllo TypeScript
 Modifica `src/data/initialData.ts`:
 ```typescript
 export const INITIAL_PROFILE = {
-  name: 'Sea - Pizzeria',
-  subTitle: 'Pizzeria Napoletana D.O.P.',
+  name: 'Sea',
+  subTitle: 'Ristorante & Bistrot',
   address: '...',
   pIva: '...',
   phone: '...',
@@ -155,4 +155,4 @@ MIT License - Libero uso commerciale
 
 ---
 
-🍕 **Buon lavoro con Sea Pizzeria POS!**
+🌊 **Buon lavoro con Sea POS!**

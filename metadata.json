@@ -1,6 +1,6 @@
 {
-  "name": "Sea Pizzeria POS",
-  "description": "Sistema gestionale per pizzeria: cassa veloce, calcolo resto, divisione conto, gestione scorte e magazzino con sync Wi-Fi tra dispositivi.",
+  "name": "Sea POS",
+  "description": "Sistema gestionale per ristorante: cassa veloce, calcolo resto, divisione conto, gestione scorte e magazzino con sync Wi-Fi tra dispositivi.",
   "requestFramePermissions": [],
   "majorCapabilities": []
 }

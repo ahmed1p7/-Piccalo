@@ -1,9 +1,9 @@
 {
-  "name": "sea-pizzeria-pos",
+  "name": "sea-pos",
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Sea Pizzeria POS - Sistema gestionale per pizzeria con sync Wi-Fi",
+  "description": "Sea POS - Sistema gestionale per ristorante con sync Wi-Fi",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
     "build": "vite build",

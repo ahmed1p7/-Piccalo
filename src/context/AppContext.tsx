@@ -159,18 +159,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               changeType: 'scarico',
               deltaQuantity: -3,
               finalQuantity: 12,
-              userName: 'Luigi (Chef Cucina)',
+              userName: 'Admin',
               timestamp: '2026-11-06 07:30',
-              reason: 'Uso impasto del giorno',
+              reason: 'Uso in cucina',
             },
             {
               id: 'log_seed_2',
               itemId: 'mat_1',
-              itemName: 'Farina Tipo 00 Caputo Pizzeria',
+              itemName: 'Farina Tipo 00',
               changeType: 'carico',
               deltaQuantity: 25,
               finalQuantity: 45,
-              userName: 'Marco (Direttore)',
+              userName: 'Admin',
               timestamp: '2026-11-05 10:15',
               reason: 'Arrivo fornitore Molino Caputo',
             },
@@ -212,8 +212,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               items: [
                 {
                   id: 'item_rec_1',
-                  name: 'Pizza Margherita DOC',
-                  price: 8.5,
+                  name: 'Spaghetti alle Vongole',
+                  price: 14.0,
                   quantity: 2,
                   destination: 'cassa',
                   status: 'servito',
@@ -276,7 +276,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               cashAmount: 0,
               cardAmount: 62.5,
               changeGiven: 0,
-              cashierName: 'Marco (Direttore)',
+              cashierName: 'Admin',
             },
           ];
     } catch {
