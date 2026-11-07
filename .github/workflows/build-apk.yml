@@ -158,43 +158,63 @@ jobs:
             -keypass sea_pos_2024 \
             -dname "CN=Sea POS, OU=Mobile, O=Sea Ristorante, L=Napoli, S=NA, C=IT"
 
-      # ═══ 7) نسخ Keystore وتعديل build.gradle للتوقيع ═══
+      # ═══ 7) نسخ Keystore وإعداد build.gradle للتوقيع ═══
       - name: ⚙️ Configure signing
         run: |
           # نسخ keystore لمجلد android/app
           cp sea-pos.keystore android/app/sea-pos.keystore
 
-          # إضافة signingConfigs و signingConfig لـ release في build.gradle
-          python3 << 'PYEOF'
-          with open('android/app/build.gradle', 'r') as f:
-              content = f.read()
+          # 🔧 إعادة كتابة build.gradle بالكامل (بدل التعديل المعقد الذي يفشل)
+          # هذا أكثر استقراراً في CI
+          cat > android/app/build.gradle << 'GRADLE_EOF'
+          apply plugin: 'com.android.application'
 
-          signing_config = """
-          signingConfigs {
-              release {
-                  storeFile file('sea-pos.keystore')
-                  storePassword 'sea_pos_2024'
-                  keyAlias 'sea_pos_key'
-                  keyPassword 'sea_pos_2024'
+          android {
+              namespace "com.sea.pos"
+              compileSdkVersion 34
+
+              defaultConfig {
+                  applicationId "com.sea.pos"
+                  minSdkVersion 23
+                  targetSdkVersion 34
+                  versionCode 1
+                  versionName "1.0.0"
+                  testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+                  aaptOptions {
+                      ignoreAssetsPattern '!.gitkeep'
+                  }
+              }
+
+              signingConfigs {
+                  release {
+                      storeFile file('sea-pos.keystore')
+                      storePassword 'sea_pos_2024'
+                      keyAlias 'sea_pos_key'
+                      keyPassword 'sea_pos_2024'
+                  }
+              }
+
+              buildTypes {
+                  release {
+                      minifyEnabled false
+                      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+                      signingConfig signingConfigs.release
+                  }
               }
           }
-          """
 
-          # إدراج signingConfigs قبل buildTypes
-          if 'signingConfigs' not in content:
-              content = content.replace('buildTypes {', signing_config + '\n    buildTypes {')
+          dependencies {
+              implementation fileTree(dir: 'libs', include: ['*.jar'])
+              implementation "androidx.appcompat:appcompat:1.6.1"
+              implementation project(':capacitor-android')
+              testImplementation "junit:junit:4.13.2"
+              androidTestImplementation "androidx.test.ext:junit:1.1.5"
+              androidTestImplementation "androidx.test.espresso:espresso-core:3.5.1"
+          }
+          GRADLE_EOF
 
-          # تفعيل signingConfig في release
-          if 'signingConfig signingConfigs.release' not in content:
-              content = content.replace(
-                  'release {',
-                  'release {\n            signingConfig signingConfigs.release'
-              )
-
-          with open('android/app/build.gradle', 'w') as f:
-              f.write(content)
-          print("✅ تم تعديل build.gradle للتوقيع")
-          PYEOF
+          echo "✅ تمت إعادة كتابة build.gradle بالكامل مع التوقيع"
+          cat android/app/build.gradle | head -20
 
       # ═══ 8) بناء APK ═══
       - name: 📱 Build APK
