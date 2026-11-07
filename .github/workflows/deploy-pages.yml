@@ -1,0 +1,69 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🌐 Sea POS - Deploy to GitHub Pages
+# ═══════════════════════════════════════════════════════════════════════════════
+# ينشر التطبيق على GitHub Pages عند كل push على main
+# URL الناتج: https://ahmed1p7.github.io/-Piccalo/
+# ═══════════════════════════════════════════════════════════════════════════════
+
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: ⚡ Build
+        run: npm run build
+        env:
+          CI: false
+          # 📌 مهم: basePath لأن التطبيق على /-Piccalo/ وليس root
+          # لو غيرت اسم المستودع، حدّث هذا
+          VITE_BASE_PATH: '/-Piccalo/'
+
+      - name: 📤 Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: 🌐 Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: ✅ Report
+        run: |
+          echo "## 🌐 Deploy Success" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📱 App URL: ${{ steps.deployment.outputs.page_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "📦 APK build: https://github.com/${{ github.repository }}/actions" >> $GITHUB_STEP_SUMMARY
