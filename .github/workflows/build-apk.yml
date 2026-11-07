@@ -95,7 +95,7 @@ jobs:
       - name: 📋 Copy web assets
         run: npx cap copy android
 
-      # ═══ 5) تعديل AndroidManifest.xml لـ WebView settings ═══
+      # ═══ 5) تعديل AndroidManifest.xml + build.gradle لتقليل dependencies ═══
       - name: ⚙️ Configure Android
         run: |
           if [ -f "android/app/src/main/AndroidManifest.xml" ]; then
@@ -103,6 +103,43 @@ jobs:
             # إضافة أذونات الإنترنت
             sed -i 's/<\/manifest>/<uses-permission android:name="android.permission.INTERNET" \/>\n    <\/manifest>/' android/app/src/main/AndroidManifest.xml
             echo "✅ تم إضافة أذونات الإنترنت"
+          fi
+
+          # 🔧 إضافة Google Maven Mirror لتجنب 429 Too Many Requests
+          cat > android/build.gradle.tmp << 'GRADLEEOF'
+          // Sea POS - Build configuration with fallback mirrors
+          GRADLEEOF
+
+          # تعديل settings.gradle لتضمين Google Maven
+          if [ -f "android/settings.gradle" ]; then
+            python3 << 'PYEOF'
+          with open('android/settings.gradle', 'r') as f:
+              content = f.read()
+
+          # إضافة repositoriesMode و pluginManagement إذا غير موجود
+          if 'pluginManagement' not in content:
+              content = """pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+                  maven { url 'https://maven.google.com' }
+                  maven { url 'https://jitpack.io' }
+              }
+          }
+          """ + content
+
+          with open('android/settings.gradle', 'w') as f:
+              f.write(content)
+          print("✅ تم تعديل settings.gradle مع Google Maven mirrors")
+          PYEOF
           fi
 
       # ═══ 6) توليد Keystore للتوقيع ═══
