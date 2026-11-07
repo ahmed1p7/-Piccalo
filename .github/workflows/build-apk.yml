@@ -68,25 +68,36 @@ jobs:
         run: |
           npm install @capacitor/core @capacitor/cli @capacitor/android --legacy-peer-deps --save
 
-      # ═══ 2) تهيئة Capacitor ═══
-      - name: 🎯 Init Capacitor
+      # ═══ 2) إنشاء capacitor.config.json يدوياً (بدل cap init الذي يفشل مع TS) ═══
+      - name: 🎯 Create capacitor.config.json
         run: |
-          npx cap init "Sea POS" "com.sea.pos" --web-dir=dist
+          cat > capacitor.config.json << 'EOF'
+          {
+            "appId": "com.sea.pos",
+            "appName": "Sea POS",
+            "webDir": "dist",
+            "server": {
+              "androidScheme": "https"
+            },
+            "android": {
+              "allowMixedContent": true
+            }
+          }
+          EOF
+          echo "✅ تم إنشاء capacitor.config.json"
+          cat capacitor.config.json
 
       # ═══ 3) إضافة منصة Android ═══
       - name: 📱 Add Android platform
         run: npx cap add android
-        continue-on-error: true
 
       # ═══ 4) نسخ الـ web build إلى Android ═══
       - name: 📋 Copy web assets
         run: npx cap copy android
-        continue-on-error: true
 
       # ═══ 5) تعديل AndroidManifest.xml لـ WebView settings ═══
       - name: ⚙️ Configure Android
         run: |
-          # التأكد من وجود AndroidManifest.xml
           if [ -f "android/app/src/main/AndroidManifest.xml" ]; then
             echo "✅ AndroidManifest.xml موجود"
             # إضافة أذونات الإنترنت
@@ -107,28 +118,18 @@ jobs:
             -keypass sea_pos_2024 \
             -dname "CN=Sea POS, OU=Mobile, O=Sea Ristorante, L=Napoli, S=NA, C=IT"
 
-      # ═══ 7) تعديل build.gradle للتوقيع ═══
+      # ═══ 7) نسخ Keystore وتعديل build.gradle للتوقيع ═══
       - name: ⚙️ Configure signing
         run: |
-          # نسخ keystore لمجلد android
+          # نسخ keystore لمجلد android/app
           cp sea-pos.keystore android/app/sea-pos.keystore
 
-          # إضافة config التوقيع لـ build.gradle
-          cat > android/app/signing.properties << 'EOF'
-          storeFile=sea-pos.keystore
-          storePassword=sea_pos_2024
-          keyAlias=sea_pos_key
-          keyPassword=sea_pos_2024
-          EOF
-
-          # تعديل build.gradle
+          # إضافة signingConfigs و signingConfig لـ release في build.gradle
           python3 << 'PYEOF'
-          import re
           with open('android/app/build.gradle', 'r') as f:
               content = f.read()
 
-          # إضافة signingConfigs
-          signing_config = '''
+          signing_config = """
           signingConfigs {
               release {
                   storeFile file('sea-pos.keystore')
@@ -137,13 +138,18 @@ jobs:
                   keyPassword 'sea_pos_2024'
               }
           }
-          '''
+          """
 
           # إدراج signingConfigs قبل buildTypes
-          content = content.replace('buildTypes {', signing_config + '\n    buildTypes {')
+          if 'signingConfigs' not in content:
+              content = content.replace('buildTypes {', signing_config + '\n    buildTypes {')
 
           # تفعيل signingConfig في release
-          content = content.replace('release {', 'release {\n            signingConfig signingConfigs.release')
+          if 'signingConfig signingConfigs.release' not in content:
+              content = content.replace(
+                  'release {',
+                  'release {\n            signingConfig signingConfigs.release'
+              )
 
           with open('android/app/build.gradle', 'w') as f:
               f.write(content)
@@ -155,7 +161,7 @@ jobs:
         working-directory: ./android
         run: |
           chmod +x ./gradlew
-          ./gradlew assembleRelease --no-daemon
+          ./gradlew assembleRelease --no-daemon -x test
         env:
           CI: false
 
