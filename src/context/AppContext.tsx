@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import {
   INITIAL_INVENTORY,
   INITIAL_PROFILE,
@@ -19,6 +19,9 @@ import {
   UserAccount,
 } from '../types';
 import firebaseSyncManager from '../sync/FirebaseSyncManager';
+import syncManager from '../sync/SyncManager';
+import { getDevice } from '../sync/SyncConfig';
+import type { SyncCollection } from '../sync/merge';
 
 export type ActiveView =
   | 'home'
@@ -42,6 +45,7 @@ interface AppContextType {
   selectedTableForCheckout: RestaurantTable | null;
   lowStockItems: InventoryItem[];
   wifiConnected: boolean;
+  syncDevicesCount: number;
   toggleWifi: () => void;
   // Auth
   login: (username: string, passwordOrPin: string) => { success: boolean; message?: string };
@@ -296,19 +300,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [activeView, setActiveView] = useState<ActiveView>('home');
   const [selectedTableForCheckout, setSelectedTableForCheckout] =
     useState<RestaurantTable | null>(null);
-  const [wifiConnected, setWifiConnected] = useState<boolean>(true);
+  const [wifiConnected, setWifiConnected] = useState<boolean>(false);
+  const [syncDevicesCount, setSyncDevicesCount] = useState<number>(0);
 
   // ═══════════════════════════════════════════════════════════════════
-  // 🔥 Firebase Sync: تزامن تلقائي بين الأجهزة (بدون سيرفر محلي)
+  // 🔥 Firebase Sync: تزامن سحابي بين عدة أجهزة (هواتف / تابلت)
   // ═══════════════════════════════════════════════════════════════════
-  const isSyncing = useRef(false);  // يمنع الحلقات اللانهائية
-
-  // الاتصال التلقائي عند بدء التطبيق
+  // الاتصال التلقائي عند بدء التطبيق (funziona solo se è stato
+  // incollato un "codice di sincronizzazione" oppure se la config
+  // Firebase è già stata compilata dentro l'APK)
   useEffect(() => {
     if (firebaseSyncManager.isConfigured()) {
       firebaseSyncManager.connect().then((success) => {
         if (success) {
-          console.log('🔥 Sync: متصل تلقائياً');
+          console.log('🔥 Sync: connesso automaticamente');
         }
       });
     }
@@ -317,47 +322,140 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, []);
 
-  // استقبال تحديثات من Firebase
+  // ───────────────────────────────────────────────────────────────────
+  // 📡 Sincronizzazione LAN (Wi-Fi) — alternativa quando non c'è il cloud
+  // ───────────────────────────────────────────────────────────────────
+  // Richiede un PC/host sulla stessa rete con `npm run server` attivo.
   useEffect(() => {
-    const listener = (msg: any) => {
-      if (isSyncing.current) return;
+    let serverUrl = '';
+    try {
+      serverUrl = localStorage.getItem('sea_pos_sync_url') || '';
+    } catch {
+      serverUrl = '';
+    }
+    if (!serverUrl) return;
 
-      isSyncing.current = true;
+    const device = getDevice();
+    const listener = (msg: any) => {
+      if (!msg) return;
       try {
-        if (msg.type === 'state_update' && msg.data) {
-          const s = msg.data;
-          if (s.users) setUsers(s.users);
-          if (s.inventory) setInventory(s.inventory);
-          if (s.inventoryLogs) setInventoryLogs(s.inventoryLogs);
-          if (s.tables) setTables(s.tables);
-          if (s.receipts) setReceipts(s.receipts);
-          if (s.profile) setProfile(s.profile);
+        if (msg.type === 'welcome' && msg.data?.serverState) {
+          applyRemoteState(msg.data.serverState);
+        } else if (msg.type === 'partial_update' && msg.data?.key) {
+          applyRemoteState({ [msg.data.key]: msg.data.value });
+        } else if (msg.type === 'state_update' && msg.data) {
+          applyRemoteState(msg.data);
+        }
+      } catch (e) {
+        console.error('📡 LAN Sync: errore nel gestire aggiornamento', e);
+      }
+    };
+
+    syncManager.addListener(listener);
+    void syncManager.connect(serverUrl, device.name, device.role);
+
+    return () => {
+      syncManager.removeListener(listener);
+      syncManager.disconnect();
+    };
+  }, []);
+
+  // تطبيق gli aggiornamenti ricevuti (cloud o LAN)
+  const applyRemoteState = (payload: any) => {
+    if (!payload) return;
+    if (payload.users) setUsers(payload.users);
+    if (payload.inventory) setInventory(payload.inventory);
+    if (payload.inventoryLogs) setInventoryLogs(payload.inventoryLogs);
+    if (payload.tables) setTables(payload.tables);
+    if (payload.receipts) setReceipts(payload.receipts);
+    if (payload.profile) setProfile(payload.profile);
+  };
+
+  // استقبال التحديثات من الأجهزة الأخرى
+  useEffect(() => {
+    const listener = (event: any) => {
+      if (!event || event.type !== 'remote_change') return;
+      try {
+        switch (event.collection) {
+          case 'users':
+            setUsers(event.data);
+            break;
+          case 'inventory':
+            setInventory(event.data);
+            break;
+          case 'inventoryLogs':
+            setInventoryLogs(event.data);
+            break;
+          case 'tables':
+            setTables(event.data);
+            break;
+          case 'receipts':
+            setReceipts(event.data);
+            break;
+          case 'profile':
+            setProfile(event.data);
+            break;
         }
       } catch (e) {
         console.error('🔥 Sync: خطأ في معالجة التحديث', e);
       }
-      isSyncing.current = false;
     };
 
     firebaseSyncManager.addListener(listener);
     return () => firebaseSyncManager.removeListener(listener);
   }, []);
 
-  // إرسال التحديثات لكل الأجهزة عند تغيير البيانات
-  useEffect(() => {
-    if (isSyncing.current) return;
-    if (firebaseSyncManager.getStatus() !== 'connected') return;
-    firebaseSyncManager.sendUpdate({
-      users, inventory, inventoryLogs, tables, receipts, profile,
-    });
-  }, [users, inventory, inventoryLogs, tables, receipts, profile]);
+  // إرسال التعديلات المحلية إلى السحابة (و/أو إلى شبكة LAN المحلية)
+  const pushLocalChange = (collection: SyncCollection, data: any) => {
+    firebaseSyncManager.notifyLocalChange(collection, data);
 
-  // تحديث wifiConnected بناءً على حالة Firebase
+    // إذا لم يكن السحابة متصلاً → جرّب مزامنة الشبكة المحلية
+    if (
+      firebaseSyncManager.getStatus() !== 'connected' &&
+      syncManager.getStatus() === 'connected'
+    ) {
+      syncManager.send({
+        type: 'partial_update',
+        data: { key: collection, value: data },
+      });
+    }
+  };
+
+  // إرسال التعديلات المحلية (لكل مجموعة على حدة حتى لا تتداخل الأجهزة)
   useEffect(() => {
-    const removeStatusListener = firebaseSyncManager.addStatusListener((status) => {
-      setWifiConnected(status === 'connected');
-    });
+    pushLocalChange('users', users);
+  }, [users]);
+
+  useEffect(() => {
+    pushLocalChange('inventory', inventory);
+  }, [inventory]);
+
+  useEffect(() => {
+    pushLocalChange('inventoryLogs', inventoryLogs);
+  }, [inventoryLogs]);
+
+  useEffect(() => {
+    pushLocalChange('tables', tables);
+  }, [tables]);
+
+  useEffect(() => {
+    pushLocalChange('receipts', receipts);
+  }, [receipts]);
+
+  useEffect(() => {
+    pushLocalChange('profile', profile);
+  }, [profile]);
+
+  // حالة المزامنة + عدد الأجهزة المتصلة
+  useEffect(() => {
+    const removeStatusListener = firebaseSyncManager.addStatusListener(
+      (status, devicesCount) => {
+        setWifiConnected(status === 'connected');
+        setSyncDevicesCount(devicesCount);
+      }
+    );
     setWifiConnected(firebaseSyncManager.getStatus() === 'connected');
+    setSyncDevicesCount(firebaseSyncManager.getDevices().length);
     return removeStatusListener;
   }, []);
 
@@ -399,8 +497,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     (item) => item.currentQuantity <= item.minThreshold
   );
 
-  // Toggle Wi-Fi state simulator
-  const toggleWifi = () => setWifiConnected((prev) => !prev);
+  // Connessione / disconnessione dalla sincronizzazione cloud
+  const toggleWifi = () => {
+    if (firebaseSyncManager.getStatus() === 'connected') {
+      firebaseSyncManager.disconnect();
+    } else {
+      void firebaseSyncManager.reconnect();
+    }
+  };
 
   // Auth functions: Clean Username + Password Login
   const login = (
@@ -949,6 +1053,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         selectedTableForCheckout,
         lowStockItems,
         wifiConnected,
+        syncDevicesCount,
         toggleWifi,
         login,
         changePassword,

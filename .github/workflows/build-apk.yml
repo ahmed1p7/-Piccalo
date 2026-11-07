@@ -1,7 +1,15 @@
 # ═══════════════════════════════════════════════════════════════════════════════
-# 📱 Sea POS - Build Android APK (متوافق مع GitHub Actions)
+# 📱 Sea POS - Build Android APK
 # ═══════════════════════════════════════════════════════════════════════════════
-# يبني APK من PWA باستخدام Capacitor (الأكثر استقراراً في CI)
+# Il progetto Android è già committato nella cartella `android/` (generato con
+# Capacitor 8), quindi qui NON c'è più bisogno di script fragili che riscrivono
+# build.gradle / settings.gradle: era quello il motivo per cui le build
+# precedenti fallivano (compileSdk 34 con AGP 8.13 + `capacitor.build.gradle`
+# rimosso per errore).
+#
+# La chiave di firma è committata in android/keystore.properties:
+#   → ogni nuovo APK può aggiornare l'app già installata sul telefono
+#     (l'utente non deve disinstallare e quindi non perde i dati).
 # ═══════════════════════════════════════════════════════════════════════════════
 
 name: Build APK
@@ -12,8 +20,16 @@ on:
     tags: ['v*']
   workflow_dispatch:
 
+permissions:
+  contents: write
+
+concurrency:
+  group: apk-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
+    name: Build APK
     runs-on: ubuntu-latest
     steps:
       - name: 📥 Checkout repository
@@ -22,18 +38,27 @@ jobs:
       - name: 📦 Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
+          cache: npm
 
-      - name: ☕ Setup Java
+      - name: ☕ Setup Java 21
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
+          java-version: '21'
 
       - name: 📱 Setup Android SDK
         uses: android-actions/setup-android@v3
+
+      - name: 📥 Install Android packages
+        run: |
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+          yes | sdkmanager --licenses > /dev/null 2>&1 || true
+
+      - name: ⚡ Setup Gradle (con cache)
+        uses: gradle/actions/setup-gradle@v4
         with:
-          packages: 'platform-tools platforms;android-34 build-tools;34.0.0'
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
       - name: 📦 Install dependencies
         run: npm install --legacy-peer-deps --no-fund --no-audit
@@ -45,7 +70,7 @@ jobs:
         env:
           CI: false
           VITE_BASE_PATH: './'
-          # 🔥 Firebase config (من GitHub Secrets)
+          # 🔥 Firebase config (opzionale: da GitHub Secrets)
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
           VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
           VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
@@ -53,189 +78,26 @@ jobs:
           VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
 
-      - name: 🔍 Verify build output
-        run: |
-          echo "📁 محتويات dist/:"
-          ls -la dist/
-          if [ -f "dist/manifest.json" ]; then
-            echo "✅ manifest.json موجود"
-          else
-            echo "❌ manifest.json غير موجود!"
-          fi
+      - name: 🔄 Sync Capacitor (web assets → Android)
+        run: npx cap sync android
 
-      # ═══ 1) تثبيت Capacitor ═══
-      - name: 🔧 Install Capacitor
-        run: |
-          npm install @capacitor/core @capacitor/cli @capacitor/android --legacy-peer-deps --save
-
-      # ═══ 2) إنشاء capacitor.config.json يدوياً (بدل cap init الذي يفشل مع TS) ═══
-      - name: 🎯 Create capacitor.config.json
-        run: |
-          cat > capacitor.config.json << 'EOF'
-          {
-            "appId": "com.sea.pos",
-            "appName": "Sea POS",
-            "webDir": "dist",
-            "server": {
-              "androidScheme": "https"
-            },
-            "android": {
-              "allowMixedContent": true
-            }
-          }
-          EOF
-          echo "✅ تم إنشاء capacitor.config.json"
-          cat capacitor.config.json
-
-      # ═══ 3) إضافة منصة Android ═══
-      - name: 📱 Add Android platform
-        run: npx cap add android
-
-      # ═══ 4) نسخ الـ web build إلى Android ═══
-      - name: 📋 Copy web assets
-        run: npx cap copy android
-
-      # ═══ 5) تعديل AndroidManifest.xml + build.gradle لتقليل dependencies ═══
-      - name: ⚙️ Configure Android
-        run: |
-          if [ -f "android/app/src/main/AndroidManifest.xml" ]; then
-            echo "✅ AndroidManifest.xml موجود"
-            # إضافة أذونات الإنترنت
-            sed -i 's/<\/manifest>/<uses-permission android:name="android.permission.INTERNET" \/>\n    <\/manifest>/' android/app/src/main/AndroidManifest.xml
-            echo "✅ تم إضافة أذونات الإنترنت"
-          fi
-
-          # 🔧 إضافة Google Maven Mirror لتجنب 429 Too Many Requests
-          cat > android/build.gradle.tmp << 'GRADLEEOF'
-          // Sea POS - Build configuration with fallback mirrors
-          GRADLEEOF
-
-          # تعديل settings.gradle لتضمين Google Maven
-          if [ -f "android/settings.gradle" ]; then
-            python3 << 'PYEOF'
-          with open('android/settings.gradle', 'r') as f:
-              content = f.read()
-
-          # إضافة pluginManagement و dependencyResolutionManagement إذا غير موجود
-          if 'pluginManagement' not in content:
-              content = """pluginManagement {
-              repositories {
-                  google()
-                  mavenCentral()
-                  gradlePluginPortal()
-              }
-          }
-          dependencyResolutionManagement {
-              repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
-              repositories {
-                  google()
-                  mavenCentral()
-                  maven { url 'https://maven.google.com' }
-                  maven { url 'https://jitpack.io' }
-              }
-          }
-          """ + content
-          else:
-              # لو موجود، نغيّر FAIL_ON_PROJECT_REPOS إلى PREFER_SETTINGS
-              content = content.replace('FAIL_ON_PROJECT_REPOS', 'PREFER_SETTINGS')
-
-          with open('android/settings.gradle', 'w') as f:
-              f.write(content)
-          print("✅ تم تعديل settings.gradle (PREFER_SETTINGS + Google Maven mirrors)")
-          PYEOF
-          fi
-
-      # ═══ 6) توليد Keystore للتوقيع ═══
-      - name: 🔐 Generate signing keystore
-        run: |
-          keytool -genkey -v \
-            -keystore sea-pos.keystore \
-            -alias sea_pos_key \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
-            -storepass sea_pos_2024 \
-            -keypass sea_pos_2024 \
-            -dname "CN=Sea POS, OU=Mobile, O=Sea Ristorante, L=Napoli, S=NA, C=IT"
-
-      # ═══ 7) نسخ Keystore وإعداد build.gradle للتوقيع ═══
-      - name: ⚙️ Configure signing
-        run: |
-          # نسخ keystore لمجلد android/app
-          cp sea-pos.keystore android/app/sea-pos.keystore
-
-          # 🔧 إعادة كتابة build.gradle بالكامل (بدل التعديل المعقد الذي يفشل)
-          # هذا أكثر استقراراً في CI
-          cat > android/app/build.gradle << 'GRADLE_EOF'
-          apply plugin: 'com.android.application'
-
-          android {
-              namespace "com.sea.pos"
-              compileSdkVersion 34
-
-              defaultConfig {
-                  applicationId "com.sea.pos"
-                  minSdkVersion 23
-                  targetSdkVersion 34
-                  versionCode 1
-                  versionName "1.0.0"
-                  testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-                  aaptOptions {
-                      ignoreAssetsPattern '!.gitkeep'
-                  }
-              }
-
-              signingConfigs {
-                  release {
-                      storeFile file('sea-pos.keystore')
-                      storePassword 'sea_pos_2024'
-                      keyAlias 'sea_pos_key'
-                      keyPassword 'sea_pos_2024'
-                  }
-              }
-
-              buildTypes {
-                  release {
-                      minifyEnabled false
-                      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-                      signingConfig signingConfigs.release
-                  }
-              }
-          }
-
-          dependencies {
-              implementation fileTree(dir: 'libs', include: ['*.jar'])
-              implementation "androidx.appcompat:appcompat:1.6.1"
-              implementation project(':capacitor-android')
-              testImplementation "junit:junit:4.13.2"
-              androidTestImplementation "androidx.test.ext:junit:1.1.5"
-              androidTestImplementation "androidx.test.espresso:espresso-core:3.5.1"
-          }
-          GRADLE_EOF
-
-          echo "✅ تمت إعادة كتابة build.gradle بالكامل مع التوقيع"
-          cat android/app/build.gradle | head -20
-
-      # ═══ 8) بناء APK ═══
-      - name: 📱 Build APK
+      - name: 📱 Build APK (release, firmato)
         working-directory: ./android
         run: |
           chmod +x ./gradlew
-          ./gradlew assembleRelease --no-daemon -x test
+          ./gradlew assembleRelease --no-daemon --stacktrace
         env:
           CI: false
 
-      # ═══ 9) تجميع APKs ═══
-      - name: 📤 Collect APK files
+      - name: 📤 Collect APK
         if: always()
         run: |
           mkdir -p apk-output
           find . -name "*.apk" -type f 2>/dev/null | while read apk; do
-            echo "📦 وجدت: $apk"
+            echo "📦 Trovato: $apk"
             cp "$apk" apk-output/ 2>/dev/null || true
           done
 
-          # إعادة تسمية APK
           if [ -f "apk-output/app-release.apk" ]; then
             mv apk-output/app-release.apk apk-output/Sea-POS.apk
           fi
@@ -243,13 +105,11 @@ jobs:
             mv apk-output/app-debug.apk apk-output/Sea-POS-debug.apk
           fi
 
-          # عرض النتائج
           echo ""
           echo "📁 APK files:"
-          ls -la apk-output/*.apk 2>/dev/null || echo "❌ لا توجد ملفات APK"
+          ls -lh apk-output/*.apk 2>/dev/null || echo "❌ Nessun APK prodotto"
 
-      # ═══ 10) رفع APK كـ artifact ═══
-      - name: 📤 Upload APK
+      - name: 📤 Upload APK artifact
         uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -259,26 +119,50 @@ jobs:
           retention-days: 90
           if-no-files-found: warn
 
-      # ═══ 11) تقرير النتائج ═══
-      - name: ✅ Report results
+      - name: ✅ Report
         if: always()
         run: |
-          echo "## 📱 Build APK Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "## 📱 Build APK"
+            echo ""
+            APK_COUNT=$(find apk-output -name "*.apk" 2>/dev/null | wc -l)
+            if [ "$APK_COUNT" -gt 0 ]; then
+              echo "✅ APK pronti ($APK_COUNT)"
+              echo ""
+              echo '```'
+              ls -lh apk-output/*.apk
+              echo '```'
+            else
+              echo "❌ Nessun APK prodotto — controlla i log."
+            fi
+          } >> $GITHUB_STEP_SUMMARY
 
-          APK_COUNT=$(find apk-output -name "*.apk" -type f 2>/dev/null | wc -l)
+  # ── Rilascio: quando si tagga v1.0.0 l'APK viene pubblicato come Release ──
+  release:
+    name: Publish Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Download APK
+        uses: actions/download-artifact@v4
+        with:
+          name: Sea-POS-APK
+          path: apk-output
 
-          if [ "$APK_COUNT" -gt 0 ]; then
-            echo "✅ تم إنشاء $APK_COUNT ملف APK بنجاح!" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "📦 الملفات:" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            ls -lh apk-output/*.apk >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "📥 للتنزيل: اضغط على Artifacts في أعلى الصفحة" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ فشل إنشاء APK" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "📝 راجع logs أعلاه لمعرفة السبب" >> $GITHUB_STEP_SUMMARY
-          fi
+      - name: 🚀 Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: apk-output/*.apk
+          generate_release_notes: true
+          body: |
+            ## 📱 Sea POS - APK
+
+            Scarica il file `.apk`, trasferiscilo sul telefono e installalo
+            (abilita "Installa app sconosciute" se Android lo richiede).
+
+            **Aggiornamenti futuri:** installa sempre l'APK firmato con la stessa
+            chiave: l'app si aggiorna sopra quella già installata senza perdere i dati.
+
+            **Più telefoni:** apri l'app → icona Sync → "Copia" il codice di
+            sincronizzazione e incollalo negli altri telefoni.

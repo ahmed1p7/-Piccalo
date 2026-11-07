@@ -1,149 +1,105 @@
-# 🔥 إعداد Firebase - دليل سريع (10 دقائق)
+# 🔥 Configurazione Firebase (5 minuti)
 
-## 🎯 الهدف
-
-تفعيل التزامن التلقائي بين كل الأجهزة بدون سيرفر محلي. كل جهاز يثبّت التطبيق ويشتغل تلقائياً.
+Serve per sincronizzare **più telefoni** tramite il cloud.
+È gratuito (piano "Spark" / Blaze) e non richiede carta di credito.
 
 ---
 
-## 📋 الخطوات
+## 1️⃣ Crea il progetto Firebase
 
-### 1️⃣ أنشئ مشروع Firebase
+1. Apri <https://console.firebase.google.com/> e accedi con Google
+2. Clicca **"Aggiungi progetto"** → nome (es. `sea-pos`) → **Continua**
+   - (opzionale) attiva Google Analytics → **Continua** → **Crea progetto**
 
-1. اذهب إلى: **https://console.firebase.google.com/**
-2. اضغط **Create a project** أو **Add project**
-3. اسم المشروع: `sea-pos` (أو أي اسم)
-4. اضغط **Continue**
-5. اختر: Google Analytics (اختياري - يمكنك تعطيله)
-6. اضغط **Create project**
+---
 
-### 2️⃣ أضف Web App
+## 2️⃣ Crea il database Firestore
 
-1. في صفحة المشروع، اضغط أيقونة **`</>`** (Web)
-2. App nickname: `Sea POS Web`
-3. ✅ **Setup Firebase Hosting** (غير ضروري)
-4. اضغط **Register app**
-5. ستظهر لك `firebaseConfig`:
+1. Menu ☰ → **Build** → **Firestore Database** → **Crea database**
+2. Scegli la **modalità test** (testo) — per la produzione vedi le regole sotto
+3. Conferma la regione (europe-west1 va bene)
 
-```javascript
-const firebaseConfig = {
-  apiKey: "AIzaSy...",
-  authDomain: "sea-pos-xxxxx.firebaseapp.com",
-  projectId: "sea-pos-xxxxx",
-  storageBucket: "sea-pos-xxxxx.appspot.com",
-  messagingSenderId: "123456789012",
-  appId: "1:123456789012:web:..."
-};
+---
+
+## 3️⃣ Attiva l'accesso anonimo
+
+1. Menu ☰ → **Build** → **Authentication** → **Inizia**
+2. Scheda **Sign-in method** → **Anonimo** → **Abilita** → **Salva**
+
+---
+
+## 4️⃣ Copia la configurazione Web
+
+1. Menu ☰ → **Impostazioni progetto** (icona ingranaggio) → **Generali**
+2. Scorri fino a **"Le tue app"** → icona `</>` (**Web app**)
+3. Registra l'app (es. `Sea POS`) → **Continua** → **Continua** (non serve Firebase Hosting)
+4. Copia il blocco `firebaseConfig`
+
+---
+
+## 5️⃣ Genera il codice di sincronizzazione
+
+Incolla la config JSON in un file, es. `firebase-config.json`:
+
+```json
+{
+  "apiKey": "AIza...",
+  "authDomain": "sea-pos.firebaseapp.com",
+  "projectId": "sea-pos-xxxxx",
+  "storageBucket": "sea-pos-xxxxx.appspot.com",
+  "messagingSenderId": "123456789012",
+  "appId": "1:123456789012:web:xxxx"
+}
 ```
 
-6. **انسخ هذه القيم** - سنحتاجها لاحقاً
+Poi:
 
-### 3️⃣ فعّل Firestore Database
+```bash
+node scripts/make-sync-code.mjs firebase-config.json
+```
 
-1. في القائمة الجانبية: **Firestore Database**
-2. اضغط **Create database**
-3. اختر **Start in production mode**
-4. اختر الموقع: `eur3` أو `us-central` (الأقرب لك)
-5. اضغط **Enable**
+Il comando stampa il **codice di sincronizzazione** (base64).
 
-### 4️⃣ فعّل Anonymous Auth (مهم)
+---
 
-1. في القائمة الجانبية: **Authentication**
-2. اضغط **Get started**
-3. في تبويب **Sign-in method**:
-4. فعّل **Anonymous** → **Enable** → **Save**
+## 6️⃣ Collega i telefoni
 
-### 5️⃣ أضف قواعد Firestore (Security Rules)
+1. Installa l'APK su **tutti** i telefoni
+2. Su ciascun telefono: icona **Sync** → incolla il codice → **Collega questo dispositivo**
+3. Dai un nome a ogni dispositivo (Cassa, Cucina, Bar, Magazzino…)
 
-1. في **Firestore Database** → تبويب **Rules**
-2. استبدل المحتوى بـ:
+Fatto: da questo momento i dati si sincronizzano tra tutti i telefoni.
 
-```javascript
+> 💡 Non serve ricostruire l'APK: il codice viene salvato sul telefono.
+> Se invece vuoi il codice *dentro* l'APK (nessun setup sui telefoni), imposta i
+> GitHub Secrets `VITE_FIREBASE_*` — vedi il README.
+
+---
+
+## 🔒 Regole Firestore consigliate
+
+In **Firestore → Regole**, incolla:
+
+```
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /sea_pos/{document} {
-      allow read, write: if request.auth != null || true;
+    match /sea_pos/{document=**} {
+      allow read: if true;
+      allow write: if true;
     }
   }
 }
 ```
 
-3. اضغط **Publish**
-
-### 6️⃣ أضف GitHub Secrets (مهم للنشر التلقائي)
-
-لأن ملف `.env` لا يُرفع على GitHub (محمي بـ `.gitignore`):
-
-1. اذهب إلى: **https://github.com/ahmed1p7/-Piccalo/settings/secrets/actions**
-2. اضغط **New repository secret** وأضف 6 أسرار:
-
-| الاسم | القيمة |
-|---|---|
-| `VITE_FIREBASE_API_KEY` | (API Key من Firebase) |
-| `VITE_FIREBASE_AUTH_DOMAIN` | (Auth Domain) |
-| `VITE_FIREBASE_PROJECT_ID` | (Project ID) |
-| `VITE_FIREBASE_STORAGE_BUCKET` | (Storage Bucket) |
-| `VITE_FIREBASE_MESSAGING_SENDER_ID` | (Sender ID) |
-| `VITE_FIREBASE_APP_ID` | (App ID) |
-
-### 7️⃣ للتشغيل المحلي (اختياري)
-
-```bash
-# نسخ .env.example لـ .env
-cp .env.example .env
-
-# تحرير .env وضع قيم Firebase
-nano .env
-
-# تثبيت dependencies
-npm install --legacy-peer-deps
-
-# تشغيل التطبيق
-npm run dev
-```
+> ⚠️ Queste regole sono "aprirte": chiunque abbia il codice può leggere/scrivere.
+> Per un ristorante chiuso va bene, ma se i dati sono sensibili usa Firebase
+> Authentication con email/password e regole restrittive.
 
 ---
 
-## ✅ بعد الإعداد
+## 🧪 Verifica rapida
 
-- 🎉 كل جهاز يثبّت التطبيق ويعمل تلقائياً
-- 🔄 التزامن فوري بين كل الأجهزة
-- 🌐 يعمل من أي مكان (Wi-Fi أو بيانات الهاتف)
-- 💾 بيانات آمنة على Google Firebase
-- 🆓 مجاني حتى 50,000 طلب شهرياً
-
-## 📊 رسوم Firebase (مجاني للـ 99% من المطاعم)
-
-| الميزة | الحد المجاني | يكفي لـ |
-|---|---|---|
-| القراءة | 50,000/يوم | ~200 جهاز |
-| الكتابة | 20,000/يوم | ~200 جهاز |
-| التخزين | 1 GB | آلاف السجلات |
-| الشبكة | 10 GB/شهر | آلاف التزامنات |
-
-**للمطعم العادي: لن تدفع شيئاً!**
-
-## ❓ أسئلة شائعة
-
-**س: هل أحتاج بطاقة ائتمان؟**
-ج: لا! الباقة المجانية لا تتطلب بطاقة.
-
-**س: هل بياناتي آمنة؟**
-ج: نعم، Firebase يستخدم تشفير end-to-end وقواعد أمان قابلة للتخصيص.
-
-**س: ماذا لو تجاوزت الحد المجاني؟**
-ج: سيتوقف التزامن مؤقتاً. يمكنك الترقية لـ Blaze plan ($0.03/100k قراءة).
-
-**س: هل يعمل بدون إنترنت؟**
-ج: نعم! Firestore يدعم offline mode - يحفظ التغييرات محلياً ويزامن عند عودة الإنترنت.
-
----
-
-## 📞 الدعم
-
-لو واجهت أي مشكلة:
-1. تأكد أن Anonymous Auth مفعّل
-2. تأكد أن Firestore Rules صحيحة
-3. تأكد أن GitHub Secrets مضبوطة
-4. راجع logs في Console المتصفح (F12)
+1. Telefono A: registra uno scontrino
+2. Telefono B (stesso codice): deve comparire entro 1-2 secondi
+3. Telefono B: scarica 1 kg dal magazzino → la quantità deve cambiare anche su A

@@ -145,8 +145,9 @@ class UpdateManager {
       this.notify('up-to-date');
       return false;
     } catch (error) {
-      console.warn('Update check failed:', error);
-      this.notify('error', { error: error.message });
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn('Update check failed:', message);
+      this.notify('error', { error: message });
       return false;
     }
   }
