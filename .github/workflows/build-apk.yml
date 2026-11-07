@@ -1,8 +1,7 @@
 # ═══════════════════════════════════════════════════════════════════════════════
-# 📱 Sea POS - Build APK via PWABuilder (متوافق مع GitHub Actions)
+# 📱 Sea POS - Build Android APK (متوافق مع GitHub Actions)
 # ═══════════════════════════════════════════════════════════════════════════════
-# يبني APK من PWA باستخدام PWABuilder CLI
-# يعمل تلقائياً عند كل push على main
+# يبني APK من PWA باستخدام Capacitor (الأكثر استقراراً في CI)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 name: Build APK
@@ -31,6 +30,11 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: 📱 Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-34 build-tools;34.0.0'
+
       - name: 📦 Install dependencies
         run: npm install --legacy-peer-deps --no-fund --no-audit
         env:
@@ -40,7 +44,7 @@ jobs:
         run: npm run build
         env:
           CI: false
-          VITE_BASE_PATH: '/-Piccalo/'
+          VITE_BASE_PATH: './'
           # 🔥 Firebase config (من GitHub Secrets)
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
           VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
@@ -49,24 +53,48 @@ jobs:
           VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
 
-      # ═══ معاينة محلية للـ build للتحقق ═══
       - name: 🔍 Verify build output
         run: |
           echo "📁 محتويات dist/:"
           ls -la dist/
-          echo ""
-          echo "📄 manifest.json:"
           if [ -f "dist/manifest.json" ]; then
-            cat dist/manifest.json
+            echo "✅ manifest.json موجود"
           else
             echo "❌ manifest.json غير موجود!"
-            exit 1
           fi
-          echo ""
-          echo "🖼️ أيقونات:"
-          ls -la dist/icon*.png 2>/dev/null || echo "⚠️ لا توجد أيقونات PNG"
 
-      # ═══ 1) توليد Keystore مؤقت للتوقيع ═══
+      # ═══ 1) تثبيت Capacitor ═══
+      - name: 🔧 Install Capacitor
+        run: |
+          npm install @capacitor/core @capacitor/cli @capacitor/android --legacy-peer-deps --save
+
+      # ═══ 2) تهيئة Capacitor ═══
+      - name: 🎯 Init Capacitor
+        run: |
+          npx cap init "Sea POS" "com.sea.pos" --web-dir=dist
+
+      # ═══ 3) إضافة منصة Android ═══
+      - name: 📱 Add Android platform
+        run: npx cap add android
+        continue-on-error: true
+
+      # ═══ 4) نسخ الـ web build إلى Android ═══
+      - name: 📋 Copy web assets
+        run: npx cap copy android
+        continue-on-error: true
+
+      # ═══ 5) تعديل AndroidManifest.xml لـ WebView settings ═══
+      - name: ⚙️ Configure Android
+        run: |
+          # التأكد من وجود AndroidManifest.xml
+          if [ -f "android/app/src/main/AndroidManifest.xml" ]; then
+            echo "✅ AndroidManifest.xml موجود"
+            # إضافة أذونات الإنترنت
+            sed -i 's/<\/manifest>/<uses-permission android:name="android.permission.INTERNET" \/>\n    <\/manifest>/' android/app/src/main/AndroidManifest.xml
+            echo "✅ تم إضافة أذونات الإنترنت"
+          fi
+
+      # ═══ 6) توليد Keystore للتوقيع ═══
       - name: 🔐 Generate signing keystore
         run: |
           keytool -genkey -v \
@@ -79,161 +107,112 @@ jobs:
             -keypass sea_pos_2024 \
             -dname "CN=Sea POS, OU=Mobile, O=Sea Ristorante, L=Napoli, S=NA, C=IT"
 
-      # ═══ 2) تثبيت PWABuilder CLI (بديل Bubblewrap - أبسط وأكثر استقراراً) ═══
-      - name: 🔧 Install PWABuilder
-        run: npm install -g @bubblewrap/cli
-
-      # ═══ 3) إنشاء مشروع TWA باستخدام manifest مباشرة ═══
-      - name: 🎯 Initialize TWA project
-        id: init-twa
-        continue-on-error: true
+      # ═══ 7) تعديل build.gradle للتوقيع ═══
+      - name: ⚙️ Configure signing
         run: |
-          # استخدام --manifest-file بدل URL لتجنب مشاكل الشبكة
-          # ننسخ manifest من dist/ ونعدّل startUrl
-          mkdir -p twa-build
-          cp dist/manifest.json twa-build/manifest-local.json
-          
-          # تعديل startUrl ليكون /-Piccalo/ بدل /
-          python3 -c "
-          import json
-          with open('twa-build/manifest-local.json', 'r') as f:
-              m = json.load(f)
-          m['start_url'] = '/-Piccalo/'
-          m['scope'] = '/-Piccalo/'
-          with open('twa-build/manifest-local.json', 'w') as f:
-              json.dump(m, f, indent=2)
-          print('✅ manifest-local.json معدّل')
-          "
+          # نسخ keystore لمجلد android
+          cp sea-pos.keystore android/app/sea-pos.keystore
 
-      # ═══ 4) محاولة بناء APK عبر Bubblewrap (الطريقة 1) ═══
-      - name: 📱 Try Bubblewrap build
-        id: bubblewrap-build
-        continue-on-error: true
+          # إضافة config التوقيع لـ build.gradle
+          cat > android/app/signing.properties << 'EOF'
+          storeFile=sea-pos.keystore
+          storePassword=sea_pos_2024
+          keyAlias=sea_pos_key
+          keyPassword=sea_pos_2024
+          EOF
+
+          # تعديل build.gradle
+          python3 << 'PYEOF'
+          import re
+          with open('android/app/build.gradle', 'r') as f:
+              content = f.read()
+
+          # إضافة signingConfigs
+          signing_config = '''
+          signingConfigs {
+              release {
+                  storeFile file('sea-pos.keystore')
+                  storePassword 'sea_pos_2024'
+                  keyAlias 'sea_pos_key'
+                  keyPassword 'sea_pos_2024'
+              }
+          }
+          '''
+
+          # إدراج signingConfigs قبل buildTypes
+          content = content.replace('buildTypes {', signing_config + '\n    buildTypes {')
+
+          # تفعيل signingConfig في release
+          content = content.replace('release {', 'release {\n            signingConfig signingConfigs.release')
+
+          with open('android/app/build.gradle', 'w') as f:
+              f.write(content)
+          print("✅ تم تعديل build.gradle للتوقيع")
+          PYEOF
+
+      # ═══ 8) بناء APK ═══
+      - name: 📱 Build APK
+        working-directory: ./android
         run: |
-          # إنشاء twa manifest من ملف local
-          bubblewrap init \
-            --manifest="$(pwd)/twa-build/manifest-local.json" \
-            --directory="./twa-build/app" \
-            --applicationName="Sea POS" \
-            --packageId="com.sea.pos" \
-            --host="ahmed1p7.github.io" \
-            --no-interactive \
-            || true
-          
-          # فحص لو تم إنشاء المشروع
-          if [ -d "./twa-build/app" ]; then
-            echo "✅ تم إنشاء مشروع TWA"
-            cd ./twa-build/app
-            
-            # نسخ Keystore
-            cp ../../sea-pos.keystore ./android.keystore
-            
-            # بناء APK
-            bubblewrap build \
-              --no-deploy \
-              --signingKeyPath=./android.keystore \
-              --signingKeyPassword=sea_pos_2024 \
-              --signingKeyAlias=sea_pos_key \
-              --signingKeyAliasPassword=sea_pos_2024 \
-              || true
-          else
-            echo "❌ فشل إنشاء مشروع TWA"
-          fi
+          chmod +x ./gradlew
+          ./gradlew assembleRelease --no-daemon
+        env:
+          CI: false
 
-      # ═══ 5) طريقة بديلة: استخدام Cordova/Capacitor لو Bubblewrap فشل ═══
-      - name: 📱 Alternative: Capacitor build
-        if: steps.bubblewrap-build.outcome != 'success'
-        continue-on-error: true
-        run: |
-          echo "🔄 Bubblewrap فشل، نجرّب Capacitor..."
-          
-          # تثبيت Capacitor
-          npm install @capacitor/core @capacitor/cli @capacitor/android --legacy-peer-deps --save
-          
-          # تهيئة Capacitor
-          npx cap init "Sea POS" "com.sea.pos" --web-dir=dist
-          
-          # إضافة Android
-          npx cap add android || true
-          
-          # نسخ الـ web build
-          npx cap copy android || true
-          
-          # بناء APK (debug)
-          cd android
-          ./gradlew assembleDebug || true
-          cd ..
-          
-          # فحص لو تم إنشاء APK
-          find android -name "*.apk" -type f 2>/dev/null | head -5
-
-      # ═══ 6) تجميع كل ملفات APK المتوفرة ═══
+      # ═══ 9) تجميع APKs ═══
       - name: 📤 Collect APK files
         if: always()
         run: |
           mkdir -p apk-output
-          
-          # البحث في كل المواقع المحتملة
           find . -name "*.apk" -type f 2>/dev/null | while read apk; do
             echo "📦 وجدت: $apk"
             cp "$apk" apk-output/ 2>/dev/null || true
           done
-          
+
+          # إعادة تسمية APK
+          if [ -f "apk-output/app-release.apk" ]; then
+            mv apk-output/app-release.apk apk-output/Sea-POS.apk
+          fi
+          if [ -f "apk-output/app-debug.apk" ]; then
+            mv apk-output/app-debug.apk apk-output/Sea-POS-debug.apk
+          fi
+
           # عرض النتائج
           echo ""
           echo "📁 APK files:"
           ls -la apk-output/*.apk 2>/dev/null || echo "❌ لا توجد ملفات APK"
-          
-          # إنشاء ملف معلومات
-          cat > apk-output/INFO.txt << 'EOF'
-          Sea POS - APK Build Info
-          ========================
-          Build Date: $(date)
-          Commit: ${{ github.sha }}
-          
-          لو لا يوجد APK هنا:
-          1. راجع logs الأخطاء في GitHub Actions
-          2. تأكد أن GitHub Pages مفعّل
-          3. راجع twa/SETUP.md في المستودع
-          EOF
 
-      # ═══ 7) رفع النتائج ═══
+      # ═══ 10) رفع APK كـ artifact ═══
       - name: 📤 Upload APK
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: sea-pos-apk
+          name: Sea-POS-APK
           path: |
             apk-output/*.apk
-            apk-output/INFO.txt
-          retention-days: 30
+          retention-days: 90
+          if-no-files-found: warn
 
-      # ═══ 8) تقرير النتائج ═══
+      # ═══ 11) تقرير النتائج ═══
       - name: ✅ Report results
         if: always()
         run: |
           echo "## 📱 Build APK Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           APK_COUNT=$(find apk-output -name "*.apk" -type f 2>/dev/null | wc -l)
-          
+
           if [ "$APK_COUNT" -gt 0 ]; then
-            echo "✅ تم إنشاء $APK_COUNT ملف APK" >> $GITHUB_STEP_SUMMARY
+            echo "✅ تم إنشاء $APK_COUNT ملف APK بنجاح!" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "📦 الملفات:" >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
             ls -lh apk-output/*.apk >> $GITHUB_STEP_SUMMARY
             echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "📥 للتنزيل: اضغط على Artifacts في أعلى الصفحة" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ فشل إنشاء APK" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "💡 الخطوات المطلوبة:" >> $GITHUB_STEP_SUMMARY
-            echo "1. تأكد أن GitHub Pages مفعّل" >> $GITHUB_STEP_SUMMARY
-            echo "2. تأكد أن التطبيق منشور على https://ahmed1p7.github.io/-Piccalo/" >> $GITHUB_STEP_SUMMARY
-            echo "3. راجع twa/SETUP.md" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "📁 محتويات apk-output:" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            ls -la apk-output/ >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
+            echo "📝 راجع logs أعلاه لمعرفة السبب" >> $GITHUB_STEP_SUMMARY
           fi
