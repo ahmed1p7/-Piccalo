@@ -26,7 +26,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
+          # 🔧 إزالة cache: 'npm' لأنه ما في package-lock.json
 
       # ═══ 3) تثبيت Java (مطلوب لـ Bubblewrap) ═══
       - name: ☕ Setup Java
@@ -43,13 +43,16 @@ jobs:
 
       # ═══ 5) تثبيت dependencies ═══
       - name: 📦 Install dependencies
-        run: npm ci
+        run: npm install --no-fund --no-audit
+        env:
+          CI: false
 
       # ═══ 6) Build الواجهة الأمامية ═══
       - name: ⚡ Build frontend
         run: npm run build
         env:
           CI: false
+          VITE_BASE_PATH: '/-Piccalo/'
 
       # ═══ 7) تثبيت Bubblewrap (TWA tool) ═══
       - name: 🔧 Install Bubblewrap CLI
@@ -65,9 +68,6 @@ jobs:
             --directory="./twa-build" \
             --applicationName="Sea POS" \
             --packageId="com.sea.pos" \
-            --signingKeySigningKeyPath="./android.keystore" \
-            --signingKeySigningKeyPassword="${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" \
-            --signingKeyAliasPassword="${{ secrets.ANDROID_KEY_ALIAS_PASSWORD }}" \
             || echo "Bubblewrap init may need interactive input"
 
       # ═══ 9) Build APK ═══
