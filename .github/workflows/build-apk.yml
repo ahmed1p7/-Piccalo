@@ -11,58 +11,48 @@ on:
   push:
     branches: [main]
     tags: ['v*']
-  workflow_dispatch:  # تشغيل يدوي
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # ═══ 1) Checkout الكود ═══
       - name: 📥 Checkout repository
         uses: actions/checkout@v4
 
-      # ═══ 2) تثبيت Node.js ═══
       - name: 📦 Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          # 🔧 إزالة cache: 'npm' لأنه ما في package-lock.json
 
-      # ═══ 3) تثبيت Java (مطلوب لـ Bubblewrap) ═══
       - name: ☕ Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      # ═══ 4) تثبيت Android SDK ═══
       - name: 📱 Setup Android SDK
         uses: android-actions/setup-android@v3
         with:
           packages: 'platform-tools platforms;android-34 build-tools;34.0.0'
 
-      # ═══ 5) تثبيت dependencies ═══
       - name: 📦 Install dependencies
-        run: npm install --no-fund --no-audit
+        # 🔧 --legacy-peer-deps لتجنب تعارض esbuild
+        run: npm install --legacy-peer-deps --no-fund --no-audit
         env:
           CI: false
 
-      # ═══ 6) Build الواجهة الأمامية ═══
       - name: ⚡ Build frontend
         run: npm run build
         env:
           CI: false
           VITE_BASE_PATH: '/-Piccalo/'
 
-      # ═══ 7) تثبيت Bubblewrap (TWA tool) ═══
       - name: 🔧 Install Bubblewrap CLI
         run: npm install -g @bubblewrap/cli
 
-      # ═══ 8) Initialize TWA project ═══
       - name: 🎯 Initialize TWA
         run: |
-          # نستخدم URL وهمي الآن - سيتم تحديثه عند النشر الفعلي
-          # المهم: البنية صحيحة ليعمل البناء
           bubblewrap init \
             --manifest="https://ahmed1p7.github.io/-Piccalo/manifest.json" \
             --directory="./twa-build" \
@@ -70,14 +60,11 @@ jobs:
             --packageId="com.sea.pos" \
             || echo "Bubblewrap init may need interactive input"
 
-      # ═══ 9) Build APK ═══
       - name: 📱 Build APK
         working-directory: ./twa-build
-        run: |
-          bubblewrap build --no-deploy
+        run: bubblewrap build --no-deploy
         continue-on-error: true
 
-      # ═══ 10) Upload APK artifact ═══
       - name: 📤 Upload APK
         uses: actions/upload-artifact@v4
         if: always()
@@ -89,7 +76,6 @@ jobs:
             ./twa-build/*.apk
           retention-days: 30
 
-      # ═══ 11) فحص النتائج ═══
       - name: ✅ Report results
         if: always()
         run: |
