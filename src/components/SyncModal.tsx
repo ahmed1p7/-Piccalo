@@ -1,13 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import syncManager from '../sync/SyncManager';
+import firebaseSyncManager from '../sync/FirebaseSyncManager';
 import {
   CheckCircle2,
-  Eye,
-  EyeOff,
-  Link2,
+  Cloud,
   Loader2,
-  Server,
+  RefreshCw,
   Users,
   Wifi,
   X,
@@ -19,55 +17,33 @@ interface SyncModalProps {
 }
 
 export const SyncModal: React.FC<SyncModalProps> = ({ onClose }) => {
-  const { currentUser, profile } = useApp();
-
-  // قراءة آخر عنوان محفوظ
-  const [serverUrl, setServerUrl] = useState<string>(() => {
-    try {
-      return localStorage.getItem('sea_pos_sync_url') || 'http://192.168.1.100:3001';
-    } catch {
-      return 'http://192.168.1.100:3001';
-    }
-  });
+  const { currentUser } = useApp();
 
   const [connectionStatus, setConnectionStatus] = useState<string>('');
   const [isConnecting, setIsConnecting] = useState<boolean>(false);
   const [isConnected, setIsConnected] = useState<boolean>(false);
-  const [connectedClients, setConnectedClients] = useState<number>(0);
+  const [isConfigured, setIsConfigured] = useState<boolean>(false);
 
-  // الحالة الحالية من SyncManager
+  // فحص الحالة الحالية
   useEffect(() => {
-    const status = syncManager.getStatus();
-    setIsConnected(status === 'connected');
-    setConnectedClients(syncManager.getClientsCount());
+    const configured = firebaseSyncManager.isConfigured();
+    setIsConfigured(configured);
+    setIsConnected(firebaseSyncManager.getStatus() === 'connected');
 
-    const removeStatusListener = syncManager.addStatusListener(
-      (newStatus, clientsCount) => {
+    const removeStatusListener = firebaseSyncManager.addStatusListener(
+      (newStatus) => {
         setIsConnected(newStatus === 'connected');
-        setConnectedClients(clientsCount);
       }
     );
-
-    return () => {
-      removeStatusListener();
-    };
+    return removeStatusListener;
   }, []);
 
-  // الاتصال بالخادم
+  // الاتصال التلقائي
   const handleConnect = async () => {
-    if (!serverUrl.trim()) {
-      setConnectionStatus('⚠️ Inserisci un indirizzo IP valido.');
-      return;
-    }
-
     setIsConnecting(true);
-    setConnectionStatus('🔄 Connessione in corso...');
+    setConnectionStatus('🔄 Connessione a Firebase...');
 
-    const success = await syncManager.connect(
-      serverUrl.trim(),
-      currentUser?.displayName || 'Unknown',
-      currentUser?.role || 'unknown'
-    );
+    const success = await firebaseSyncManager.connect();
 
     setIsConnecting(false);
 
@@ -75,16 +51,15 @@ export const SyncModal: React.FC<SyncModalProps> = ({ onClose }) => {
       setConnectionStatus('✅ Connesso! Sincronizzazione attiva.');
       setIsConnected(true);
     } else {
-      setConnectionStatus('❌ Connessione fallita. Verifica IP e che il server sia attivo.');
-      setIsConnected(false);
+      setConnectionStatus('❌ Connessione fallita. Verifica configurazione Firebase.');
     }
   };
 
   // قطع الاتصال
   const handleDisconnect = () => {
-    syncManager.disconnect();
+    firebaseSyncManager.disconnect();
     setIsConnected(false);
-    setConnectionStatus('🔌 Disconnesso dal server.');
+    setConnectionStatus('🔌 Disconnesso.');
   };
 
   return (
@@ -93,9 +68,9 @@ export const SyncModal: React.FC<SyncModalProps> = ({ onClose }) => {
         {/* Header */}
         <div className="p-4 bg-slate-800/60 border-b border-slate-700/60 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Server className="w-5 h-5 text-cyan-400" />
+            <Cloud className="w-5 h-5 text-orange-400" />
             <h3 className="font-bold text-white text-base">
-              Sincronizzazione Wi-Fi
+              Sincronizzazione Cloud
             </h3>
           </div>
           <button
@@ -129,51 +104,44 @@ export const SyncModal: React.FC<SyncModalProps> = ({ onClose }) => {
               <div>
                 <div className="text-sm font-bold text-white">
                   {isConnected
-                    ? 'Connesso'
+                    ? 'Connesso al Cloud'
                     : isConnecting
                     ? 'Connessione...'
                     : 'Disconnesso'}
                 </div>
                 <div className="text-xs text-slate-400">
                   {isConnected
-                    ? `${connectedClients} dispositivo/i connesso/i`
+                    ? 'Sincronizzazione attiva con tutti i dispositivi'
                     : 'Modalità singola (senza sync)'}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* URL Input */}
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-              Indirizzo Server Sync
-            </label>
-            <input
-              type="text"
-              value={serverUrl}
-              onChange={(e) => setServerUrl(e.target.value)}
-              disabled={isConnecting || isConnected}
-              placeholder="http://192.168.1.100:3001"
-              className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm font-mono focus:outline-none focus:border-cyan-500 disabled:opacity-50"
-            />
-            <p className="text-[11px] text-slate-500">
-              Inserisci l'IP del dispositivo principale (es. il tablet cassa) seguito da :3001
-            </p>
+          {/* شرح بسيط */}
+          <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
+            <div className="flex items-center gap-2 text-xs font-bold text-orange-300">
+              <Zap className="w-3.5 h-3.5" />
+              Come funziona:
+            </div>
+            <ul className="text-[11px] text-slate-400 space-y-1 pl-4 list-disc">
+              <li>Tutti i dispositivi si sincronizzano automaticamente</li>
+              <li>Funziona con qualsiasi connessione Internet (Wi-Fi o mobile)</li>
+              <li>Niente configurazione manuale - basta aprire l'app!</li>
+              <li>I dati sono salvati in modo sicuro su Google Firebase</li>
+            </ul>
           </div>
 
-          {/* Instructions */}
-          <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
-            <div className="flex items-center gap-2 text-xs font-bold text-cyan-300">
-              <Zap className="w-3.5 h-3.5" />
-              Come funziona la sincronizzazione:
+          {/* حالة Firebase */}
+          {!isConfigured && (
+            <div className="p-3 rounded-2xl bg-amber-950/30 border border-amber-700/40">
+              <div className="text-xs text-amber-300 font-bold mb-1">⚠️ Firebase non configurato</div>
+              <div className="text-[11px] text-slate-400">
+                Vedi <code className="text-amber-300">.env.example</code> e{' '}
+                <code className="text-amber-300">FIREBASE_SETUP.md</code> nel repository.
+              </div>
             </div>
-            <ol className="text-[11px] text-slate-400 space-y-1 pl-4 list-decimal">
-              <li>Avvia il server su un dispositivo: <code className="text-amber-300">npm run server</code></li>
-              <li>Nota l'IP locale mostrato (es. 192.168.1.100)</li>
-              <li>Su altri dispositivi: inserisci quell'IP in questo campo</li>
-              <li>Tutti i dispositivi vedranno gli stessi dati in tempo reale</li>
-            </ol>
-          </div>
+          )}
 
           {/* Status Message */}
           {connectionStatus && (
@@ -187,8 +155,8 @@ export const SyncModal: React.FC<SyncModalProps> = ({ onClose }) => {
             {!isConnected ? (
               <button
                 onClick={handleConnect}
-                disabled={isConnecting}
-                className="w-full py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-md shadow-cyan-500/20"
+                disabled={isConnecting || !isConfigured}
+                className="w-full py-3 rounded-xl bg-orange-500 hover:bg-orange-400 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-md shadow-orange-500/20"
               >
                 {isConnecting ? (
                   <>
@@ -197,8 +165,8 @@ export const SyncModal: React.FC<SyncModalProps> = ({ onClose }) => {
                   </>
                 ) : (
                   <>
-                    <Link2 className="w-4 h-4" />
-                    Connetti al Server
+                    <Cloud className="w-4 h-4" />
+                    Connetti al Cloud
                   </>
                 )}
               </button>
@@ -219,7 +187,7 @@ export const SyncModal: React.FC<SyncModalProps> = ({ onClose }) => {
           <div className="flex items-center justify-between text-[11px] text-slate-500">
             <div className="flex items-center gap-1.5">
               <Users className="w-3 h-3" />
-              <span>{connectedClients} dispositivi</span>
+              <span>Cloud Sync</span>
             </div>
             <span className="font-mono">Sea POS v1.0</span>
           </div>

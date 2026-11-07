@@ -18,7 +18,7 @@ import {
   TableStatus,
   UserAccount,
 } from '../types';
-import syncManager from '../sync/SyncManager';
+import firebaseSyncManager from '../sync/FirebaseSyncManager';
 
 export type ActiveView =
   | 'home'
@@ -299,111 +299,65 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [wifiConnected, setWifiConnected] = useState<boolean>(true);
 
   // ═══════════════════════════════════════════════════════════════════
-  // 🌐 Sync: تزامن البيانات بين الأجهزة عبر WebSocket
+  // 🔥 Firebase Sync: تزامن تلقائي بين الأجهزة (بدون سيرفر محلي)
   // ═══════════════════════════════════════════════════════════════════
   const isSyncing = useRef(false);  // يمنع الحلقات اللانهائية
 
-  // استقبال رسائل التزامن
+  // الاتصال التلقائي عند بدء التطبيق
+  useEffect(() => {
+    if (firebaseSyncManager.isConfigured()) {
+      firebaseSyncManager.connect().then((success) => {
+        if (success) {
+          console.log('🔥 Sync: متصل تلقائياً');
+        }
+      });
+    }
+    return () => {
+      firebaseSyncManager.disconnect();
+    };
+  }, []);
+
+  // استقبال تحديثات من Firebase
   useEffect(() => {
     const listener = (msg: any) => {
       if (isSyncing.current) return;
 
       isSyncing.current = true;
       try {
-        switch (msg.type) {
-          case 'welcome':
-            // استقبال الحالة الكاملة عند الاتصال
-            if (msg.data?.serverState) {
-              const s = msg.data.serverState;
-              if (s.users) setUsers(s.users);
-              if (s.inventory) setInventory(s.inventory);
-              if (s.inventoryLogs) setInventoryLogs(s.inventoryLogs);
-              if (s.tables) setTables(s.tables);
-              if (s.receipts) setReceipts(s.receipts);
-              if (s.profile) setProfile(s.profile);
-            }
-            break;
-
-          case 'state_update':
-            // تحديث الحالة الكاملة من جهاز آخر
-            if (msg.data) {
-              const s = msg.data;
-              if (s.users) setUsers(s.users);
-              if (s.inventory) setInventory(s.inventory);
-              if (s.inventoryLogs) setInventoryLogs(s.inventoryLogs);
-              if (s.tables) setTables(s.tables);
-              if (s.receipts) setReceipts(s.receipts);
-              if (s.profile) setProfile(s.profile);
-            }
-            break;
-
-          case 'partial_update':
-            // تحديث جزئي
-            if (msg.data?.key && msg.data?.value) {
-              const { key, value } = msg.data;
-              switch (key) {
-                case 'inventory': setInventory(value); break;
-                case 'tables': setTables(value); break;
-                case 'users': setUsers(value); break;
-                case 'receipts': setReceipts(value); break;
-                case 'inventoryLogs': setInventoryLogs(value); break;
-                case 'profile': setProfile(value); break;
-              }
-            }
-            break;
-
-          case 'new_receipt':
-            // إيصال جديد من جهاز آخر
-            if (msg.data?.receipt) {
-              setReceipts((prev) => [...prev, msg.data.receipt]);
-            }
-            break;
-
-          case 'table_update':
-            // تحديث طاولة معينة
-            if (msg.data?.tableId && msg.data?.updates) {
-              setTables((prev) =>
-                prev.map((t) =>
-                  t.id === msg.data.tableId ? { ...t, ...msg.data.updates } : t
-                )
-              );
-            }
-            break;
-
-          case 'inventory_update':
-            // تحديث مخزون من جهاز آخر
-            if (msg.data?.inventory) {
-              setInventory(msg.data.inventory);
-            }
-            break;
+        if (msg.type === 'state_update' && msg.data) {
+          const s = msg.data;
+          if (s.users) setUsers(s.users);
+          if (s.inventory) setInventory(s.inventory);
+          if (s.inventoryLogs) setInventoryLogs(s.inventoryLogs);
+          if (s.tables) setTables(s.tables);
+          if (s.receipts) setReceipts(s.receipts);
+          if (s.profile) setProfile(s.profile);
         }
       } catch (e) {
-        console.error('Sync: Error handling message', e);
+        console.error('🔥 Sync: خطأ في معالجة التحديث', e);
       }
       isSyncing.current = false;
     };
 
-    syncManager.addListener(listener);
-    return () => syncManager.removeListener(listener);
+    firebaseSyncManager.addListener(listener);
+    return () => firebaseSyncManager.removeListener(listener);
   }, []);
 
-  // إرسال الحالة عند تغييرها (مع منع الحلقات)
+  // إرسال التحديثات لكل الأجهزة عند تغيير البيانات
   useEffect(() => {
     if (isSyncing.current) return;
-    if (syncManager.getStatus() !== 'connected') return;
-    syncManager.send({
-      type: 'sync_update',
-      data: { users, inventory, inventoryLogs, tables, receipts, profile },
+    if (firebaseSyncManager.getStatus() !== 'connected') return;
+    firebaseSyncManager.sendUpdate({
+      users, inventory, inventoryLogs, tables, receipts, profile,
     });
   }, [users, inventory, inventoryLogs, tables, receipts, profile]);
 
-  // تحديث wifiConnected بناءً على حالة التزامن
+  // تحديث wifiConnected بناءً على حالة Firebase
   useEffect(() => {
-    const removeStatusListener = syncManager.addStatusListener((status) => {
+    const removeStatusListener = firebaseSyncManager.addStatusListener((status) => {
       setWifiConnected(status === 'connected');
     });
-    // فحص أولي
-    setWifiConnected(syncManager.getStatus() === 'connected');
+    setWifiConnected(firebaseSyncManager.getStatus() === 'connected');
     return removeStatusListener;
   }, []);
 
