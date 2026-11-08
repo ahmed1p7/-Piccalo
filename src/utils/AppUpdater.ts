@@ -134,17 +134,7 @@ export async function fetchRemoteVersion(): Promise<RemoteVersion | null> {
     const releases = (await response.json()) as any[];
     if (!Array.isArray(releases)) return null;
 
-    // solo rilasci con tag semver (v1.2.3), escludendo draft e prerelease
-    const candidates = releases
-      .filter((r) => !r.draft && !r.prerelease)
-      .map((r) => ({
-        release: r,
-        version: parseVersion(String(r.tag_name || '')),
-      }))
-      .filter((x) => x.version !== null)
-      .sort((a, b) => compareVersions(a.version!, b.version!));
-
-    const best = candidates[candidates.length - 1];
+    const best = selectLatestRelease(releases);
     if (!best) return null;
 
     const asset = (best.release.assets || []).find(
@@ -171,6 +161,25 @@ export async function fetchRemoteVersion(): Promise<RemoteVersion | null> {
     console.warn('AppUpdater: impossibile leggere le release:', e);
     return null;
   }
+}
+
+/**
+ * Sceglie il rilascio con la versione più alta (tag semver),
+ * ignorando draft, prerelease e tag non-numerici (es. "latest").
+ */
+export function selectLatestRelease(
+  releases: any[]
+): { release: any; version: string } | null {
+  const candidates = (releases || [])
+    .filter((r) => !r.draft && !r.prerelease)
+    .map((r) => ({
+      release: r,
+      version: parseVersion(String(r?.tag_name || '')) as string | null,
+    }))
+    .filter((x): x is { release: any; version: string } => x.version !== null)
+    .sort((a, b) => compareVersions(a.version, b.version));
+
+  return candidates.length ? candidates[candidates.length - 1] : null;
 }
 
 /** "v1.2.3" → "1.2.3" */
