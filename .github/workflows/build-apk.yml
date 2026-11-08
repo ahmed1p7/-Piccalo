@@ -47,13 +47,31 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: 📱 Setup Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: 📥 Install Android packages
+        # NB: si usa l'Android SDK già presente sul runner ubuntu-latest.
+        # L'action android-actions/setup-android@v3 non viene usata perché
+        # fallisce ("Failed to find package 'tools'": quel pacchetto legacy
+        # non esiste più nel repository Google).
         run: |
-          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
-          yes | sdkmanager --licenses > /dev/null 2>&1 || true
+          export ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          export ANDROID_SDK_ROOT="$ANDROID_HOME"
+          SDKMANAGER="$(ls -d "$ANDROID_HOME"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | tail -1)"
+          if [ -z "$SDKMANAGER" ]; then
+            echo "❌ sdkmanager non trovato in $ANDROID_HOME/cmdline-tools"
+            ls -la "$ANDROID_HOME" || true
+            exit 1
+          fi
+          echo "📦 sdkmanager: $SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-36" "build-tools;36.0.0" || true
+          echo "📂 platforms installate:"
+          ls "$ANDROID_HOME/platforms" || true
+          echo "📂 build-tools installati:"
+          ls "$ANDROID_HOME/build-tools" || true
+          if [ ! -d "$ANDROID_HOME/platforms/android-36" ]; then
+            echo "❌ platforms;android-36 non disponibile"
+            exit 1
+          fi
 
       - name: ⚡ Setup Gradle (con cache)
         uses: gradle/actions/setup-gradle@v4
