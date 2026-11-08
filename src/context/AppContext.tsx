@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import {
   INITIAL_INVENTORY,
   INITIAL_PROFILE,
@@ -21,7 +21,7 @@ import {
 import firebaseSyncManager from '../sync/FirebaseSyncManager';
 import syncManager from '../sync/SyncManager';
 import { getDevice } from '../sync/SyncConfig';
-import type { SyncCollection } from '../sync/merge';
+import { isDeepEqual, type SyncCollection } from '../sync/merge';
 
 export type ActiveView =
   | 'home'
@@ -314,7 +314,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [selectedTableForCheckout, setSelectedTableForCheckout] =
     useState<RestaurantTable | null>(null);
   const [wifiConnected, setWifiConnected] = useState<boolean>(false);
+  const [cloudConnected, setCloudConnected] = useState<boolean>(false);
+  const [lanConnected, setLanConnected] = useState<boolean>(false);
   const [syncDevicesCount, setSyncDevicesCount] = useState<number>(0);
+  // ultimo valore inviato per collezione (evita il loop A→B→A→B)
+  const lastSent = useRef<Record<string, any>>({});
 
   // ═══════════════════════════════════════════════════════════════════
   // 🔥 Firebase Sync: تزامن سحابي بين عدة أجهزة (هواتف / تابلت)
@@ -353,9 +357,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (!msg) return;
       try {
         if (msg.type === 'welcome' && msg.data?.serverState) {
-          applyRemoteState(msg.data.serverState);
+          const serverState = msg.data.serverState;
+          if (lanServerHasData(serverState)) {
+            // il server ha già dati → questo dispositivo li adotta
+            applyRemoteState(serverState);
+          } else {
+            // il server è vuoto → gli mando i miei dati (sono la base)
+            pushAllToLan();
+          }
         } else if (msg.type === 'partial_update' && msg.data?.key) {
-          applyRemoteState({ [msg.data.key]: msg.data.value });
+          applyLanCollection(msg.data.key, msg.data.value);
         } else if (msg.type === 'state_update' && msg.data) {
           applyRemoteState(msg.data);
         }
@@ -373,15 +384,64 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, []);
 
+  // Il server LAN è vuoto all'avvio: se non ha dati non deve sovrascrivere
+  // i dati già presenti sul telefono.
+  const lanServerHasData = (state: any): boolean => {
+    if (!state) return false;
+    const nonEmpty = (v: any) => Array.isArray(v) && v.length > 0;
+    return (
+      nonEmpty(state.users) ||
+      nonEmpty(state.tables) ||
+      nonEmpty(state.inventory) ||
+      nonEmpty(state.receipts)
+    );
+  };
+
+  // Applica una singola collezione ricevuta dalla rete locale.
+  // Se il valore è identico a quello già presente non lo si applica:
+  // altrimenti i due dispositivi si rimanderebbero il dato all'infinito.
+  const applyLanCollection = (key: string, value: any) => {
+    const same = (current: any) => isDeepEqual(current, value);
+
+    switch (key) {
+      case 'users':
+        if (!same(users)) setUsers(value);
+        break;
+      case 'inventory':
+        if (!same(inventory)) setInventory(value);
+        break;
+      case 'inventoryLogs':
+        if (!same(inventoryLogs)) setInventoryLogs(value);
+        break;
+      case 'tables':
+        if (!same(tables)) setTables(value);
+        break;
+      case 'receipts':
+        if (!same(receipts)) setReceipts(value);
+        break;
+      case 'profile':
+        if (!same(profile)) setProfile(value);
+        break;
+    }
+  };
+
+  // Invia tutto il proprio stato al server LAN (quando il server è vuoto)
+  const pushAllToLan = () => {
+    syncManager.send({
+      type: 'sync_update',
+      data: { users, inventory, inventoryLogs, tables, receipts, profile },
+    });
+  };
+
   // تطبيق gli aggiornamenti ricevuti (cloud o LAN)
   const applyRemoteState = (payload: any) => {
     if (!payload) return;
-    if (payload.users) setUsers(payload.users);
-    if (payload.inventory) setInventory(payload.inventory);
-    if (payload.inventoryLogs) setInventoryLogs(payload.inventoryLogs);
-    if (payload.tables) setTables(payload.tables);
-    if (payload.receipts) setReceipts(payload.receipts);
-    if (payload.profile) setProfile(payload.profile);
+    if (payload.users) applyLanCollection('users', payload.users);
+    if (payload.inventory) applyLanCollection('inventory', payload.inventory);
+    if (payload.inventoryLogs) applyLanCollection('inventoryLogs', payload.inventoryLogs);
+    if (payload.tables) applyLanCollection('tables', payload.tables);
+    if (payload.receipts) applyLanCollection('receipts', payload.receipts);
+    if (payload.profile) applyLanCollection('profile', payload.profile);
   };
 
   // استقبال التحديثات من الأجهزة الأخرى
@@ -422,11 +482,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const pushLocalChange = (collection: SyncCollection, data: any) => {
     firebaseSyncManager.notifyLocalChange(collection, data);
 
-    // إذا لم يكن السحابة متصلاً → جرّب مزامنة الشبكة المحلية
+    // إذا لم يكن السحابة متصلاً → جرّب مزامنة الشبكة المحلية.
+    // لا نعيد إرسال قيمة مطابقة لما أرسلناه سابقاً، وإلا تناقل الجهازان
+    // البيانات بلا نهاية (A→B→A→B).
     if (
       firebaseSyncManager.getStatus() !== 'connected' &&
       syncManager.getStatus() === 'connected'
     ) {
+      if (isDeepEqual(lastSent.current[collection], data)) return;
+      lastSent.current[collection] = data;
       syncManager.send({
         type: 'partial_update',
         data: { key: collection, value: data },
@@ -463,14 +527,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     const removeStatusListener = firebaseSyncManager.addStatusListener(
       (status, devicesCount) => {
-        setWifiConnected(status === 'connected');
+        setCloudConnected(status === 'connected');
         setSyncDevicesCount(devicesCount);
       }
     );
-    setWifiConnected(firebaseSyncManager.getStatus() === 'connected');
+    setCloudConnected(firebaseSyncManager.getStatus() === 'connected');
     setSyncDevicesCount(firebaseSyncManager.getDevices().length);
     return removeStatusListener;
   }, []);
+
+  // حالة شبكة LAN المحلية (Wi-Fi)
+  useEffect(() => {
+    const removeLanListener = syncManager.addStatusListener((status) => {
+      setLanConnected(status === 'connected');
+    });
+    setLanConnected(syncManager.getStatus() === 'connected');
+    return removeLanListener;
+  }, []);
+
+  // "متصل" إذا كان أحد القناةين نشطاً
+  useEffect(() => {
+    setWifiConnected(cloudConnected || lanConnected);
+  }, [cloudConnected, lanConnected]);
 
   // Sync state to LocalStorage
   useEffect(() => {
