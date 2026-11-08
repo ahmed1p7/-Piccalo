@@ -563,7 +563,7 @@ export const SyncModal: React.FC<SyncModalProps> = ({ onClose }) => {
                 {currentUser ? `Utente: ${currentUser.displayName}` : 'Cloud Sync'}
               </span>
             </div>
-            <span className="font-mono">Sea POS v1.0</span>
+            <span className="font-mono">Sea POS v{__APP_VERSION__}</span>
           </div>
         </div>
       </div>

@@ -78,10 +78,24 @@ jobs:
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
 
+      # ── Guardia 1: marcatori di conflitto di merge ──
+      #    Un merge fatto male può committare <<<<<<< HEAD dentro il codice:
+      #    la build fallisce con un errore incomprensibile. Qui si ferma subito
+      #    con un messaggio che dice esattamente cosa fare.
+      - name: 🔍 Controllo marcatori di conflitto
+        run: npm run check:conflicts
+
       - name: 📦 Install dependencies
         run: npm install --legacy-peer-deps --no-fund --no-audit
         env:
           CI: false
+
+      - name: 🔬 Typecheck + test
+        run: |
+          echo "🔬 controllo dei tipi…"
+          npx tsc --noEmit
+          echo "🔬 esecuzione dei test…"
+          npm test
 
       - name: ⚡ Build frontend
         run: npm run build
@@ -110,10 +124,16 @@ jobs:
 
       # ── Guardia: senza questo controllo una build senza configurazione
       #    Firebase passerebbe inosservata (l'app resterebbe scollegata).
+      # ── Guardia 2: la build DEVE contenere la configurazione Firebase ──
+      #    (non gira se la build è già fallita: altrimenti l'errore vero
+      #     verrebbe nascosto da un "dist/ non trovato")
       - name: 🔍 Verifica configurazione Firebase nella build
-        if: always()
         run: |
           set -e
+          if [ ! -d dist/assets ]; then
+            echo "❌ dist/assets non esiste → la build frontend è fallita (vedi lo step precedente)"
+            exit 1
+          fi
           echo "🔎 controllo che la build contenga la configurazione Firebase…"
           if grep -rq "firebasedatabase.app" dist/assets/ ; then
             echo "✅ Realtime Database URL presente nella build"

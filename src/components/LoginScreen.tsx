@@ -47,11 +47,6 @@ export const LoginScreen: React.FC = () => {
     setCheckingUpdate(false);
   };
 
-  const handleQuickFill = (u: string, p: string) => {
-    setUsername(u);
-    setPassword(p);
-    setErrorMessage('');
-  };
 
   const handleKeypadDigit = (digit: string) => {
     if (password.length < 8) {
@@ -251,10 +246,8 @@ export const LoginScreen: React.FC = () => {
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
-<<<<<<< HEAD
-=======
 
-          {/* Collega un nuovo dispositivo + aggiornamenti */}
+          {/* Collega un nuovo dispositivo + verifica aggiornamenti */}
           <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
             <button
               type="button"
@@ -270,7 +263,7 @@ export const LoginScreen: React.FC = () => {
               disabled={checkingUpdate}
               className="px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700 text-xs font-semibold flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
             >
-              <RefreshCw className={`w-4 h-4 ${checkingUpdate ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-3 h-3 ${checkingUpdate ? 'animate-spin' : ''}`} />
               Verifica aggiornamenti
             </button>
           </div>
@@ -281,47 +274,6 @@ export const LoginScreen: React.FC = () => {
             magazzino e scontrini. Non serve conoscere il PIN.
           </p>
 
-          {/* Quick-fill helper for test accounts */}
-          <div className="mt-5 pt-4 border-t border-slate-800/80">
-            <div className="text-[11px] text-slate-400 font-medium mb-2">
-              Seleziona rapida account di prova:
-            </div>
-            <div className="grid grid-cols-2 gap-1.5">
-              <button
-                type="button"
-                onClick={() => handleQuickFill('Admin', '5555')}
-                className="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-left hover:border-cyan-500/50 transition-colors"
-              >
-                <div className="text-xs font-semibold text-white">Admin (5555)</div>
-                <div className="text-[10px] text-cyan-400">Direttore • Tutti i permessi</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickFill('alessio', '1111')}
-                className="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-left hover:border-cyan-500/50 transition-colors"
-              >
-                <div className="text-xs font-semibold text-white">Alessio (1111)</div>
-                <div className="text-[10px] text-slate-400">Cameriere • Tavoli &amp; Cassa</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickFill('luigi', '2222')}
-                className="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-left hover:border-cyan-500/50 transition-colors"
-              >
-                <div className="text-xs font-semibold text-white">Luigi (2222)</div>
-                <div className="text-[10px] text-slate-400">Cucina • Magazzino Dispensa</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickFill('elena', '4444')}
-                className="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-left hover:border-cyan-500/50 transition-colors"
-              >
-                <div className="text-xs font-semibold text-white">Elena (4444)</div>
-                <div className="text-[10px] text-slate-400">Cassa • Conto &amp; Report</div>
-              </button>
-            </div>
-          </div>
->>>>>>> 1c4b43691b05bfa1a7f1a73fe4124e224f6cf903
         </div>
       </main>
 

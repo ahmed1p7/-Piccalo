@@ -13,7 +13,10 @@
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
     "test": "tsx tests/merge.test.ts",
-    "test:rtdb": "tsx tests/realtime-db.test.ts"
+    "test:rtdb": "tsx tests/realtime-db.test.ts",
+    "check:conflicts": "node scripts/check-conflicts.mjs",
+    "prebuild": "node scripts/check-conflicts.mjs",
+    "pretest": "node scripts/check-conflicts.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.6.0",
