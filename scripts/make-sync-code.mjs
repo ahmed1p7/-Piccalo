@@ -54,7 +54,14 @@ function readStdin() {
 }
 
 const arg = process.argv[2];
-let raw = arg || readStdin();
+let raw = '';
+
+// se viene indicato un file (.env / .json) lo legge
+if (arg && fs.existsSync(arg)) {
+  raw = fs.readFileSync(arg, 'utf-8');
+} else {
+  raw = arg || '';
+}
 
 if (!raw.trim()) {
   console.log(
@@ -69,8 +76,22 @@ function parseKeyValue(text) {
   text.split(/[&\n,;]+/).forEach((chunk) => {
     const idx = chunk.indexOf('=');
     if (idx <= 0) return;
-    const key = chunk.slice(0, idx).trim();
+    let key = chunk.slice(0, idx).trim();
     const value = chunk.slice(idx + 1).trim().replace(/^["']|["']$/g, '');
+    // accetta anche le chiavi con prefisso VITE_FIREBASE_ (file .env)
+    if (key.startsWith('VITE_FIREBASE_')) {
+      key = key.replace('VITE_FIREBASE_', '');
+    }
+    // riporta i nomi in maiuscolo/underscore ai nomi ufficiali del web config
+    const ALIASES = {
+      API_KEY: 'apiKey',
+      AUTH_DOMAIN: 'authDomain',
+      PROJECT_ID: 'projectId',
+      STORAGE_BUCKET: 'storageBucket',
+      MESSAGING_SENDER_ID: 'messagingSenderId',
+      APP_ID: 'appId',
+    };
+    if (ALIASES[key]) key = ALIASES[key];
     if (key) out[key] = value;
   });
   return out;

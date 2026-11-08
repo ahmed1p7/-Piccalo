@@ -1,7 +1,52 @@
-# 🔥 Configurazione Firebase (5 minuti)
+# 🔥 Configurazione Firebase — Progetto **sea-restaurant**
 
 Serve per sincronizzare **più telefoni** tramite il cloud.
 È gratuito (piano "Spark" / Blaze) e non richiede carta di credito.
+
+## ⚡ Stato attuale del tuo progetto
+
+La configurazione è **già pronta** (ricavata dal tuo `google-services.json`):
+
+| | |
+|---|---|
+| Project ID | `sea-restaurant` |
+| API key | `AIzaSyBybQ6ytEjqzkByvV1sKDn1ZAgh2ktq4zY` |
+| Pacchetto Android | `com.sea.pos` ✅ (corrisponde all'app) |
+| Config nei GitHub Secrets | ✅ già impostati (la build inserisce tutto nell'APK) |
+
+**Manca solo abilitare i servizi** (2 minuti, una volta sola):
+
+1. **Attiva l'API Firestore** →
+   <https://console.developers.google.com/apis/api/firestore.googleapis.com/overview?project=sea-restaurant>
+   → clicca **Abilita**
+2. **Crea il database** →
+   <https://console.firebase.google.com/project/sea-restaurant/firestore>
+   → **Crea database** → modalità **test**
+3. *(facoltativo ma consigliato)* **Accesso anonimo** →
+   <https://console.firebase.google.com/project/sea-restaurant/authentication/providers>
+   → **Anonimo** → **Abilita**
+
+### Verifica che sia tutto a posto
+
+```bash
+node scripts/check-firebase.mjs
+```
+
+```
+✔ Firestore: scrivibile (sincronizzazione pronta)
+✔ Accesso anonimo: attivo
+✅ Tutto pronto: la sincronizzazione multi-dispositivo funziona.
+```
+
+Quando esce ✅, **tutti i telefoni che installano l'APK sono collegati
+automaticamente** — non serve incollare nessun codice.
+
+> 🔐 Per sicurezza, in *Project settings → API keys* puoi limitare la chiave
+> alle sole API di Firebase (Firestore + Identity Toolkit).
+
+---
+
+## 📋 Configurazione da zero (per un progetto nuovo)
 
 ---
 
