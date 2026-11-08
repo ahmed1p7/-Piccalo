@@ -1,12 +1,17 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { SyncModal } from './SyncModal';
+import updateManager from '../utils/UpdateManager';
 import {
   ArrowRight,
+  Cloud,
   Delete,
+  Download,
   Eye,
   EyeOff,
   KeyRound,
   Lock,
+  RefreshCw,
   User,
   Waves,
   Wifi,
@@ -21,6 +26,8 @@ export const LoginScreen: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [inputMode, setInputMode] = useState<'form' | 'keypad'>('form');
+  const [showSyncModal, setShowSyncModal] = useState<boolean>(false);
+  const [checkingUpdate, setCheckingUpdate] = useState<boolean>(false);
 
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -32,6 +39,12 @@ export const LoginScreen: React.FC = () => {
     if (!res.success) {
       setErrorMessage(res.message || 'Nome utente o password non corretti.');
     }
+  };
+
+  const handleCheckUpdate = async () => {
+    setCheckingUpdate(true);
+    await updateManager.checkForUpdates();
+    setCheckingUpdate(false);
   };
 
   const handleQuickFill = (u: string, p: string) => {
@@ -239,6 +252,33 @@ export const LoginScreen: React.FC = () => {
             </button>
           </form>
 
+          {/* Collega un nuovo dispositivo + aggiornamenti */}
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setShowSyncModal(true)}
+              className="px-3 py-2.5 rounded-xl bg-cyan-950/40 border border-cyan-800/50 text-cyan-300 hover:bg-cyan-900/40 text-xs font-semibold flex items-center justify-center gap-2 transition-colors"
+            >
+              <Cloud className="w-4 h-4" />
+              Collega un nuovo dispositivo
+            </button>
+            <button
+              type="button"
+              onClick={handleCheckUpdate}
+              disabled={checkingUpdate}
+              className="px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700 text-xs font-semibold flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${checkingUpdate ? 'animate-spin' : ''}`} />
+              Verifica aggiornamenti
+            </button>
+          </div>
+
+          <p className="mt-2 text-[11px] text-slate-500 text-center leading-relaxed">
+            Nuovo telefono? Clicca <strong>Collega un nuovo dispositivo</strong> e
+            incolla il codice di sincronizzazione: arrivano subito utenti, tavoli,
+            magazzino e scontrini. Non serve conoscere il PIN.
+          </p>
+
           {/* Quick-fill helper for test accounts */}
           <div className="mt-5 pt-4 border-t border-slate-800/80">
             <div className="text-[11px] text-slate-400 font-medium mb-2">
@@ -281,6 +321,8 @@ export const LoginScreen: React.FC = () => {
           </div>
         </div>
       </main>
+
+      {showSyncModal && <SyncModal onClose={() => setShowSyncModal(false)} />}
 
       {/* Footer */}
       <footer className="px-6 py-3 border-t border-slate-800/80 bg-[#070c18] text-slate-400 text-xs flex flex-col sm:flex-row items-center justify-between gap-2">

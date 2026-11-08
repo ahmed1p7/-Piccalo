@@ -1,56 +1,77 @@
-// ═══════════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════
 // 🔄 Sea POS - Auto Update System
-// ═══════════════════════════════════════════════════════════════════════════════
-// يفحص GitHub تلقائياً عن تحديثات ويخبر المستخدم
-// + يحدّث التطبيق عبر Service Worker عند توفر نسخة جديدة
+// ═══════════════════════════════════════════════════════════════════
+// Ogni volta che il repository GitHub viene aggiornato, il CI ricostruisce
+// l'APK e pubblica version.json + Sea-POS.apk nel rilascio "latest".
+// L'app controlla periodicamente quel file: se trova una versione nuova
+// mostra l'avviso "Aggiornamento disponibile" e l'utente può installarla
+// con un tocco (download + installer di Android, senza perdere i dati).
+// ═══════════════════════════════════════════════════════════════════
 
-const GITHUB_REPO = 'ahmed1p7/-Piccalo';  // المستودع
-const CHECK_INTERVAL_MS = 5 * 60 * 1000;  // كل 5 دقائق
-const VERSION_KEY = 'sea_pos_version';
+import {
+  checkForUpdate,
+  installUpdate,
+  rememberLoadedVersion,
+  getBuiltInVersion,
+  getInstalledVersion,
+  isNativeApp,
+  type DownloadProgress,
+  type RemoteVersion,
+} from './AppUpdater';
+
+const CHECK_INTERVAL_MS = 3 * 60 * 1000; // ogni 3 minuti
 const LAST_CHECK_KEY = 'sea_pos_last_update_check';
 
-type UpdateStatus = 'checking' | 'up-to-date' | 'update-available' | 'error';
+export type UpdateStatus =
+  | 'idle'
+  | 'checking'
+  | 'up-to-date'
+  | 'update-available'
+  | 'downloading'
+  | 'error';
 
-type UpdateListener = (status: UpdateStatus, info?: any) => void;
+export interface UpdateInfo {
+  version: string;
+  versionCode: number;
+  installedVersion: string;
+  installedVersionCode: number;
+  apkUrl: string;
+  publishedAt?: string;
+  notes?: string;
+  size?: number;
+}
+
+type UpdateListener = (status: UpdateStatus, info?: UpdateInfo) => void;
+type ProgressListener = (progress: DownloadProgress) => void;
 
 class UpdateManager {
-  private listeners: Set<UpdateListener> = new Set();
-  private currentStatus: UpdateStatus = 'up-to-date';
-  private currentVersion: string = '1.0.0';
-  private latestVersion: string | null = null;
-  private latestCommit: string | null = null;
-  private updateInfo: any = null;
+  private listeners = new Set<UpdateListener>();
+  private progressListeners = new Set<ProgressListener>();
+  private currentStatus: UpdateStatus = 'idle';
+  private updateInfo: UpdateInfo | null = null;
   private checkTimer: any = null;
+  private remote: RemoteVersion | null = null;
 
   constructor() {
-    // قراءة الإصدار الحالي
-    try {
-      const saved = localStorage.getItem(VERSION_KEY);
-      if (saved) this.currentVersion = saved;
-    } catch (e) {}
-
-    // بدء الفحص التلقائي
+    // segna la versione attualmente in uso
+    rememberLoadedVersion(getBuiltInVersion());
     this.startAutoCheck();
   }
 
-  // ═══ الحصول على الحالة ═══
+  // ═══ Stato ═══
   getStatus(): UpdateStatus {
     return this.currentStatus;
   }
 
-  getCurrentVersion(): string {
-    return this.currentVersion;
-  }
-
-  getLatestVersion(): string | null {
-    return this.latestVersion;
-  }
-
-  getUpdateInfo(): any {
+  getUpdateInfo(): UpdateInfo | null {
     return this.updateInfo;
   }
 
-  // ═══ Listeners ═══
+  /** true se l'app gira come APK installato ( Android ) */
+  isNative(): boolean {
+    return isNativeApp();
+  }
+
   addListener(listener: UpdateListener) {
     this.listeners.add(listener);
   }
@@ -59,28 +80,48 @@ class UpdateManager {
     this.listeners.delete(listener);
   }
 
-  private notify(status: UpdateStatus, info?: any) {
+  addProgressListener(listener: ProgressListener) {
+    this.progressListeners.add(listener);
+  }
+
+  removeProgressListener(listener: ProgressListener) {
+    this.progressListeners.delete(listener);
+  }
+
+  private notify(status: UpdateStatus, info?: UpdateInfo) {
     this.currentStatus = status;
-    this.updateInfo = info;
+    if (info !== undefined) this.updateInfo = info;
     this.listeners.forEach((l) => {
       try {
-        l(status, info);
+        l(status, this.updateInfo ?? undefined);
       } catch (e) {
         console.error('Update listener error:', e);
       }
     });
   }
 
-  // ═══ الفحص التلقائي ═══
+  private notifyProgress(progress: DownloadProgress) {
+    this.progressListeners.forEach((l) => {
+      try {
+        l(progress);
+      } catch (e) {
+        /* ignore */
+      }
+    });
+  }
+
+  // ═══ Controllo automatico ═══
   startAutoCheck() {
-    if (this.checkTimer) clearInterval(this.checkTimer);
+    this.stopAutoCheck();
 
-    // فحص أول بعد 10 ثوانٍ من التحميل
-    setTimeout(() => this.checkForUpdates(), 10000);
+    // primo controllo dopo 8 secondi dall'apertura
+    setTimeout(() => {
+      void this.checkForUpdates();
+    }, 8000);
 
-    // فحص دوري كل 5 دقائق
+    // e poi ogni 3 minuti
     this.checkTimer = setInterval(() => {
-      this.checkForUpdates();
+      void this.checkForUpdates();
     }, CHECK_INTERVAL_MS);
   }
 
@@ -91,101 +132,86 @@ class UpdateManager {
     }
   }
 
-  // ═══ فحص التحديثات من GitHub ═══
+  // ═══ Verifica ═══
   async checkForUpdates(): Promise<boolean> {
     this.notify('checking');
 
     try {
-      // فحص آخر commit في المستودع
-      const response = await fetch(
-        `https://api.github.com/repos/${GITHUB_REPO}/commits?per_page=1`,
-        { cache: 'no-cache' }
-      );
+      const result = await checkForUpdate();
+      const installed = result.installed;
 
-      if (!response.ok) {
-        throw new Error(`GitHub API: ${response.status}`);
-      }
-
-      const commits = await response.json();
-      if (!commits || !commits.length) {
-        throw new Error('No commits found');
-      }
-
-      const latestCommit = commits[0];
-      const commitSha = latestCommit.sha;
-      const commitDate = latestCommit.commit?.author?.date;
-      const commitMessage = latestCommit.commit?.message || '';
-
-      // تخزين وقت آخر فحص
       try {
         localStorage.setItem(LAST_CHECK_KEY, Date.now().toString());
-      } catch (e) {}
+      } catch {
+        /* ignore */
+      }
 
-      // فحص لو عندنا تحديث جديد
-      const lastKnownCommit = localStorage.getItem('sea_pos_last_commit');
+      if (!result.remote) {
+        this.notify('error', {
+          version: '',
+          versionCode: 0,
+          installedVersion: installed.versionName,
+          installedVersionCode: installed.versionCode,
+          apkUrl: '',
+        });
+        return false;
+      }
 
-      if (lastKnownCommit && lastKnownCommit !== commitSha) {
-        // تحديث جديد متوفر!
-        this.latestCommit = commitSha;
-        this.latestVersion = this.extractVersionFromMessage(commitMessage) || commitSha.substring(0, 7);
+      if (result.updateAvailable) {
+        this.remote = result.remote;
         this.notify('update-available', {
-          commitSha,
-          commitDate,
-          commitMessage: commitMessage.split('\n')[0],
-          shortSha: commitSha.substring(0, 7),
+          version: result.remote.version,
+          versionCode: result.remote.versionCode,
+          installedVersion: installed.versionName,
+          installedVersionCode: installed.versionCode,
+          apkUrl: result.remote.apkUrl,
+          publishedAt: result.remote.publishedAt,
+          notes: result.remote.notes,
+          size: result.remote.size,
         });
         return true;
       }
 
-      // حفظ آخر commit
-      try {
-        localStorage.setItem('sea_pos_last_commit', commitSha);
-      } catch (e) {}
-
-      this.notify('up-to-date');
+      this.notify('up-to-date', {
+        version: result.remote.version,
+        versionCode: result.remote.versionCode,
+        installedVersion: installed.versionName,
+        installedVersionCode: installed.versionCode,
+        apkUrl: result.remote.apkUrl,
+      });
       return false;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.warn('Update check failed:', message);
-      this.notify('error', { error: message });
+      this.notify('error');
       return false;
     }
   }
 
-  // ═══ استخراج رقم الإصدار من رسالة commit ═══
-  private extractVersionFromMessage(message: string): string | null {
-    // يبحث عن v1.0.0 أو version 1.0.0 في رسالة الـ commit
-    const match = message.match(/v?(\d+\.\d+\.\d+)/i);
-    return match ? match[1] : null;
-  }
-
-  // ═══ تطبيق التحديث ═══
+  // ═══ Installazione ═══
   async applyUpdate(): Promise<boolean> {
+    if (!this.remote) {
+      // nessun aggiornamento in memoria → riprova a leggerlo
+      await this.checkForUpdates();
+      if (!this.remote) return false;
+    }
+
+    this.notify('downloading', this.updateInfo ?? undefined);
+
     try {
-      // 1) إخبار Service Worker بتخطي الانتظار
-      if ('serviceWorker' in navigator) {
-        const registration = await navigator.serviceWorker.getRegistration();
-        if (registration && registration.waiting) {
-          registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-        }
-      }
-
-      // 2) حذف كل الـ caches
-      if ('caches' in window) {
-        const cacheNames = await caches.keys();
-        await Promise.all(cacheNames.map((name) => caches.delete(name)));
-      }
-
-      // 3) إعادة تحميل الصفحة بعد ثانية
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
-
+      await installUpdate(this.remote, (progress) => this.notifyProgress(progress));
       return true;
     } catch (error) {
       console.error('Apply update failed:', error);
+      this.notify('error', this.updateInfo ?? undefined);
       return false;
     }
+  }
+
+  /** Versione attualmente installata (per la UI) */
+  async getInstalledVersion(): Promise<string> {
+    const info = await getInstalledVersion();
+    return info.versionName;
   }
 }
 

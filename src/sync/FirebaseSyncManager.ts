@@ -19,6 +19,7 @@ import {
   doc,
   setDoc,
   updateDoc,
+  getDoc,
   onSnapshot,
   type Unsubscribe,
   type Firestore,
@@ -236,6 +237,62 @@ class FirebaseSyncManager {
     this.dirty.add(collection);
     this._persistDirty();
     void this._pushCollection(collection, data);
+  }
+
+  /**
+   * Forza la sincronizzazione completa: riletture il documento dal cloud e
+   * applica tutto (usato dal bottone "Ripristina dal cloud").
+   */
+  async forcePull(): Promise<boolean> {
+    if (!this.db) return false;
+    try {
+      const snapshot = await getDoc(doc(this.db!, DOC_PATH, DOC_ID));
+      if (!snapshot.exists()) return false;
+
+      const remoteCollections = snapshot.data()?.collections || {};
+      let applied = false;
+
+      for (const collection of SYNC_COLLECTIONS) {
+        const payload = remoteCollections[collection];
+        if (!payload) continue;
+
+        const remoteData = payload.data;
+        const baseData = this.base[collection];
+        const localData = this.local[collection];
+
+        const merged =
+          baseData !== undefined &&
+          localData !== undefined &&
+          !isDeepEqual(localData, baseData)
+            ? mergeCollection(collection, baseData, localData, remoteData)
+            : remoteData;
+
+        this.base[collection] = merged;
+        this.local[collection] = merged;
+
+        if (!isDeepEqual(merged, localData)) {
+          this._emitRemoteChange(collection, merged);
+          applied = true;
+        }
+      }
+
+      this.saveBase();
+      return applied;
+    } catch (err: any) {
+      console.warn('🔥 Firebase: forcePull fallito:', err?.message);
+      return false;
+    }
+  }
+
+  /** Invia TUTTE le collezioni locali al cloud (sincronizzazione completa) */
+  async pushAll(): Promise<boolean> {
+    if (!this.db) return false;
+    for (const collection of SYNC_COLLECTIONS) {
+      const data = this.local[collection];
+      if (data === undefined) continue;
+      await this._pushCollection(collection, data);
+    }
+    return true;
   }
 
   /** Push immediato di tutte le collezioni "sporche" */

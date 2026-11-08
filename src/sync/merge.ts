@@ -122,17 +122,12 @@ export function mergeEntityList<T extends { id: string }>(
     const localItem = l[id];
     const remoteItem = r[id];
 
-    // Cancellato localmente (esisteva in base, ora non c'è) → cancellazione vincente
-    if (baseItem && !localItem && remoteItem) {
-      // se è una lista append-only non si cancella mai
-      return;
-    }
-
-    if (options?.mergeItem) {
-      const merged = options.mergeItem(baseItem, localItem, remoteItem);
-      if (merged) out.push(merged);
-      return;
-    }
+    // ── Cancellazioni ──
+    // Se l'elemento esisteva nello stato condiviso e uno dei due
+    // dispositivi lo ha rimosso → la cancellazione vince (così un utente
+    // eliminato su un telefono sparisce anche sugli altri).
+    if (baseItem && !localItem) return; // rimosso da questo dispositivo
+    if (baseItem && !remoteItem) return; // rimosso dall'altro dispositivo
 
     if (!localItem && !remoteItem) return;
 
@@ -144,6 +139,13 @@ export function mergeEntityList<T extends { id: string }>(
     if (!remoteItem) {
       // solo local → local
       out.push(localItem);
+      return;
+    }
+
+    // merge personalizzato (es. tavoli con i loro ordini)
+    if (options?.mergeItem) {
+      const merged = options.mergeItem(baseItem, localItem, remoteItem);
+      if (merged) out.push(merged);
       return;
     }
 
@@ -250,6 +252,8 @@ export function mergeCollection(
         const b: any = baseItem;
         const l: any = localItem;
         const r: any = remoteItem;
+        // cancellazione (da uno dei due dispositivi) → il tavolo sparisce
+        if (b && !l) return null;
         if (!l && !r) return null;
         if (!l) return r;
         if (!r) return l;

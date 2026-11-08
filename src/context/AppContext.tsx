@@ -47,6 +47,8 @@ interface AppContextType {
   wifiConnected: boolean;
   syncDevicesCount: number;
   toggleWifi: () => void;
+  syncAllNow: () => Promise<boolean>;
+  pullAllFromCloud: () => Promise<boolean>;
   // Auth
   login: (username: string, passwordOrPin: string) => { success: boolean; message?: string };
   changePassword: (userId: string, newPasswordOrPin: string) => { success: boolean; message?: string };
@@ -132,6 +134,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const savedId = localStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID);
       if (savedId) {
+        // cerca prima fra gli utenti salvati (possono arrivare dalla sincronizzazione)
+        try {
+          const savedUsers = localStorage.getItem(STORAGE_KEYS.USERS);
+          if (savedUsers) {
+            const parsed: UserAccount[] = JSON.parse(savedUsers);
+            const found = parsed.find((u) => u.id === savedId);
+            if (found) return found;
+          }
+        } catch {
+          /* ignore */
+        }
         const found = INITIAL_USERS.find((u) => u.id === savedId);
         return found || null;
       }
@@ -491,6 +504,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.removeItem(STORAGE_KEYS.CURRENT_USER_ID);
     }
   }, [currentUser]);
+
+  // Se gli utenti arrivano dalla sincronizzazione (o il PIN cambia),
+  // l'utente collegato viene aggiornato senza dover uscire e rientrare.
+  useEffect(() => {
+    if (!currentUser) return;
+    const updated = users.find((u) => u.id === currentUser.id);
+    if (updated && JSON.stringify(updated) !== JSON.stringify(currentUser)) {
+      setCurrentUser(updated);
+    }
+  }, [users]);
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 🔄 Sincronizzazione completa (tutti i dati → nuovo telefono)
+  // ═══════════════════════════════════════════════════════════════════
+  const syncAllNow = async (): Promise<boolean> => {
+    if (firebaseSyncManager.getStatus() !== 'connected') return false;
+    await firebaseSyncManager.pushAll();
+    return true;
+  };
+
+  const pullAllFromCloud = async (): Promise<boolean> => {
+    if (firebaseSyncManager.getStatus() !== 'connected') return false;
+    await firebaseSyncManager.forcePull();
+    return true;
+  };
 
   // Low stock calculation
   const lowStockItems = inventory.filter(
@@ -1055,6 +1093,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         wifiConnected,
         syncDevicesCount,
         toggleWifi,
+        syncAllNow,
+        pullAllFromCloud,
         login,
         changePassword,
         loginWithPin,

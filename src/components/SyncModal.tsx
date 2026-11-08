@@ -16,6 +16,7 @@ import {
 import {
   CheckCircle2,
   Cloud,
+  Download,
   Loader2,
   RefreshCw,
   Users,
@@ -35,7 +36,7 @@ interface SyncModalProps {
 }
 
 export const SyncModal: React.FC<SyncModalProps> = ({ onClose }) => {
-  const { currentUser } = useApp();
+  const { currentUser, syncAllNow, pullAllFromCloud } = useApp();
 
   const [connectionStatus, setConnectionStatus] = useState<string>('');
   const [isConnecting, setIsConnecting] = useState<boolean>(false);
@@ -63,6 +64,10 @@ export const SyncModal: React.FC<SyncModalProps> = ({ onClose }) => {
   );
   const [lanStatus, setLanStatus] = useState<string>('');
   const [lanConnecting, setLanConnecting] = useState<boolean>(false);
+
+  // Sincronizzazione completa
+  const [syncBusy, setSyncBusy] = useState<boolean>(false);
+  const [fullSyncStatus, setFullSyncStatus] = useState<string>('');
 
   // ── Controllo stato ──
   useEffect(() => {
@@ -137,6 +142,30 @@ export const SyncModal: React.FC<SyncModalProps> = ({ onClose }) => {
       setSyncCode(code);
       setCodeError('Copia manuale: il codice è stato messo nel campo qui sotto.');
     }
+  };
+
+  const handlePushAll = async () => {
+    setSyncBusy(true);
+    setFullSyncStatus('📤 Invio di tutti i dati al cloud...');
+    const ok = await syncAllNow();
+    setSyncBusy(false);
+    setFullSyncStatus(
+      ok
+        ? '✅ Tutti i dati sono stati inviati al cloud: un nuovo telefono li riceverà subito.'
+        : '❌ Sincronizzazione non riuscita: controlla la connessione.'
+    );
+  };
+
+  const handlePullAll = async () => {
+    setSyncBusy(true);
+    setFullSyncStatus('📥 Recupero di tutti i dati dal cloud...');
+    const ok = await pullAllFromCloud();
+    setSyncBusy(false);
+    setFullSyncStatus(
+      ok
+        ? '✅ Dati aggiornati dal cloud (utenti, tavoli, magazzino, scontrini).'
+        : '❌ Nessun dato ricevuto dal cloud.'
+    );
   };
 
   const handleLanConnect = async () => {
@@ -386,6 +415,42 @@ export const SyncModal: React.FC<SyncModalProps> = ({ onClose }) => {
                     <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+
+          {/* ═══ Sincronizzazione completa ═══ */}
+          <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+            <div className="flex items-center gap-2 text-xs font-bold text-orange-300">
+              <RefreshCw className="w-3.5 h-3.5" />
+              Sincronizzazione completa
+            </div>
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Per passare tutto (utenti, tavoli, magazzino, scontrini) a un
+              telefono nuovo: invia tutto al cloud, poi sul nuovo telefono
+              incolla il codice e scegli &quot;Ripristina dal cloud&quot;.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={handlePushAll}
+                disabled={syncBusy || !isConnected}
+                className="px-3 py-2.5 rounded-xl bg-cyan-950/50 border border-cyan-800/50 text-cyan-300 hover:bg-cyan-900/40 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${syncBusy ? 'animate-spin' : ''}`} />
+                Invia tutto
+              </button>
+              <button
+                onClick={handlePullAll}
+                disabled={syncBusy || !isConnected}
+                className="px-3 py-2.5 rounded-xl bg-emerald-950/50 border border-emerald-800/50 text-emerald-300 hover:bg-emerald-900/40 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Ripristina dal cloud
+              </button>
+            </div>
+            {fullSyncStatus && (
+              <div className="text-[11px] text-slate-300 leading-relaxed">
+                {fullSyncStatus}
               </div>
             )}
           </div>

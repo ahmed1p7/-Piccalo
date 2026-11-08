@@ -66,8 +66,21 @@ telefono e da quel momento i dispositivi parlano tra loro tramite il cloud.
 ### Passo 2 — Aggiungi gli altri telefoni
 
 1. Sul primo telefono: icona **Sync** → **Copia** (il codice è negli appunti)
-2. Incolla il codice su ciascun altro telefono → **Collega questo dispositivo**
+2. Su ciascun altro telefono: **schermata di login → "Collega un nuovo dispositivo"**
+   (oppure icona **Sync** dopo il login) → incolla il codice → **Collega questo dispositivo**
 3. Fine: cassa, tavoli, magazzino e scontrini sono sincronizzati ovunque
+
+> 💡 Il pulsante "Collega un nuovo dispositivo" è **prima del login**: un telefono
+> nuovo si collega al ristorante anche se non conosce il PIN.
+
+### Passo 3 — Trasferisci tutto al telefono nuovo (opzionale ma consigliato)
+
+Sul telefono **vecchio**: icona **Sync** → **Invia tutto** (manda utenti, tavoli,
+magazzino e scontrini al cloud).
+Sul telefono **nuovo**: dopo aver incollato il codice → **Ripristina dal cloud**.
+
+In alternativa i dati arrivano da soli: il nuovo telefono scarica tutto al primo
+collegamento (utenti compresi, con i loro PIN).
 
 ### Come funziona il merge (niente dati persi)
 
@@ -88,6 +101,21 @@ npm test
 ```
 
 ---
+
+## 🔄 Aggiornamenti dell'app (in-app)
+
+Ogni volta che il repository GitHub viene aggiornato, il CI ricostruisce l'APK e
+pubblica `version.json` + `Sea-POS.apk` nel rilascio **latest**.
+
+L'app controlla quel file **ogni 3 minuti** (e all'avvio): se trova una versione
+più recente di quella installata compare l'avviso **"Aggiornamento disponibile"**
+con un pulsante **"Installa ora"** → l'app scarica l'APK e apre l'installatore
+di Android. Poiché l'APK è firmato con la stessa chiave, si installa **sopra**
+quello già presente: **nessun dato perso**.
+
+- 📲 Notifica anche nella schermata di login (senza essere collegati)
+- 🔎 Controllo manuale: **Verifica aggiornamenti** (login) o nelle impostazioni
+- 🌐 Sul browser (PWA) il pulsante ricarica la pagina con la nuova versione
 
 ## 📡 Alternativa gratuita: sync LAN (Wi-Fi)
 

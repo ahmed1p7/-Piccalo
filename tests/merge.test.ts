@@ -136,6 +136,50 @@ console.log('\n── users: un utente creato su un telefono ──');
   check('utente presente', merged.length === 1 && merged[0].username === 'cucina', merged);
 }
 
+console.log('\n── users: nuovo account su A → appare su B ──');
+{
+  const base = [{ id: 'u1', username: 'admin', pin: '5555' }];
+  const local = [{ id: 'u1', username: 'admin', pin: '5555' }];
+  const remote = [
+    { id: 'u1', username: 'admin', pin: '5555' },
+    { id: 'u2', username: 'elena', pin: '4444' },
+  ];
+  const merged = mergeCollection('users', base, local, remote);
+  check('2 utenti dopo la sincronizzazione', merged.length === 2, merged);
+  check('il nuovo account è presente', merged.some((u: any) => u.username === 'elena'));
+}
+
+console.log('\n── users: account eliminato su A → sparisce su B ──');
+{
+  const base = [
+    { id: 'u1', username: 'admin', pin: '5555' },
+    { id: 'u2', username: 'elena', pin: '4444' },
+  ];
+  const local = [{ id: 'u1', username: 'admin', pin: '5555' }]; // A ha eliminato Elena
+  const remote = base; // B la ha ancora
+  const merged = mergeCollection('users', base, local, remote);
+  check('l’account eliminato non è più presente', merged.length === 1, merged);
+  check('resta solo admin', merged[0].username === 'admin');
+}
+
+console.log('\n── users: PIN modificato su A → si aggiorna su B ──');
+{
+  const base = [{ id: 'u1', username: 'admin', pin: '5555' }];
+  const local = [{ id: 'u1', username: 'admin', pin: '5555' }];
+  const remote = [{ id: 'u1', username: 'admin', pin: '9999' }];
+  const merged = mergeCollection('users', base, local, remote);
+  check('nuovo PIN applicato', merged[0].pin === '9999', merged);
+}
+
+console.log('\n── tables: tavolo eliminato su A → sparisce su B ──');
+{
+  const base = [{ id: 't1', status: 'occupato' }];
+  const local: any[] = [];
+  const remote = [{ id: 't1', status: 'occupato' }];
+  const merged = mergeCollection('tables', base, local, remote);
+  check('tavolo rimosso', merged.length === 0, merged);
+}
+
 console.log('\n── isDeepEqual ──');
 {
   check('array uguali', isDeepEqual([{ a: 1 }], [{ a: 1 }]));

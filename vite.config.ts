@@ -2,6 +2,7 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 import { defineConfig } from 'vite';
+import pkg from './package.json';
 
 export default defineConfig(({ mode }) => {
   // 📌 base path للنشر على GitHub Pages
@@ -11,6 +12,10 @@ export default defineConfig(({ mode }) => {
 
   return {
     base,
+    // versione dell'app disponibile nel codice (usata dal sistema di update)
+    define: {
+      __APP_VERSION__: JSON.stringify(pkg.version),
+    },
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {

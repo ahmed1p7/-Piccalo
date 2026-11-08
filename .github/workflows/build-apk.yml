@@ -107,7 +107,7 @@ jobs:
         env:
           CI: false
 
-      - name: 📤 Collect APK
+      - name: 📤 Collect APK + version.json
         if: always()
         run: |
           mkdir -p apk-output
@@ -123,6 +123,30 @@ jobs:
             mv apk-output/app-debug.apk apk-output/Sea-POS-debug.apk
           fi
 
+          # ── version.json: è questo file che l'app legge per sapere
+          #    se c'è una versione nuova da installare ──
+          VERSION=$(node -p "require('./package.json').version")
+          MAJOR=$(echo "$VERSION" | cut -d. -f1)
+          MINOR=$(echo "$VERSION" | cut -d. -f2)
+          PATCH=$(echo "$VERSION" | cut -d. -f3)
+          VERSION_CODE=$(( MAJOR * 10000 + MINOR * 100 + PATCH ))
+          APK_SIZE=$(stat -c%s apk-output/Sea-POS.apk 2>/dev/null || echo 0)
+          NOTES=$(git log -1 --pretty=%B | head -5 | tr '\n' ' ' | sed 's/"/\"/g')
+
+          cat > apk-output/version.json << EOF
+          {
+            "version": "$VERSION",
+            "versionCode": $VERSION_CODE,
+            "apkUrl": "https://github.com/${{ github.repository }}/releases/download/latest/Sea-POS.apk",
+            "publishedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "size": $APK_SIZE,
+            "notes": "$NOTES"
+          }
+          EOF
+
+          echo "📄 version.json:"
+          cat apk-output/version.json
+
           echo ""
           echo "📁 APK files:"
           ls -lh apk-output/*.apk 2>/dev/null || echo "❌ Nessun APK prodotto"
@@ -136,6 +160,39 @@ jobs:
             apk-output/*.apk
           retention-days: 90
           if-no-files-found: warn
+
+      # ── Rilascio "latest": aggiornato a ogni push su main.
+      #    È questo che permette all'app di vedere gli aggiornamenti:
+      #    l'app legge releases/download/latest/version.json e se la
+      #    versionCode è maggiore di quella installata propone l'installazione.
+      - name: 🚀 Publish rolling release "latest"
+        if: always() && hashFiles('apk-output/Sea-POS.apk') != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Latest APK (aggiornamento automatico)
+          prerelease: false
+          draft: false
+          overwrite_files: true
+          files: |
+            apk-output/Sea-POS.apk
+            apk-output/version.json
+          body: |
+            ## 🚀 Ultima versione disponibile
+
+            Questo rilascio viene aggiornato automaticamente ad ogni push su `main`.
+
+            - **APK:** `Sea-POS.apk`
+            - **Metadati:** `version.json`
+
+            L'app controlla questo file e, se trova una versione più recente di
+            quella installata, mostra l'avviso "Aggiornamento disponibile" e
+            permette di installarla con un tocco.
+
+            ### Installazione manuale
+            1. Scarica `Sea-POS.apk`
+            2. Aprilo sul telefono e conferma l'installazione
+            3. L'app si aggiorna sopra quella già installata (dati intatti)
 
       - name: ✅ Report
         if: always()
