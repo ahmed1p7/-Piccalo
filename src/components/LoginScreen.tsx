@@ -146,7 +146,7 @@ export const LoginScreen: React.FC = () => {
                 <input
                   type="text"
                   required
-                  placeholder="Es. Admin, alessio, luigi..."
+                  placeholder="Nome utente"
                   value={username}
                   onChange={(e) => {
                     setUsername(e.target.value);
@@ -238,47 +238,6 @@ export const LoginScreen: React.FC = () => {
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
-
-          {/* Quick-fill helper for test accounts */}
-          <div className="mt-5 pt-4 border-t border-slate-800/80">
-            <div className="text-[11px] text-slate-400 font-medium mb-2">
-              Seleziona rapida account di prova:
-            </div>
-            <div className="grid grid-cols-2 gap-1.5">
-              <button
-                type="button"
-                onClick={() => handleQuickFill('Admin', '5555')}
-                className="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-left hover:border-cyan-500/50 transition-colors"
-              >
-                <div className="text-xs font-semibold text-white">Admin (5555)</div>
-                <div className="text-[10px] text-cyan-400">Direttore • Tutti i permessi</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickFill('alessio', '1111')}
-                className="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-left hover:border-cyan-500/50 transition-colors"
-              >
-                <div className="text-xs font-semibold text-white">Alessio (1111)</div>
-                <div className="text-[10px] text-slate-400">Cameriere • Tavoli &amp; Cassa</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickFill('luigi', '2222')}
-                className="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-left hover:border-cyan-500/50 transition-colors"
-              >
-                <div className="text-xs font-semibold text-white">Luigi (2222)</div>
-                <div className="text-[10px] text-slate-400">Cucina • Magazzino Dispensa</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickFill('elena', '4444')}
-                className="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-left hover:border-cyan-500/50 transition-colors"
-              >
-                <div className="text-xs font-semibold text-white">Elena (4444)</div>
-                <div className="text-[10px] text-slate-400">Cassa • Conto &amp; Report</div>
-              </button>
-            </div>
-          </div>
         </div>
       </main>
 

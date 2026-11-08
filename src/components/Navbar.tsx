@@ -117,7 +117,7 @@ export const Navbar: React.FC = () => {
               </div>
             </div>
 
-            {/* Zone 2: Navigation Links */}
+            {/* Zone 2: Navigation Links - تصميم محسّن */}
             <nav className="flex items-center gap-1 overflow-x-auto py-1 scrollbar-none">
               {navItems
                 .filter((item) => item.visible)
@@ -127,21 +127,21 @@ export const Navbar: React.FC = () => {
                     <button
                       key={item.id}
                       onClick={() => setActiveView(item.id)}
-                      className={`relative flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all whitespace-nowrap shrink-0 ${
+                      className={`relative flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
                         isActive
-                          ? 'bg-slate-800 text-white shadow-sm border border-slate-700/80'
-                          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                          ? 'bg-gradient-to-r from-cyan-600/30 to-cyan-500/20 text-white shadow-lg border border-cyan-500/40'
+                          : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60'
                       }`}
                     >
-                      <span className={isActive ? 'text-cyan-400' : 'text-slate-400'}>
+                      <span className={isActive ? 'text-cyan-300' : 'text-slate-400'}>
                         {item.icon}
                       </span>
                       <span>{item.label}</span>
                       {item.badge !== undefined && item.badge > 0 && (
                         <span
-                          className={`text-[10px] font-mono px-1.5 py-0.2 rounded-md ${
+                          className={`text-[10px] font-mono px-1.5 py-0.5 rounded-md ${
                             isActive
-                              ? 'bg-cyan-500/20 text-cyan-300'
+                              ? 'bg-cyan-500/30 text-cyan-200'
                               : 'bg-rose-500/20 text-rose-300'
                           }`}
                         >

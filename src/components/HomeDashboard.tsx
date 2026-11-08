@@ -12,6 +12,7 @@ import {
   PackagePlus,
   Printer,
   Receipt as ReceiptIcon,
+  RotateCcw,
   TrendingUp,
   Users,
   Wallet,
@@ -29,12 +30,16 @@ export const HomeDashboard: React.FC = () => {
     tables,
     inventory,
     profile,
+    resetTodayTransactions,
   } = useApp();
 
   const [receiptToPrint, setReceiptToPrint] = useState<Receipt | null>(null);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [resetResult, setResetResult] = useState<string>('');
 
   if (!currentUser) return null;
   const permissions = currentUser.permissions;
+  const isAdmin = currentUser.role === 'admin';
 
   // Calculate today's sales
   const todayStr = new Date().toISOString().substring(0, 10);
@@ -77,7 +82,7 @@ export const HomeDashboard: React.FC = () => {
           </div>
 
           {/* Quick Date and Shift summary */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => setActiveView('tavoli')}
               className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700/80 flex items-center gap-2 transition-colors"
@@ -92,6 +97,17 @@ export const HomeDashboard: React.FC = () => {
               <CreditCard className="w-3.5 h-3.5" />
               <span>Nuovo Incasso</span>
             </button>
+            {/* 🆕 زر تصفير اليوم - للأدمن فقط */}
+            {isAdmin && (
+              <button
+                onClick={() => setShowResetConfirm(true)}
+                className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold flex items-center gap-2 transition-colors shadow-sm shadow-amber-500/20"
+                title="Azzera le transazioni della giornata corrente"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Azzera Giornata</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -464,6 +480,68 @@ export const HomeDashboard: React.FC = () => {
           receipt={receiptToPrint}
           onClose={() => setReceiptToPrint(null)}
         />
+      )}
+
+      {/* 🆕 Modal تأكيد تصفير اليوم */}
+      {showResetConfirm && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-amber-500/40 rounded-3xl max-w-md w-full p-6 shadow-2xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center">
+                <RotateCcw className="w-6 h-6 text-amber-400" />
+              </div>
+              <div>
+                <h3 className="font-bold text-white text-base">Azzera Giornata</h3>
+                <p className="text-xs text-slate-400">Conferma azione di chiusura giornata</p>
+              </div>
+            </div>
+
+            <div className="bg-amber-950/30 border border-amber-700/40 rounded-xl p-3 mb-4">
+              <p className="text-xs text-amber-200">
+                ⚠️ Questa azione eliminerà:
+              </p>
+              <ul className="text-xs text-slate-300 mt-2 space-y-1 pl-4 list-disc">
+                <li>Tutti gli scontrini emessi <strong>oggi</strong> ({todayReceipts.length})</li>
+                <li>Reset di tutti i tavoli a "Libero"</li>
+                <li>Conti aperti azzerati</li>
+              </ul>
+              <p className="text-xs text-emerald-300 mt-2">
+                ✅ Il magazzino e lo storico dei giorni precedenti saranno mantenuti.
+              </p>
+            </div>
+
+            {resetResult && (
+              <div className="mb-4 p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-300 text-xs font-medium">
+                {resetResult}
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setShowResetConfirm(false);
+                  setResetResult('');
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition-colors"
+              >
+                Annulla
+              </button>
+              <button
+                onClick={() => {
+                  const result = resetTodayTransactions();
+                  setResetResult(`✅ Giornata azzerata: ${result.deletedReceipts} scontrini eliminati, ${result.resetTables} tavoli liberati.`);
+                  setTimeout(() => {
+                    setShowResetConfirm(false);
+                    setResetResult('');
+                  }, 3000);
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition-colors"
+              >
+                Conferma Azzera
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

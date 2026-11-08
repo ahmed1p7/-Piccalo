@@ -93,6 +93,7 @@ interface AppContextType {
   exportDataAsJSON: () => string;
   importDataFromJSON: (jsonString: string) => boolean;
   resetToInitialData: () => void;
+  resetTodayTransactions: () => { deletedReceipts: number; resetTables: number };
   updateProfile: (updates: Partial<RestaurantProfile>) => void;
 }
 
@@ -149,32 +150,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [inventoryLogs, setInventoryLogs] = useState<InventoryLog[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.LOGS);
-      return saved
-        ? JSON.parse(saved)
-        : [
-            {
-              id: 'log_seed_1',
-              itemId: 'mat_2',
-              itemName: 'Mozzarella Fior di Latte Campana',
-              changeType: 'scarico',
-              deltaQuantity: -3,
-              finalQuantity: 12,
-              userName: 'Admin',
-              timestamp: '2026-11-06 07:30',
-              reason: 'Uso in cucina',
-            },
-            {
-              id: 'log_seed_2',
-              itemId: 'mat_1',
-              itemName: 'Farina Tipo 00',
-              changeType: 'carico',
-              deltaQuantity: 25,
-              finalQuantity: 45,
-              userName: 'Admin',
-              timestamp: '2026-11-05 10:15',
-              reason: 'Arrivo fornitore Molino Caputo',
-            },
-          ];
+      return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
     }
@@ -200,85 +176,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [receipts, setReceipts] = useState<Receipt[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.RECEIPTS);
-      return saved
-        ? JSON.parse(saved)
-        : [
-            {
-              id: 'rec_seed_1',
-              receiptNumber: 'SCONTR-001',
-              date: new Date(Date.now() - 3600000 * 2).toISOString(),
-              tableName: 'Tavolo 4',
-              coversCount: 2,
-              items: [
-                {
-                  id: 'item_rec_1',
-                  name: 'Spaghetti alle Vongole',
-                  price: 14.0,
-                  quantity: 2,
-                  destination: 'cassa',
-                  status: 'servito',
-                  addedAt: '12:00',
-                },
-                {
-                  id: 'item_rec_2',
-                  name: 'Birra Moretti 66cl',
-                  price: 4.5,
-                  quantity: 2,
-                  destination: 'cassa',
-                  status: 'servito',
-                  addedAt: '12:02',
-                },
-                {
-                  id: 'item_rec_3',
-                  name: 'Coperto & Pane',
-                  price: 2.0,
-                  quantity: 2,
-                  destination: 'cassa',
-                  status: 'servito',
-                  addedAt: '12:00',
-                },
-              ],
-              totalAmount: 30.0,
-              paymentMethod: 'contanti',
-              cashAmount: 30.0,
-              cardAmount: 0,
-              changeGiven: 0,
-              cashierName: 'Elena (Cassiera)',
-            },
-            {
-              id: 'rec_seed_2',
-              receiptNumber: 'SCONTR-002',
-              date: new Date(Date.now() - 3600000 * 1).toISOString(),
-              tableName: 'Tavolo 8',
-              coversCount: 3,
-              items: [
-                {
-                  id: 'item_rec_21',
-                  name: 'Tagliatelle al Ragù Bolognese',
-                  price: 13.5,
-                  quantity: 3,
-                  destination: 'cassa',
-                  status: 'servito',
-                  addedAt: '12:30',
-                },
-                {
-                  id: 'item_rec_22',
-                  name: 'Vino Chianti Classico DOCG',
-                  price: 22.0,
-                  quantity: 1,
-                  destination: 'cassa',
-                  status: 'servito',
-                  addedAt: '12:35',
-                },
-              ],
-              totalAmount: 62.5,
-              paymentMethod: 'carta',
-              cashAmount: 0,
-              cardAmount: 62.5,
-              changeGiven: 0,
-              cashierName: 'Admin',
-            },
-          ];
+      return saved ? JSON.parse(saved) : [];
     } catch {
       return [];
     }
@@ -931,6 +829,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.clear();
   };
 
+  // 🆕 تصفير اليوم: يحذف إيصالات اليوم + يفرغ كل الطاولات
+  // يحتفظ بالمخزون والسجل الكامل (للتقارير التاريخية)
+  const resetTodayTransactions = () => {
+    const todayStr = new Date().toISOString().substring(0, 10);
+
+    // عدّ الإيصالات التي ستُحذف (اليوم فقط)
+    const todayReceipts = receipts.filter((r) => r.date.startsWith(todayStr));
+    const deletedCount = todayReceipts.length;
+
+    // احذف إيصالات اليوم فقط (احتفظ بالسجل التاريخي للأيام السابقة)
+    setReceipts((prev) => prev.filter((r) => !r.date.startsWith(todayStr)));
+
+    // تصفير كل الطاولات: status='libero', billAmount=0, coversCount=0
+    const resetTablesCount = tables.filter((t) => t.status !== 'libero' || t.billAmount > 0).length;
+    setTables((prev) =>
+      prev.map((t) => ({
+        ...t,
+        status: 'libero' as const,
+        billAmount: 0,
+        coversCount: 0,
+        currentOrderItems: [],
+        waiterName: undefined,
+        openedAt: undefined,
+        notes: undefined,
+      }))
+    );
+
+    return { deletedReceipts: deletedCount, resetTables: resetTablesCount };
+  };
+
   const updateProfile = (updates: Partial<RestaurantProfile>) => {
     setProfile((prev) => ({ ...prev, ...updates }));
   };
@@ -979,6 +907,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         exportDataAsJSON,
         importDataFromJSON,
         resetToInitialData,
+        resetTodayTransactions,
         updateProfile,
       }}
     >
