@@ -48,6 +48,25 @@ Se non ci sono ancora release, l'APK si scarica anche dagli **Actions**:
 
 ---
 
+## ⏱️ Sincronizzazione in tempo reale
+
+Come WhatsApp: **quello che fai su un telefono compare subito sugli altri**.
+
+| Cosa fai sul telefono A | Cosa vede il telefono B |
+|---|---|
+| Aggiungi un account | L'account (con il suo PIN) compare in **~0,3 s** |
+| Modifichi l'importo di un tavolo | Il tavolo si aggiorna in tempo reale |
+| Scarichi dal magazzino | La quantità si aggiorna su tutti i dispositivi |
+| Registri uno scontrino | Lo scontrino compare in cassa |
+| Elimini un account | Sparisce anche dagli altri dispositivi |
+
+Misurato con il test end-to-end `tests/realtime-sync.e2e.py` (due istanze
+dell'app + server di sincronizzazione): **0,27 s** dalla modifica alla
+comparsa sull'altro dispositivo.
+
+> La sincronizzazione avviene **mentre l'app è aperta**: non serve toccare
+> nessun pulsante, non serve ricaricare la pagina.
+
 ## 📲📲 Usare l'app su più telefoni (sync multi-dispositivo)
 
 Il trucco è un **codice di sincronizzazione**: lo incolli una volta sola su ogni
