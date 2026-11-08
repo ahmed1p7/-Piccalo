@@ -52,18 +52,36 @@
 الفكرة بسيطة: **كود مزامنة واحد** تكتبه مرة واحدة في كل هاتف، فيتصل الجميع
 "Somewhere" على الإنترنت وتتم المزامنة تلقائياً.
 
-### خطوة 1: جهّز Firebase (مرة واحدة فقط، مجاني)
+### خطوة 1: افتح قواعد قاعدة البيانات (مرة واحدة فقط)
 
-اتبع الملف [`FIREBASE_SETUP.md`](FIREBASE_SETUP.md) — steps قريبة من 5 دقائق.
-أو انتقل مباشرة إلى: <https://console.firebase.google.com/>
+أنشأتَ قاعدة البيانات ✅ — باقي خطوة واحدة بس: **افتح القواعد** حتى Allows
+telefoons تتبادل البيانات.
 
-ثم ولّد الكود:
+1. افتح: <https://console.firebase.google.com/project/sea-restaurant/database/sea-restaurant-default-rtdb/data>
+2. تبويب **Rules**
+3. امسح كل شي والصق:
 
-```bash
-node scripts/make-sync-code.mjs firebase-config.json
+```json
+{
+  "rules": {
+    ".read": true,
+    ".write": true
+  }
+}
 ```
 
-سيطبع لك **كود المزامنة** (سطر طويل).
+4. اضغط **Publish**
+
+لتتأكد إنو اشتغل:
+
+```bash
+node scripts/check-firebase.mjs
+```
+
+لما يطلع ✅ يعني كل شي جاهز، و**كل هاتف يثبّت الـ APK بيتصل لحاله تلقائياً**
+(مش محتاج لصق أي كود).
+
+> 💡 لإضافة الكود يدوياً على أي هاتف: `node scripts/make-sync-code.mjs .env`
 
 ### خطوة 2: اربط كل هاتف
 

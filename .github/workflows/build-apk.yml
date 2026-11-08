@@ -108,6 +108,7 @@ jobs:
           CI: false
 
       - name: 📤 Collect APK + version.json
+        id: collect
         if: always()
         run: |
           mkdir -p apk-output
@@ -144,6 +145,9 @@ jobs:
           }
           EOF
 
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
+
           echo "📄 version.json:"
           cat apk-output/version.json
 
@@ -161,10 +165,37 @@ jobs:
           retention-days: 90
           if-no-files-found: warn
 
-      # ── Rilascio "latest": aggiornato a ogni push su main.
-      #    È questo che permette all'app di vedere gli aggiornamenti:
-      #    l'app legge releases/download/latest/version.json e se la
-      #    versionCode è maggiore di quella installata propone l'installazione.
+      # ── Rilascio con numero di versione (quello che l'app cerca) ──
+      #    L'app interroga l'API di GitHub (che invia le intestazioni CORS)
+      #    e cerca il rilascio con il tag di versione più alto.
+      - name: 🚀 Publish release v${{ steps.collect.outputs.version }}
+        if: always() && hashFiles('apk-output/Sea-POS.apk') != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.collect.outputs.version }}
+          name: Sea POS ${{ steps.collect.outputs.version }}
+          prerelease: false
+          draft: false
+          overwrite_files: true
+          files: |
+            apk-output/Sea-POS.apk
+            apk-output/version.json
+          body: |
+            ## 📱 Sea POS ${{ steps.collect.outputs.version }}
+
+            - **APK:** `Sea-POS.apk`
+            - **Metadati:** `version.json`
+
+            L'app controlla l'API di GitHub: se trova una versione più recente
+            di quella installata mostra l'avviso "Aggiornamento disponibile" e
+            permette di installarla con un tocco (i dati restano intatti).
+
+            ### Installazione manuale
+            1. Scarica `Sea-POS.apk`
+            2. Aprilo sul telefono e conferma l'installazione
+            3. L'app si aggiorna sopra quella già installata
+
+      # ── Rilascio "latest": indirizzo stabile per il download diretto ──
       - name: 🚀 Publish rolling release "latest"
         if: always() && hashFiles('apk-output/Sea-POS.apk') != ''
         uses: softprops/action-gh-release@v2
@@ -184,15 +215,6 @@ jobs:
 
             - **APK:** `Sea-POS.apk`
             - **Metadati:** `version.json`
-
-            L'app controlla questo file e, se trova una versione più recente di
-            quella installata, mostra l'avviso "Aggiornamento disponibile" e
-            permette di installarla con un tocco.
-
-            ### Installazione manuale
-            1. Scarica `Sea-POS.apk`
-            2. Aprilo sul telefono e conferma l'installazione
-            3. L'app si aggiorna sopra quella già installata (dati intatti)
 
       - name: ✅ Report
         if: always()

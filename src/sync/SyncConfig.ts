@@ -18,6 +18,8 @@ export interface FirebaseWebConfig {
   storageBucket: string;
   messagingSenderId: string;
   appId: string;
+  /** URL del Realtime Database (obbligatorio per la sincronizzazione) */
+  databaseURL?: string;
 }
 
 const CONFIG_KEY = 'sea_pos_sync_config_v1';
@@ -61,6 +63,7 @@ function getBuildConfig(): Partial<FirebaseWebConfig> {
     storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '',
     messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
     appId: import.meta.env.VITE_FIREBASE_APP_ID || '',
+    databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL || '',
   };
 }
 
@@ -103,6 +106,7 @@ export function getEffectiveConfig(): FirebaseWebConfig | null {
       storageBucket: build.storageBucket || '',
       messagingSenderId: build.messagingSenderId || '',
       appId: build.appId || '',
+      databaseURL: build.databaseURL || '',
     };
   }
   return null;
@@ -202,6 +206,7 @@ function normalizeConfig(raw: any): FirebaseWebConfig | null {
     storageBucket: pick('storageBucket', 'storage_bucket'),
     messagingSenderId: pick('messagingSenderId', 'messaging_sender_id'),
     appId: pick('appId', 'app_id'),
+    databaseURL: pick('databaseURL', 'database_url'),
   };
 
   if (!config.apiKey || !config.projectId) return null;
@@ -212,6 +217,10 @@ function normalizeConfig(raw: any): FirebaseWebConfig | null {
   }
   if (!config.authDomain) {
     config.authDomain = `${config.projectId}.firebaseapp.com`;
+  }
+  // URL del Realtime Database (default: europe-west1)
+  if (!config.databaseURL) {
+    config.databaseURL = `https://${config.projectId}-default-rtdb.europe-west1.firebasedatabase.app`;
   }
   return config;
 }
@@ -225,6 +234,7 @@ export function encodeSyncCode(config: FirebaseWebConfig): string {
     storageBucket: config.storageBucket,
     messagingSenderId: config.messagingSenderId,
     appId: config.appId,
+    databaseURL: config.databaseURL || '',
   });
   return btoa(unescape(encodeURIComponent(json)));
 }

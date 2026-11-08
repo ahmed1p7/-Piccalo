@@ -1,51 +1,70 @@
 # 🔥 Configurazione Firebase — Progetto **sea-restaurant**
 
-Serve per sincronizzare **più telefoni** tramite il cloud.
-È gratuito (piano "Spark" / Blaze) e non richiede carta di credito.
+La sincronizzazione multi-dispositivo usa il **Realtime Database** di Firebase:
+è una modalità "a ascolto" — quando un dispositivo scrive, **tutti gli altri
+vedono la modifica subito** (come in una chat), senza polling e senza perdite.
 
 ## ⚡ Stato attuale del tuo progetto
-
-La configurazione è **già pronta** (ricavata dal tuo `google-services.json`):
 
 | | |
 |---|---|
 | Project ID | `sea-restaurant` |
-| API key | `AIzaSyBybQ6ytEjqzkByvV1sKDn1ZAgh2ktq4zY` |
-| Pacchetto Android | `com.sea.pos` ✅ (corrisponde all'app) |
-| Config nei GitHub Secrets | ✅ già impostati (la build inserisce tutto nell'APK) |
+| Realtime Database | `sea-restaurant-default-rtdb.europe-west1.firebasedatabase.app` ✅ creato |
+| Package Android | `com.sea.pos` ✅ (corrisponde all'app) |
+| Config nei GitHub Secrets | ✅ già impostati (la build la inserisce dentro l'APK) |
 
-**Manca solo abilitare i servizi** (2 minuti, una volta sola):
+## ⚠️ Manca UNA cosa sola: aprire le regole del database
 
-1. **Attiva l'API Firestore** →
-   <https://console.developers.google.com/apis/api/firestore.googleapis.com/overview?project=sea-restaurant>
-   → clicca **Abilita**
-2. **Crea il database** →
-   <https://console.firebase.google.com/project/sea-restaurant/firestore>
-   → **Crea database** → modalità **test**
-3. *(facoltativo ma consigliato)* **Accesso anonimo** →
-   <https://console.firebase.google.com/project/sea-restaurant/authentication/providers>
-   → **Anonimo** → **Abilita**
+Il database è stato creato in modalità **bloccata** (di default): nessuno può
+leggere o scrivere. Va sbloccato con 4 righe:
 
-### Verifica che sia tutto a posto
+1. Apri la scheda **Rules**:
+   <https://console.firebase.google.com/project/sea-restaurant/database/sea-restaurant-default-rtdb/data>
+2. Cancella tutto e incolla:
+
+   ```json
+   {
+     "rules": {
+       ".read": true,
+       ".write": true
+     }
+   }
+   ```
+
+3. Clicca **Publish** (Pubblica).
+
+### Verifica
 
 ```bash
 node scripts/check-firebase.mjs
 ```
 
 ```
-✔ Firestore: scrivibile (sincronizzazione pronta)
-✔ Accesso anonimo: attivo
+✔ Realtime Database: scrivibile e leggibile
 ✅ Tutto pronto: la sincronizzazione multi-dispositivo funziona.
 ```
 
 Quando esce ✅, **tutti i telefoni che installano l'APK sono collegati
-automaticamente** — non serve incollare nessun codice.
+automaticamente**: non serve incollare nessun codice, non serve configurare
+niente. Il primo telefono aperto diventa la "base" del ristorante.
 
-> 🔐 Per sicurezza, in *Project settings → API keys* puoi limitare la chiave
-> alle sole API di Firebase (Firestore + Identity Toolkit).
+> 🔐 Per sicurezza puoi limitare la chiave API in *Project settings → API keys*
+> (permetti solo Identity Toolkit) e, quando i dati sono sensibili, passare a
+> regole con autenticazione:
+> `{"rules": {".read": "auth != null", ".write": "auth != null"}}` + Accesso anonimo.
 
 ---
 
+## 📱 Come si usa (riassunto)
+
+| | |
+|---|---|
+| **Collegamento** | automatico (config dentro l'APK) |
+| **Fallback** | icona **Sync → Codice di sincronizzazione** → incolla lo stesso codice su ogni telefono |
+| **Verifica** | l'icona Sync mostra "Dispositivi (N)" |
+| **Dati nuovi su un telefono** | appena si salva, compare sugli altri in ~0,3 s |
+
+---
 ## 📋 Configurazione da zero (per un progetto nuovo)
 
 ---

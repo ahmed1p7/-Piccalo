@@ -12,7 +12,12 @@ import { registerPlugin, Capacitor } from '@capacitor/core';
 
 const GITHUB_REPO = 'ahmed1p7/-Piccalo';
 const RELEASE_BASE = `https://github.com/${GITHUB_REPO}/releases/download/latest`;
-const VERSION_URL = `${RELEASE_BASE}/version.json`;
+// ⚠️ Si usa l'API di GitHub (NON il link diretto all'asset): il link diretto
+// reindirizza a release-assets.githubusercontent.com che NON invia le intestazioni
+// CORS → il browser bloccherebbe la lettura e l'app non vedrebbe mai gli aggiornamenti.
+const RELEASES_API = `https://api.github.com/repos/${GITHUB_REPO}/releases?per_page=30`;
+const ETAG_KEY = 'sea_pos_releases_etag';
+const LAST_RELEASE_KEY = 'sea_pos_last_release';
 
 export interface InstalledVersion {
   versionName: string;
@@ -79,27 +84,116 @@ export async function getInstalledVersion(): Promise<InstalledVersion> {
   return { versionName: getBuiltInVersion(), versionCode: 0 };
 }
 
-/** Scarica il file version.json dal rilascio più recente */
+/**
+ * Legge l'ultima versione pubblicata tramite l'API di GitHub.
+ * L'API invia le intestazioni CORS (a differenza del link diretto all'asset),
+ * quindi funziona sia nella PWA sia dentro l'APK.
+ * Usa ETag/If-None-Match: le risposte 304 non contano nel rate limit.
+ */
 export async function fetchRemoteVersion(): Promise<RemoteVersion | null> {
   try {
-    const response = await fetch(`${VERSION_URL}?t=${Date.now()}`, {
-      cache: 'no-store',
+    let etag = '';
+    try {
+      etag = localStorage.getItem(ETAG_KEY) || '';
+    } catch {
+      etag = '';
+    }
+
+    const response = await fetch(RELEASES_API, {
+      headers: etag ? { 'If-None-Match': etag } : {},
     });
-    if (!response.ok) return null;
-    const data = await response.json();
-    if (!data || typeof data.versionCode !== 'number') return null;
-    return {
-      version: data.version,
-      versionCode: data.versionCode,
-      apkUrl: data.apkUrl || `${RELEASE_BASE}/Sea-POS.apk`,
-      publishedAt: data.publishedAt,
-      notes: data.notes,
-      size: data.size,
+
+    // 304 → nessuna novità, si riusa l'ultima versione nota
+    if (response.status === 304) {
+      try {
+        const cached = localStorage.getItem(LAST_RELEASE_KEY);
+        return cached ? (JSON.parse(cached) as RemoteVersion) : null;
+      } catch {
+        return null;
+      }
+    }
+
+    if (!response.ok) {
+      console.warn('AppUpdater: GitHub API', response.status);
+      // rate limit o errore → riusa l'ultima versione nota
+      try {
+        const cached = localStorage.getItem(LAST_RELEASE_KEY);
+        return cached ? (JSON.parse(cached) as RemoteVersion) : null;
+      } catch {
+        return null;
+      }
+    }
+
+    try {
+      const newEtag = response.headers.get('etag');
+      if (newEtag) localStorage.setItem(ETAG_KEY, newEtag);
+    } catch {
+      /* ignore */
+    }
+
+    const releases = (await response.json()) as any[];
+    if (!Array.isArray(releases)) return null;
+
+    // solo rilasci con tag semver (v1.2.3), escludendo draft e prerelease
+    const candidates = releases
+      .filter((r) => !r.draft && !r.prerelease)
+      .map((r) => ({
+        release: r,
+        version: parseVersion(String(r.tag_name || '')),
+      }))
+      .filter((x) => x.version !== null)
+      .sort((a, b) => compareVersions(a.version!, b.version!));
+
+    const best = candidates[candidates.length - 1];
+    if (!best) return null;
+
+    const asset = (best.release.assets || []).find(
+      (a: any) => a.name?.toLowerCase().endsWith('.apk')
+    );
+
+    const remote: RemoteVersion = {
+      version: best.version!,
+      versionCode: versionToCode(best.version!),
+      apkUrl: asset?.browser_download_url || `${RELEASE_BASE}/Sea-POS.apk`,
+      publishedAt: best.release.published_at,
+      notes: (best.release.body || '').split('\n').slice(0, 4).join(' ').trim(),
+      size: asset?.size,
     };
+
+    try {
+      localStorage.setItem(LAST_RELEASE_KEY, JSON.stringify(remote));
+    } catch {
+      /* ignore */
+    }
+
+    return remote;
   } catch (e) {
-    console.warn('AppUpdater: impossibile leggere version.json:', e);
+    console.warn('AppUpdater: impossibile leggere le release:', e);
     return null;
   }
+}
+
+/** "v1.2.3" → "1.2.3" */
+export function parseVersion(tag: string): string | null {
+  const m = tag.trim().match(/^v?(\d+)\.(\d+)\.(\d+)$/);
+  if (!m) return null;
+  return `${m[1]}.${m[2]}.${m[3]}`;
+}
+
+/** "1.2.3" → 10203 (stesso calcolo del versionCode Android) */
+export function versionToCode(version: string): number {
+  const [major, minor, patch] = version.split('.').map((n) => parseInt(n, 10) || 0);
+  return major * 10000 + minor * 100 + patch;
+}
+
+/** confronto semver */
+export function compareVersions(a: string, b: string): number {
+  const pa = a.split('.').map((n) => parseInt(n, 10) || 0);
+  const pb = b.split('.').map((n) => parseInt(n, 10) || 0);
+  for (let i = 0; i < 3; i++) {
+    if ((pa[i] || 0) !== (pb[i] || 0)) return (pa[i] || 0) - (pb[i] || 0);
+  }
+  return 0;
 }
 
 /**
