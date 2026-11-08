@@ -17,6 +17,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import cors from 'cors';
 import os from 'os';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -27,6 +28,36 @@ const PORT = process.env.SYNC_PORT || 3001;
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
+
+// ═══════════════════════════════════════════════════════════════════
+// 💾 Persistenza su disco (lo stato non si perde se il server si riavvia)
+// ═══════════════════════════════════════════════════════════════════
+const DATA_DIR = path.join(__dirname, '..', 'server-data');
+const STATE_FILE = path.join(DATA_DIR, 'state.json');
+
+function loadState() {
+  try {
+    if (!fs.existsSync(STATE_FILE)) return null;
+    const raw = fs.readFileSync(STATE_FILE, 'utf-8');
+    return JSON.parse(raw);
+  } catch (e) {
+    console.error('⚠️ Impossibile leggere lo stato salvato:', e.message);
+    return null;
+  }
+}
+
+let saveTimer = null;
+function saveState() {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+      fs.writeFileSync(STATE_FILE, JSON.stringify(dbState, null, 2), 'utf-8');
+    } catch (e) {
+      console.error('⚠️ Impossibile salvare lo stato:', e.message);
+    }
+  }, 500);
+}
 
 // ═══════════════════════════════════════════════════════════════════
 // 📊 قاعدة البيانات في الذاكرة (Memory)
@@ -41,6 +72,13 @@ let dbState = {
   lastUpdate: Date.now(),
   lastUpdateBy: 'server',
 };
+
+// Carica lo stato salvato (se esiste)
+const savedState = loadState();
+if (savedState) {
+  dbState = { ...dbState, ...savedState };
+  console.log('💾 Stato caricato da:', STATE_FILE);
+}
 
 let connectedClients = new Map(); // ws -> { id, name, role, joinedAt }
 
@@ -65,6 +103,7 @@ app.post('/api/state', (req, res) => {
     return res.status(400).json({ success: false, error: 'No data provided' });
   }
   dbState = { ...data, lastUpdate: Date.now(), lastUpdateBy: clientName || clientId };
+  saveState();
   // بث للجميع عبر WS
   broadcastSync('state_update', dbState, clientId);
   res.json({ success: true, timestamp: dbState.lastUpdate });
@@ -169,6 +208,7 @@ function handleMessage(ws, clientId, msg) {
       // تحديث الحالة الكاملة
       if (data) {
         dbState = { ...data, lastUpdate: Date.now(), lastUpdateBy: clientId };
+        saveState();
         broadcastExcept(ws, 'state_update', dbState);
         console.log(`🔄 [SYNC] State updated by ${clientId}`);
       }
@@ -180,6 +220,7 @@ function handleMessage(ws, clientId, msg) {
         dbState[data.key] = data.value;
         dbState.lastUpdate = Date.now();
         dbState.lastUpdateBy = clientId;
+        saveState();
         broadcastExcept(ws, 'partial_update', data);
         console.log(`🔄 [SYNC] Partial update: ${data.key} by ${clientId}`);
       }

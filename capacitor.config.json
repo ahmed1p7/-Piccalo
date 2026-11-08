@@ -1,0 +1,19 @@
+{
+  "appId": "com.sea.pos",
+  "appName": "Sea POS",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1200,
+      "backgroundColor": "#070c18",
+      "showSpinner": false
+    }
+  }
+}

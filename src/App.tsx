@@ -20,9 +20,17 @@ const MainAppContent: React.FC = () => {
   const { currentUser, activeView } = useApp();
   const [showUpdateNotification, setShowUpdateNotification] = useState(true);
 
-  // If not logged in, show initial login screen
+  // Se non si è loggati: schermata di login + notifica aggiornamenti
+  // (l'avviso di aggiornamento deve comparire anche senza login)
   if (!currentUser) {
-    return <LoginScreen />;
+    return (
+      <>
+        <LoginScreen />
+        {showUpdateNotification && (
+          <UpdateNotification onClose={() => setShowUpdateNotification(false)} />
+        )}
+      </>
+    );
   }
 
   return (

@@ -1,217 +1,506 @@
-// ═══════════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════
 // 🔥 Sea POS - Firebase Sync Manager
-// ═══════════════════════════════════════════════════════════════════════════════
-// تزامن تلقائي بين الأجهزة عبر Firebase Firestore
-// - لا حاجة لسيرفر محلي
-// - لا حاجة لـ IP أو إعداد يدوي
-// - يعمل من أي مكان (Wi-Fi أو بيانات الهاتف)
-// - تزامن فوري تلقائي
-// ═══════════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════
+// Orchestratore della sincronizzazione cloud tra N dispositivi.
+//
+// Il trasporto (Realtime Database o Firestore) è intercambiabile: qui
+// vive la logica comune — merge a 3 vie, base condivisa, code offline,
+// presenza dei dispositivi.
+//
+//   base   = ultimo stato sincronizzato con il cloud (salvato sul device)
+//   local  = stato attuale di QUESTO dispositivo
+//   remote = stato attuale nel cloud
+//
+// Così due telefoni che lavorano in parallelo NON si sovrascrivono.
+// ═══════════════════════════════════════════════════════════════════
 
-import { initializeApp, type FirebaseApp } from 'firebase/app';
+import { getEffectiveConfig, getDevice, type DeviceInfo } from './SyncConfig';
 import {
-  getFirestore,
-  doc,
-  setDoc,
-  onSnapshot,
-  Unsubscribe,
-  enableNetwork,
-  disableNetwork,
-} from 'firebase/firestore';
-import { getAuth, signInAnonymously, User } from 'firebase/auth';
-import type { Firestore } from 'firebase/firestore';
-
-// ═══ قراءة الإعدادات من متغيرات البيئة ═══
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '',
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || '',
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '',
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || '',
-};
+  mergeCollection,
+  isDeepEqual,
+  SYNC_COLLECTIONS,
+  type SyncCollection,
+} from './merge';
+import {
+  RealtimeDbTransport,
+  type CloudState,
+  type CollectionPayload,
+  type SyncTransport,
+} from './transports/RealtimeDbTransport';
+import { FirestoreTransport } from './transports/FirestoreTransport';
 
 export type SyncStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
 
-type SyncListener = (msg: any) => void;
-type StatusListener = (status: SyncStatus, clientsCount: number) => void;
+export type SyncEvent = {
+  type: 'remote_change';
+  collection: SyncCollection;
+  data: any;
+  timestamp: number;
+};
+
+type SyncListener = (event: SyncEvent) => void;
+type StatusListener = (status: SyncStatus, devicesCount: number) => void;
+
+const BASE_STORAGE_KEY = 'sea_pos_sync_base_v1';
+const DIRTY_STORAGE_KEY = 'sea_pos_sync_dirty_v1';
+const DEVICE_TIMEOUT_MS = 1000 * 60 * 60 * 24 * 14; // 14 giorni
 
 class FirebaseSyncManager {
-  private app: FirebaseApp | null = null;
-  private db: Firestore | null = null;
+  private transport: SyncTransport | null = null;
   private status: SyncStatus = 'disconnected';
-  private listeners: Set<SyncListener> = new Set();
-  private statusListeners: Set<StatusListener> = new Set();
-  private unsubscribe: Unsubscribe | null = null;
-  private currentUser: User | null = null;
-  private lastUpdate: number = 0;
-  private isLocalUpdate = false; // يمنع الحلقات اللانهائية
+  private listeners = new Set<SyncListener>();
+  private statusListeners = new Set<StatusListener>();
+  private device: DeviceInfo = getDevice();
 
-  // ═══ الحالة ═══
+  /** base = ultimo stato sincronizzato con il cloud (per il merge 3-way) */
+  private base: Partial<Record<SyncCollection, any>> = {};
+  /** mirror dello stato locale corrente */
+  private local: Partial<Record<SyncCollection, any>> = {};
+  /** collezioni modificate localmente e non ancora confermate dal cloud */
+  private dirty = new Set<SyncCollection>();
+
+  private devices: DeviceInfo[] = [];
+  private firstSnapshotDone = false;
+  private heartbeatTimer: any = null;
+  private pendingWrites = 0;
+  private transportName = '';
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 📦 Persistenza della base (per non perdere il merge dopo un reload)
+  // ═══════════════════════════════════════════════════════════════════
+  private loadBase() {
+    try {
+      const raw = localStorage.getItem(BASE_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.collections) this.base = parsed.collections;
+      }
+      const dirtyRaw = localStorage.getItem(DIRTY_STORAGE_KEY);
+      if (dirtyRaw) {
+        const parsed = JSON.parse(dirtyRaw);
+        if (Array.isArray(parsed)) this.dirty = new Set(parsed);
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  private saveBase() {
+    try {
+      localStorage.setItem(
+        BASE_STORAGE_KEY,
+        JSON.stringify({ collections: this.base, updatedAt: Date.now() })
+      );
+    } catch {
+      /* ignore */
+    }
+  }
+
+  private _persistDirty() {
+    try {
+      localStorage.setItem(
+        DIRTY_STORAGE_KEY,
+        JSON.stringify(Array.from(this.dirty))
+      );
+    } catch {
+      /* ignore */
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 🔌 Stato
+  // ═══════════════════════════════════════════════════════════════════
   getStatus(): SyncStatus {
     return this.status;
   }
 
   isConfigured(): boolean {
-    return !!(firebaseConfig.apiKey && firebaseConfig.projectId);
+    return !!getEffectiveConfig();
   }
 
-  getCurrentUser(): User | null {
-    return this.currentUser;
+  getTransportName(): string {
+    return this.transportName;
   }
 
-  // ═══ الاتصال التلقائي (بدون إعداد يدوي) ═══
+  getDeviceInfo(): DeviceInfo {
+    return this.device;
+  }
+
+  refreshDevice() {
+    this.device = getDevice();
+  }
+
+  getDevices(): DeviceInfo[] {
+    return this.devices;
+  }
+
+  getPendingWrites(): number {
+    return this.pendingWrites;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 🔗 Connessione
+  // ═══════════════════════════════════════════════════════════════════
   async connect(): Promise<boolean> {
-    if (!this.isConfigured()) {
-      console.warn('🔥 Firebase: لم يتم الإعداد. ضع VITE_FIREBASE_* في .env');
-      this._setStatus('error');
-      return false;
+    if (this.status === 'connected' || this.status === 'connecting') {
+      return this.status === 'connected';
     }
 
-    if (this.status === 'connected' || this.status === 'connecting') {
-      return true;
+    const config = getEffectiveConfig();
+    if (!config) {
+      console.warn('🔥 Sync: nessuna configurazione. Incolla il codice di sincronizzazione.');
+      this._setStatus('error');
+      return false;
     }
 
     this._setStatus('connecting');
+    this.loadBase();
 
-    try {
-      // 1) تهيئة Firebase
-      if (!this.app) {
-        this.app = initializeApp(firebaseConfig, 'sea-pos');
-        this.db = getFirestore(this.app);
-      }
+    // ── scelta del trasporto ──
+    // Realtime Database se c'è un databaseURL, altrimenti Firestore.
+    const transport: SyncTransport = config.databaseURL
+      ? new RealtimeDbTransport(config as any)
+      : new FirestoreTransport(config as any);
 
-      // 2) تسجيل دخول مجهول (لا يحتاج حساب)
-      const auth = getAuth(this.app);
-      try {
-        const userCredential = await signInAnonymously(auth);
-        this.currentUser = userCredential.user;
-        console.log('🔥 Firebase: تم تسجيل الدخول كمجهول:', this.currentUser.uid);
-      } catch (authErr: any) {
-        // لو Auth غير مفعّل، نكمل بدونه (الـ Firestore سيعمل)
-        console.warn('🔥 Firebase Auth غير مفعّل - نكمل بدونه:', authErr.message);
-      }
+    this.transportName = transport.name;
+    this.transport = transport;
 
-      // 3) الاستماع لتغييرات المستند المشترك
-      const docRef = doc(this.db!, 'sea_pos', 'shared_state');
-      
-      this.unsubscribe = onSnapshot(
-        docRef,
-        (docSnapshot) => {
-          if (docSnapshot.exists()) {
-            const data = docSnapshot.data();
-            const serverTimestamp = data.lastUpdate || 0;
-
-            // تجاهل تحديثاتنا الخاصة (منع الحلقات)
-            if (this.isLocalUpdate || serverTimestamp <= this.lastUpdate) {
-              this.isLocalUpdate = false;
-              return;
-            }
-
-            console.log('🔥 Firebase: استلام تحديث من جهاز آخر');
-            this._notifyListeners({
-              type: 'state_update',
-              data: data.state || data,
-              timestamp: serverTimestamp,
-            });
-          } else {
-            // المستند غير موجود - ربما أول جهاز
-            console.log('🔥 Firebase: المستند غير موجود بعد - بانتظار أول تحديث');
-          }
-        },
-        (err) => {
-          console.error('🔥 Firebase: خطأ في الاستماع:', err.message);
-          this._setStatus('error');
-        }
-      );
-
-      this._setStatus('connected');
-      console.log('🔥 Firebase: متصل! التزامن نشط');
-      return true;
-    } catch (error: any) {
-      console.error('🔥 Firebase: فشل الاتصال:', error.message);
+    const ok = await transport.connect();
+    if (!ok) {
       this._setStatus('error');
       return false;
     }
+
+    transport.subscribe(
+      (state) => this._handleState(state),
+      () => this._setStatus('error')
+    );
+
+    await this._publishDevice();
+    this._startHeartbeat();
+    this._setStatus('connected');
+    return true;
   }
 
-  // ═══ إرسال تحديث لكل الأجهزة ═══
-  async sendUpdate(data: any): Promise<boolean> {
-    if (!this.db || this.status !== 'connected') {
-      return false;
-    }
-
-    try {
-      this.isLocalUpdate = true;
-      this.lastUpdate = Date.now();
-
-      const docRef = doc(this.db!, 'sea_pos', 'shared_state');
-      await setDoc(docRef, {
-        state: data,
-        lastUpdate: this.lastUpdate,
-        updatedBy: this.currentUser?.uid || 'unknown',
-        updatedAt: new Date().toISOString(),
-      }, { merge: false });
-
-      console.log('🔥 Firebase: تم إرسال التحديث');
-      return true;
-    } catch (error: any) {
-      console.error('🔥 Firebase: فشل الإرسال:', error.message);
-      this.isLocalUpdate = false;
-      return false;
-    }
-  }
-
-  // ═══ قطع الاتصال ═══
   disconnect() {
-    if (this.unsubscribe) {
-      this.unsubscribe();
-      this.unsubscribe = null;
-    }
+    this.transport?.disconnect();
+    this.transport = null;
+    this._stopHeartbeat();
     this._setStatus('disconnected');
-    console.log('🔥 Firebase: تم قطع الاتصال');
   }
 
-  // ═══ إعادة الاتصال (في حالة الانقطاع) ═══
   async reconnect(): Promise<boolean> {
     this.disconnect();
+    this.firstSnapshotDone = false;
     return this.connect();
   }
 
-  // ═══ Listeners ═══
-  addListener(listener: SyncListener) {
-    this.listeners.add(listener);
+  // ═══════════════════════════════════════════════════════════════════
+  // 📨 API per l'app
+  // ═══════════════════════════════════════════════════════════════════
+
+  /**
+   * Notifica al manager che lo stato locale di una collezione è cambiato.
+   * Se il dato è identico a quello già presente nel cloud non viene
+   * scritto nulla (evita loop e consumi inutili).
+   */
+  notifyLocalChange(collection: SyncCollection, data: any) {
+    this.local[collection] = data;
+
+    // ⛔ Finché non arriva il primo stato dal cloud NON si scrive nulla:
+    //    altrimenti un telefono nuovo sovrascriverebbe i dati del
+    //    ristorante con i suoi dati locali prima ancora di averli ricevuti.
+    if (!this.firstSnapshotDone) {
+      this.dirty.add(collection);
+      this._persistDirty();
+      return;
+    }
+
+    if (this.status !== 'connected') {
+      this.dirty.add(collection);
+      this._persistDirty();
+      return;
+    }
+
+    if (isDeepEqual(data, this.base[collection])) {
+      this.dirty.delete(collection);
+      this._persistDirty();
+      return;
+    }
+
+    this.dirty.add(collection);
+    this._persistDirty();
+    void this._pushCollection(collection, data);
   }
 
-  removeListener(listener: SyncListener) {
-    this.listeners.delete(listener);
+  /** Push immediato di tutte le collezioni "sporche" */
+  async flush(): Promise<void> {
+    if (this.status !== 'connected') return;
+    for (const collection of Array.from(this.dirty)) {
+      const data = this.local[collection];
+      if (data === undefined) continue;
+      await this._pushCollection(collection, data);
+    }
   }
 
-  addStatusListener(listener: StatusListener) {
-    this.statusListeners.add(listener);
+  /** Invia TUTTE le collezioni locali al cloud */
+  async pushAll(): Promise<boolean> {
+    if (!this.transport) return false;
+    for (const collection of SYNC_COLLECTIONS) {
+      const data = this.local[collection];
+      if (data === undefined) continue;
+      await this._pushCollection(collection, data);
+    }
+    return true;
   }
 
-  removeStatusListener(listener: StatusListener) {
-    this.statusListeners.delete(listener);
+  /** Rilegge lo stato dal cloud e lo applica (pulsante "Ripristina") */
+  async forcePull(): Promise<boolean> {
+    if (!this.transport) return false;
+    try {
+      const transport = this.transport as any;
+      let state: CloudState | null = null;
+
+      if (typeof transport.readState === 'function') {
+        state = await transport.readState();
+      } else {
+        // il Realtime DB non ha readState: si ascolta il prossimo stato
+        return new Promise((resolve) => {
+          const before = new Set(this.devices.map((d) => d.id));
+          const timer = setTimeout(() => resolve(false), 3000);
+          const listener = (status: SyncStatus) => {
+            if (status === 'connected' && this.devices.length >= before.size) {
+              clearTimeout(timer);
+              resolve(true);
+            }
+          };
+          this.addStatusListener(listener);
+          void this.flush();
+        });
+      }
+
+      if (!state) return false;
+      this._applyState(state, true);
+      return true;
+    } catch (error: any) {
+      console.warn('🔥 Sync: forcePull fallito:', error?.message);
+      return false;
+    }
   }
 
-  private _notifyListeners(msg: any) {
-    this.listeners.forEach((l) => {
+  // ═══════════════════════════════════════════════════════════════════
+  // 🔧 Interno
+  // ═══════════════════════════════════════════════════════════════════
+  private async _publishDevice() {
+    if (!this.transport) return;
+    this.device = getDevice();
+    try {
+      await this.transport.writeDevice(this.device);
+    } catch (err: any) {
+      console.warn('🔥 Sync: impossibile pubblicare il dispositivo:', err?.message);
+    }
+  }
+
+  private _startHeartbeat() {
+    this._stopHeartbeat();
+    this.heartbeatTimer = setInterval(() => {
+      void this._publishDevice();
+    }, 60_000);
+  }
+
+  private _stopHeartbeat() {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
+  }
+
+  private async _pushCollection(collection: SyncCollection, data: any) {
+    if (!this.transport) return;
+
+    const payload: CollectionPayload = {
+      data,
+      updatedAt: Date.now(),
+      deviceId: this.device.id,
+    };
+
+    this.pendingWrites++;
+    try {
+      await this.transport.writeCollection(collection, payload);
+      this.base[collection] = data;
+      this.dirty.delete(collection);
+      this._persistDirty();
+      this.saveBase();
+    } catch (err: any) {
+      console.warn('🔥 Sync: push fallito (verrà ritentato):', err?.message);
+    } finally {
+      this.pendingWrites = Math.max(0, this.pendingWrites - 1);
+    }
+  }
+
+  /** Arriva un nuovo stato dal cloud */
+  private _handleState(state: CloudState) {
+    this._applyState(state, false);
+  }
+
+  private _applyState(state: CloudState, force: boolean) {
+    if (!state) return;
+
+    // ── Dispositivi connessi ──
+    if (state.devices) {
+      const now = Date.now();
+      this.devices = Object.values(state.devices)
+        .filter((d: any) => d && typeof d.id === 'string')
+        .filter((d: any) => !d.lastSeen || now - d.lastSeen < DEVICE_TIMEOUT_MS)
+        .sort((a: any, b: any) => (b.lastSeen || 0) - (a.lastSeen || 0)) as DeviceInfo[];
+      this._notifyStatus();
+    }
+
+    const remoteCollections = state.collections || {};
+
+    // ── Primo stato: adozione dei dati esistenti ──
+    if (!this.firstSnapshotDone) {
+      this.firstSnapshotDone = true;
+      const hasRemoteData = Object.keys(remoteCollections).length > 0;
+
+      if (!hasRemoteData) {
+        // il cloud è vuoto → questo dispositivo è il primo: pubblica i suoi dati
+        void this._seedFromLocal();
+        return;
+      }
+
+      for (const collection of SYNC_COLLECTIONS) {
+        const payload = remoteCollections[collection];
+        if (!payload) continue;
+
+        const remoteData = payload.data;
+        const baseData = this.base[collection];
+        const localData = this.local[collection];
+
+        // Questo device aveva già sincronizzato e ha modifiche locali
+        // non ancora inviate → si tiene il merge (niente dati persi).
+        if (
+          baseData !== undefined &&
+          localData !== undefined &&
+          !isDeepEqual(localData, baseData)
+        ) {
+          const merged = mergeCollection(collection, baseData, localData, remoteData);
+          this.base[collection] = merged;
+          this.local[collection] = merged;
+          void this._pushCollection(collection, merged);
+          if (!isDeepEqual(merged, localData)) {
+            this._emitRemoteChange(collection, merged);
+          }
+          this.dirty.delete(collection);
+          continue;
+        }
+
+        // Device nuovo → adotta i dati già presenti nel cloud
+        this.base[collection] = remoteData;
+        this.local[collection] = remoteData;
+        this._emitRemoteChange(collection, remoteData);
+        this.dirty.delete(collection);
+      }
+
+      this.saveBase();
+      return;
+    }
+
+    // ── Stati successivi: merge 3-way ──
+    for (const collection of SYNC_COLLECTIONS) {
+      const payload = remoteCollections[collection];
+      if (!payload) continue;
+
+      const remoteData = payload.data;
+      const baseData = this.base[collection];
+      const localData =
+        this.local[collection] !== undefined ? this.local[collection] : remoteData;
+
+      // nessuna modifica locale → adotta il remoto
+      if (baseData === undefined || isDeepEqual(localData, baseData)) {
+        if (!isDeepEqual(localData, remoteData)) {
+          this.base[collection] = remoteData;
+          this.local[collection] = remoteData;
+          this._emitRemoteChange(collection, remoteData);
+        }
+        continue;
+      }
+
+      // c'è una modifica locale → merge
+      const merged = mergeCollection(collection, baseData, localData, remoteData);
+
+      if (!isDeepEqual(merged, remoteData)) {
+        // il cloud deve essere aggiornato con il risultato del merge
+        this.base[collection] = merged;
+        void this._pushCollection(collection, merged);
+      } else {
+        this.base[collection] = merged;
+      }
+
+      if (!isDeepEqual(merged, localData)) {
+        this.local[collection] = merged;
+        this._emitRemoteChange(collection, merged);
+      }
+    }
+  }
+
+  /**
+   * Primo dispositivo: pubblica lo stato locale nel cloud.
+   */
+  private async _seedFromLocal() {
+    for (const collection of SYNC_COLLECTIONS) {
+      const data = this.local[collection];
+      if (data === undefined) continue;
+      await this._pushCollection(collection, data);
+    }
+  }
+
+  private _emitRemoteChange(collection: SyncCollection, data: any) {
+    this.listeners.forEach((listener) => {
       try {
-        l(msg);
+        listener({
+          type: 'remote_change',
+          collection,
+          data,
+          timestamp: Date.now(),
+        });
       } catch (e) {
         console.error('🔥 Sync listener error:', e);
       }
     });
   }
 
-  private _setStatus(status: SyncStatus) {
-    this.status = status;
+  private _notifyStatus() {
     this.statusListeners.forEach((l) => {
       try {
-        l(status, 1); // clientsCount غير متوفر في Firebase (مجرد تقدير)
-      } catch (e) {}
+        l(this.status, this.devices.length);
+      } catch (e) {
+        /* noop */
+      }
     });
+  }
+
+  private _setStatus(status: SyncStatus) {
+    this.status = status;
+    this._notifyStatus();
+  }
+
+  addListener(listener: SyncListener): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  removeListener(listener: SyncListener) {
+    this.listeners.delete(listener);
+  }
+
+  addStatusListener(listener: StatusListener): () => void {
+    this.statusListeners.add(listener);
+    return () => this.statusListeners.delete(listener);
+  }
+
+  removeStatusListener(listener: StatusListener) {
+    this.statusListeners.delete(listener);
   }
 }
 

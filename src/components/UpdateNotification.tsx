@@ -8,30 +8,39 @@ import {
   RefreshCw,
   X,
   Zap,
+  Smartphone,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface UpdateNotificationProps {
   onClose: () => void;
 }
 
+/** 📢 Notifica "Aggiornamento disponibile" con installazione diretta */
 export const UpdateNotification: React.FC<UpdateNotificationProps> = ({ onClose }) => {
   const [status, setStatus] = useState(updateManager.getStatus());
-  const [info, setInfo] = useState<any>(null);
-  const [isApplying, setIsApplying] = useState(false);
+  const [info, setInfo] = useState<any>(updateManager.getUpdateInfo());
+  const [progress, setProgress] = useState<number>(0);
 
   useEffect(() => {
     const listener = (newStatus: any, newInfo: any) => {
       setStatus(newStatus);
       setInfo(newInfo);
+      if (newStatus !== 'downloading') setProgress(0);
     };
     updateManager.addListener(listener);
-    return () => updateManager.removeListener(listener);
+
+    const progressListener = (p: any) => setProgress(p?.percent ?? 0);
+    updateManager.addProgressListener(progressListener);
+
+    return () => {
+      updateManager.removeListener(listener);
+      updateManager.removeProgressListener(progressListener);
+    };
   }, []);
 
   const handleApply = async () => {
-    setIsApplying(true);
     await updateManager.applyUpdate();
-    setIsApplying(false);
   };
 
   const handleCheckNow = async () => {
@@ -39,55 +48,83 @@ export const UpdateNotification: React.FC<UpdateNotificationProps> = ({ onClose 
     await updateManager.checkForUpdates();
   };
 
-  // عرض فقط لو في تحديث متوفر
-  if (status !== 'update-available') return null;
+  if (status !== 'update-available' && status !== 'downloading') return null;
+
+  const isDownloading = status === 'downloading';
 
   return (
-    <div className="fixed top-4 right-4 z-50 max-w-sm w-full sm:w-96 animate-slideIn">
+    <div className="fixed inset-x-3 top-3 z-[60] sm:inset-x-auto sm:right-4 sm:w-96 animate-slideIn">
       <div className="bg-slate-900 border-2 border-cyan-500/40 rounded-2xl shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="bg-gradient-to-r from-cyan-600 to-cyan-700 px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <ArrowDownCircle className="w-5 h-5 text-white" />
             <h3 className="font-bold text-white text-sm">
-              Aggiornamento Disponibile!
+              Aggiornamento disponibile
             </h3>
           </div>
-          <button
-            onClick={onClose}
-            className="text-white/80 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          {!isDownloading && (
+            <button
+              onClick={onClose}
+              className="text-white/80 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         {/* Body */}
         <div className="p-4 space-y-3">
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center flex-shrink-0">
-              <Zap className="w-5 h-5 text-cyan-400" />
+              {isDownloading ? (
+                <Loader2 className="w-5 h-5 text-cyan-400 animate-spin" />
+              ) : (
+                <Zap className="w-5 h-5 text-cyan-400" />
+              )}
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-sm font-bold text-white">
-                Nuova versione da GitHub
+                {isDownloading
+                  ? 'Download in corso...'
+                  : `Nuova versione ${info?.version ?? ''}`}
               </div>
               <div className="text-xs text-slate-400 mt-0.5">
-                {info?.shortSha ? `Commit: ${info.shortSha}` : 'Versione nuova'}
+                {info?.installedVersion
+                  ? `Versione installata: ${info.installedVersion}`
+                  : 'Aggiornamento dal repository GitHub'}
               </div>
             </div>
           </div>
 
-          {info?.commitMessage && (
-            <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300 line-clamp-2">
-              {info.commitMessage}
+          {info?.notes && (
+            <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300">
+              {info.notes}
             </div>
           )}
 
-          {info?.commitDate && (
+          {/* Progress bar */}
+          {isDownloading && (
+            <div className="space-y-1.5">
+              <div className="h-2 w-full rounded-full bg-slate-800 overflow-hidden">
+                <div
+                  className="h-full bg-gradient-to-r from-cyan-500 to-sky-400 transition-all duration-300"
+                  style={{ width: `${Math.max(progress, 3)}%` }}
+                />
+              </div>
+              <div className="text-[11px] text-slate-400 flex justify-between">
+                <span>Scaricamento dell'APK</span>
+                <span className="font-mono">{progress}%</span>
+              </div>
+            </div>
+          )}
+
+          {info?.publishedAt && !isDownloading && (
             <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
               <RefreshCw className="w-3 h-3" />
               <span>
-                {new Date(info.commitDate).toLocaleString('it-IT', {
+                Pubblicato il{' '}
+                {new Date(info.publishedAt).toLocaleString('it-IT', {
                   day: '2-digit',
                   month: '2-digit',
                   hour: '2-digit',
@@ -96,46 +133,50 @@ export const UpdateNotification: React.FC<UpdateNotificationProps> = ({ onClose 
               </span>
             </div>
           )}
+
+          <div className="flex items-start gap-2 p-2.5 rounded-xl bg-emerald-950/30 border border-emerald-700/30">
+            <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+            <div className="text-[11px] text-emerald-200/90">
+              L&apos;app si aggiorna <strong>sopra</strong> quella già installata:
+              i dati e gli utenti restano intatti.
+            </div>
+          </div>
         </div>
 
         {/* Actions */}
-        <div className="px-4 pb-4 flex gap-2">
-          <button
-            onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition-colors"
-          >
-            Più tardi
-          </button>
-          <button
-            onClick={handleApply}
-            disabled={isApplying}
-            className="flex-1 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
-          >
-            {isApplying ? (
-              <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                Aggiornamento...
-              </>
-            ) : (
-              <>
-                <Download className="w-3.5 h-3.5" />
-                Aggiorna ora
-              </>
-            )}
-          </button>
-        </div>
+        {!isDownloading && (
+          <div className="px-4 pb-4 flex gap-2">
+            <button
+              onClick={onClose}
+              className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition-colors"
+            >
+              Più tardi
+            </button>
+            <button
+              onClick={handleApply}
+              className="flex-1 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Installa ora
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-// ════ مكون لإظهار زر فحص التحديثات في الإعدادات ════
+// ════ componente per la pagina impostazioni ════
 export const UpdateChecker: React.FC = () => {
   const [status, setStatus] = useState(updateManager.getStatus());
+  const [info, setInfo] = useState<any>(updateManager.getUpdateInfo());
   const [isChecking, setIsChecking] = useState(false);
 
   useEffect(() => {
-    const listener = (newStatus: any) => setStatus(newStatus);
+    const listener = (newStatus: any, newInfo: any) => {
+      setStatus(newStatus);
+      setInfo(newInfo);
+    };
     updateManager.addListener(listener);
     return () => updateManager.removeListener(listener);
   }, []);
@@ -147,36 +188,40 @@ export const UpdateChecker: React.FC = () => {
   };
 
   return (
-    <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800">
+    <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800 gap-3">
       <div className="flex items-center gap-3">
         {status === 'update-available' ? (
           <ArrowDownCircle className="w-5 h-5 text-cyan-400" />
         ) : status === 'up-to-date' ? (
           <CheckCircle2 className="w-5 h-5 text-emerald-400" />
         ) : (
-          <RefreshCw className={`w-5 h-5 text-slate-400 ${isChecking ? 'animate-spin' : ''}`} />
+          <Smartphone className="w-5 h-5 text-slate-400" />
         )}
         <div>
           <div className="text-sm font-semibold text-white">
             {status === 'update-available'
-              ? 'Aggiornamento disponibile'
+              ? `Aggiornamento disponibile (${info?.version ?? ''})`
               : status === 'up-to-date'
               ? 'App aggiornata'
               : status === 'checking'
               ? 'Controllo...'
-              : 'Errore connessione'}
+              : status === 'downloading'
+              ? 'Download in corso...'
+              : 'Verifica aggiornamenti'}
           </div>
           <div className="text-[11px] text-slate-400">
-            Versione attuale: {updateManager.getCurrentVersion()}
+            {info?.installedVersion
+              ? `Versione installata: ${info.installedVersion}`
+              : 'Controlla se c\'è una versione più recente su GitHub'}
           </div>
         </div>
       </div>
       <button
         onClick={handleCheck}
         disabled={isChecking}
-        className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-xs font-semibold text-slate-200 flex items-center gap-1.5 transition-colors"
+        className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-xs font-semibold text-slate-200 flex items-center gap-1.5 transition-colors whitespace-nowrap"
       >
-        <RefreshCw className={`w-3.5 h-3.5 ${isChecking ? 'animate-spin' : ''}`} />
+        <RefreshCw className={`w-3 h-3 ${isChecking ? 'animate-spin' : ''}`} />
         Verifica
       </button>
     </div>

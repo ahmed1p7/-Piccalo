@@ -30,6 +30,7 @@ export const Navbar: React.FC = () => {
     lowStockItems,
     tables,
     wifiConnected,
+    syncDevicesCount,
   } = useApp();
 
   const [showBackupModal, setShowBackupModal] = useState(false);
@@ -174,7 +175,7 @@ export const Navbar: React.FC = () => {
               {/* 🆕 Sync Button - تزامن الأجهزة */}
               <button
                 onClick={() => setShowSyncModal(true)}
-                title="Sincronizzazione dispositivi (Wi-Fi LAN)"
+                title="Sincronizzazione cloud tra i dispositivi"
                 className={`px-2.5 py-1.5 rounded-lg border text-xs flex items-center gap-1.5 transition-colors ${
                   wifiConnected
                     ? 'border-cyan-500/20 bg-cyan-950/30 text-cyan-400 hover:bg-cyan-950/50'
@@ -185,7 +186,9 @@ export const Navbar: React.FC = () => {
                   <path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m9 9c-2.5-2.5-3.5-5.5-3.5-9s1-6.5 3.5-9m0 18c2.5-2.5 3.5-5.5 3.5-9s-1-6.5-3.5-9"/>
                 </svg>
                 <span className="hidden xl:inline text-[11px] font-medium font-mono">
-                  {wifiConnected ? 'Sync ON' : 'Sync'}
+                  {wifiConnected
+                    ? `Sync ON · ${Math.max(syncDevicesCount, 1)}`
+                    : 'Sync'}
                 </span>
               </button>
 
