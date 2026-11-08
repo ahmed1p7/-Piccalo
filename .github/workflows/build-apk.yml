@@ -95,6 +95,7 @@ jobs:
           VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
           VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_FIREBASE_DATABASE_URL: ${{ secrets.VITE_FIREBASE_DATABASE_URL }}
 
       - name: 🔄 Sync Capacitor (web assets → Android)
         run: npx cap sync android
@@ -106,6 +107,27 @@ jobs:
           ./gradlew assembleRelease --no-daemon --stacktrace
         env:
           CI: false
+
+      # ── Guardia: senza questo controllo una build senza configurazione
+      #    Firebase passerebbe inosservata (l'app resterebbe scollegata).
+      - name: 🔍 Verifica configurazione Firebase nella build
+        if: always()
+        run: |
+          set -e
+          echo "🔎 controllo che la build contenga la configurazione Firebase…"
+          if grep -rq "firebasedatabase.app" dist/assets/ ; then
+            echo "✅ Realtime Database URL presente nella build"
+          else
+            echo "❌ ERRORE: l'URL del Realtime Database NON è nella build!"
+            echo "   → controlla il secret VITE_FIREBASE_DATABASE_URL"
+            exit 1
+          fi
+          if grep -rq "sea-restaurant" dist/assets/ ; then
+            echo "✅ projectId sea-restaurant presente nella build"
+          else
+            echo "❌ ERRORE: projectId non trovato nella build"
+            exit 1
+          fi
 
       - name: 📤 Collect APK + version.json
         id: collect
