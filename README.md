@@ -124,13 +124,19 @@ npm test
 ## 🔄 Aggiornamenti dell'app (in-app)
 
 Ogni volta che il repository GitHub viene aggiornato, il CI ricostruisce l'APK e
-pubblica `version.json` + `Sea-POS.apk` nel rilascio **latest**.
+pubblica un **rilascio con numero di versione** (es. `v1.1.5`) con `Sea-POS.apk`
++ `version.json`, più il rilascio **latest** come indirizzo stabile.
 
-L'app controlla quel file **ogni 3 minuti** (e all'avvio): se trova una versione
-più recente di quella installata compare l'avviso **"Aggiornamento disponibile"**
-con un pulsante **"Installa ora"** → l'app scarica l'APK e apre l'installatore
-di Android. Poiché l'APK è firmato con la stessa chiave, si installa **sopra**
-quello già presente: **nessun dato perso**.
+L'app interroga l'**API di GitHub** (che invia le intestazioni CORS, a differenza
+del link diretto all'asset) e sceglie il rilascio con la versione più alta.
+Il controllo avviene **ogni 3 minuti** e all'avvio (dopo 8 secondi): se trova
+una versione più recente di quella installata compare l'avviso
+**"Aggiornamento disponibile"** con un pulsante **"Installa ora"** → l'app scarica
+l'APK e apre l'installatore di Android. Poiché l'APK è firmato con la stessa
+chiave, si installa **sopra** quello già presente: **nessun dato perso**.
+
+> ⚠️ Nota tecnica: le richieste usano `ETag`/`If-None-Match`, così le risposte
+> `304` non consumano il rate limit dell'API di GitHub.
 
 - 📲 Notifica anche nella schermata di login (senza essere collegati)
 - 🔎 Controllo manuale: **Verifica aggiornamenti** (login) o nelle impostazioni
@@ -215,7 +221,15 @@ e aggiornare `android/keystore.properties`.
 Pubblicare una nuova versione:
 
 ```bash
-git tag v1.1.0 && git push origin v1.1.0
+# 1. aggiorna la versione in package.json
+npm version 1.1.6 --no-git-tag-version
+
+# 2. commit + push → il CI ricostruisce l'APK e pubblica il rilascio
+#    versionato (v1.1.6) + il rilascio "latest"
+git commit -am "release: v1.1.6" && git push origin main
+
+# 3. (opzionale) tag → crea una pagina Releases con la versione
+git tag v1.1.6 && git push origin v1.1.6
 ```
 
 → l'APK viene compilato e pubblicato nella pagina Releases.

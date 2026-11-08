@@ -4,6 +4,23 @@
 
 ---
 
+## 📦 النسخة الحالية: Sea POS 1.1.5
+
+| | |
+|---|---|
+| ملف APK | `Sea-POS.apk` (داخل مجلد `output`) أو مباشرة: <https://github.com/ahmed1p7/-Piccalo/releases/download/v1.1.5/Sea-POS.apk> |
+| نسخة ثابتة | <https://github.com/ahmed1p7/-Piccalo/releases/download/latest/Sea-POS.apk> |
+| تطبيق الويب (PWA) | <https://ahmed1p7.github.io/-Piccalo/> |
+| الحد الأدنى | Android 7.0+ · حزمة `com.sea.pos` |
+| التوقيع | مفتاح ثابت داخل المستودع → التحديث فوق النسخة القديمة **بدون فقدان أي بيانات** |
+
+> 🔁 **التحديث التلقائي**: كل ما ترفعه على GitHub يُبنى APK جديد وينشر كإصدار
+> جديد. فتح التطبيق يظهر إشعار «Aggiornamento disponibile» مع زر **«Installa ora»**
+> → يُنزّل ويُحدّث فوق النسخة المثبتة. (يعتمد على API GitHub، فحدّث التطبيق
+> مرة واحدة بـ 1.1.5 وما راح تحتاج تعمل أي شي يدوي بعدها.)
+
+---
+
 ## 1️⃣ تثبيت التطبيق على الهاتف
 
 ### الطريقة A — ملف APK (موصى بها)
