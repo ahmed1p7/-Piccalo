@@ -1,22 +1,184 @@
 @import "tailwindcss";
 
+/* ═══════════════════════════════════════════════════════════════════
+   🎨 Sea POS — Design System
+   Palette unica per tutte le schermate: fondi "ink" (blu notte),
+   accento "brand" (ciano) per le azioni primarie, colori semantici
+   per denaro / successo / pericolo.
+   ═══════════════════════════════════════════════════════════════════ */
+
+@theme {
+  /* ── Fondi e superfici ── */
+  --color-ink-950: #04080f;
+  --color-ink-900: #080e18;
+  --color-ink-850: #0c1421;
+  --color-ink-800: #111b2b;
+  --color-ink-700: #182437;
+  --color-ink-600: #23324c;
+  --color-ink-500: #33456a;
+
+  /* ── Testo ── */
+  --color-mist-100: #eef4ff;
+  --color-mist-300: #b8c6de;
+  --color-mist-500: #7e8fab;
+
+  /* ── Accento principale ── */
+  --color-brand-300: #67e8f9;
+  --color-brand-400: #22d3ee;
+  --color-brand-500: #06b6d4;
+  --color-brand-600: #0891b2;
+
+  /* ── Semantici ── */
+  --color-mint-400: #34d399;
+  --color-mint-600: #059669;
+  --color-amber-400: #fbbf24;
+  --color-amber-600: #d97706;
+  --color-rose-400: #fb7185;
+  --color-rose-600: #e11d48;
+  --color-violet-400: #a78bfa;
+
+  /* ── Ombre ── */
+  --shadow-glow: 0 0 0 1px rgb(34 211 238 / 0.18), 0 8px 30px -12px rgb(34 211 238 / 0.45);
+
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont,
+    'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    monospace;
+}
+
 @layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
   body {
-    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background-color: #080d1a;
-    color: #f1f5f9;
+    font-family: var(--font-sans);
+    background-color: var(--color-ink-950);
+    color: var(--color-mist-100);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overscroll-behavior-y: none;
   }
 
   code, kbd, samp, pre, .font-mono {
-    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
+  }
+
+  input[type='number']::-webkit-outer-spin-button,
+  input[type='number']::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type='number'] {
+    -moz-appearance: textfield;
+  }
+
+  /* cursore coerente sui controlli */
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
   }
 }
 
+/* Tailwind v4: le classi personalizzate si dichiarano con @utility
+   così possono essere usate anche dentro @apply e nelle stringhe JSX. */
+
+@utility surface {
+  @apply bg-ink-850 border border-ink-700 rounded-2xl;
+}
+
+@utility surface-raised {
+  @apply bg-ink-800 border border-ink-700 rounded-2xl;
+}
+
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3
+         text-sm font-semibold transition-all duration-150 active:scale-[0.98]
+         disabled:opacity-40 disabled:pointer-events-none select-none;
+}
+
+@utility btn-primary {
+  @apply btn bg-brand-500 text-ink-950 hover:bg-brand-400
+         shadow-[0_6px_24px_-10px_rgb(6_182_212/0.8)];
+}
+
+@utility btn-soft {
+  @apply btn bg-ink-800 text-mist-100 border border-ink-600 hover:bg-ink-700 hover:border-ink-500;
+}
+
+@utility btn-ghost {
+  @apply btn text-mist-300 hover:text-mist-100 hover:bg-ink-800;
+}
+
+@utility btn-danger {
+  @apply btn bg-rose-600/90 text-white hover:bg-rose-600 border border-rose-400/30;
+}
+
+@utility btn-success {
+  @apply btn bg-mint-600 text-white hover:bg-mint-600/90 border border-mint-400/30;
+}
+
+@utility btn-sm {
+  @apply px-3 py-2 text-xs rounded-lg;
+}
+
+@utility btn-lg {
+  @apply px-6 py-4 text-base rounded-2xl;
+}
+
+@utility field {
+  @apply w-full rounded-xl bg-ink-900 border border-ink-600 px-4 py-3 text-sm
+         text-mist-100 placeholder:text-mist-500 outline-none transition
+         focus:border-brand-500 focus:ring-2 focus:ring-brand-500/25;
+}
+
+@utility field-sm {
+  @apply px-3 py-2 text-xs rounded-lg;
+}
+
+@utility label {
+  @apply block text-[11px] font-semibold uppercase tracking-wider text-mist-500 mb-1.5;
+}
+
+@utility badge {
+  @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1
+         text-[10px] font-bold uppercase tracking-wide;
+}
+
+@utility badge-brand {
+  @apply badge bg-brand-500/15 text-brand-300 border border-brand-500/25;
+}
+
+@utility badge-mint {
+  @apply badge bg-mint-600/15 text-mint-400 border border-mint-400/25;
+}
+
+@utility badge-amber {
+  @apply badge bg-amber-600/15 text-amber-400 border border-amber-400/25;
+}
+
+@utility badge-rose {
+  @apply badge bg-rose-600/15 text-rose-400 border border-rose-400/25;
+}
+
+@utility badge-neutral {
+  @apply badge bg-ink-700/60 text-mist-300 border border-ink-600;
+}
+
+@utility section-title {
+  @apply text-[11px] font-bold uppercase tracking-[0.14em] text-mist-500;
+}
+
+@utility tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+@utility amount {
+  @apply font-mono tnum font-bold text-mist-100;
+}
+
 @layer utilities {
-  /* Hide scrollbar for clean POS interface */
   .scrollbar-none::-webkit-scrollbar {
     display: none;
   }
@@ -24,12 +186,24 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: var(--color-ink-600);
+    border-radius: 99px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
 }
 
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -37,8 +211,36 @@
   }
 }
 
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 .animate-fadeIn {
-  animation: fadeIn 0.2s ease-out forwards;
+  animation: fadeIn 0.22s ease-out forwards;
+}
+.animate-slideUp {
+  animation: slideUp 0.26s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.animate-scaleIn {
+  animation: scaleIn 0.18s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 @media print {

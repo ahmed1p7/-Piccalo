@@ -46,9 +46,41 @@ export interface SyncTransport {
   ): void;
   writeCollection(collection: SyncCollection, payload: CollectionPayload): Promise<void>;
   writeDevice(device: DeviceInfo): Promise<void>;
+  /** 🧹 cancella tutti i dati condivisi (ripristino di fabbrica) */
+  wipeState(): Promise<void>;
 }
 
 const STATE_PATH = 'sea_pos/shared_state';
+
+/**
+ * 🧹 Rimuove i valori `undefined` prima di scrivere.
+ *
+ * ⚠️ Il Realtime Database RIFIUTA le scritture che contengono `undefined`
+ *    ("values argument contains undefined") → se un tavolo ha un campo
+ *    facoltativo vuoto (es. notes) l'intera collezione non veniva più
+ *    sincronizzata. Firestore invece accetta undefined.
+ *
+ * I valori `undefined` vengono semplicemente omessi; `null` viene
+ * convertito in stringa vuota per non cancellare il campo.
+ */
+export function sanitizeForRTDB<T = any>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeForRTDB(item)) as unknown as T;
+  }
+  if (value && typeof value === 'object') {
+    const out: Record<string, any> = {};
+    for (const [key, val] of Object.entries(value as Record<string, any>)) {
+      if (val === undefined) continue; // campo omesso
+      if (val === null) {
+        out[key] = '';
+        continue;
+      }
+      out[key] = sanitizeForRTDB(val);
+    }
+    return out as T;
+  }
+  return value;
+}
 
 export class RealtimeDbTransport implements SyncTransport {
   readonly name = 'Realtime Database';
@@ -166,9 +198,18 @@ export class RealtimeDbTransport implements SyncTransport {
     payload: CollectionPayload
   ): Promise<void> {
     if (!this.db) throw new Error('Realtime DB non connesso');
+    // ⚠️ senza sanitizzazione il RTDB rifiuta la scrittura se un campo
+    //    facoltativo è undefined (es. tavolo senza "notes")
+    const clean = sanitizeForRTDB(payload);
     await update(ref(this.db, `${STATE_PATH}/collections`), {
-      [collection]: payload,
+      [collection]: clean,
     });
+  }
+
+  /** 🧹 Cancella l'intero stato condiviso (tutte le collezioni) */
+  async wipeState(): Promise<void> {
+    if (!this.db) throw new Error('Realtime DB non connesso');
+    await set(ref(this.db, `${STATE_PATH}/collections`), null);
   }
 
   async writeDevice(device: DeviceInfo): Promise<void> {

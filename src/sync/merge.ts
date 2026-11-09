@@ -285,6 +285,21 @@ export function mergeCollection(
   return mergeEntityList(base, local, remote);
 }
 
+/**
+ * ⚠️ Normalizza i dati ricevuti dal cloud.
+ *
+ * Il Realtime Database NON salva le array vuote: quando una collezione è
+ * vuota (es. all'avvio, quando l'app parte con zero dati) la chiave
+ * `data` sparisce dal payload. Senza questa normalizzazione l'app
+ * riceverebbe `undefined` al posto di `[]` e andrebbe in crash.
+ */
+export function normalizeCollectionData(name: SyncCollection, data: any): any {
+  if (name === 'profile') {
+    return data && typeof data === 'object' && !Array.isArray(data) ? data : {};
+  }
+  return Array.isArray(data) ? data : [];
+}
+
 /** Verifica se la collezione merged è diversa dalla locale (→ da pushare) */
 export function collectionChanged(a: any, b: any): boolean {
   return !isDeepEqual(a, b);

@@ -115,6 +115,15 @@ export class FirestoreTransport implements SyncTransport {
     } as any);
   }
 
+  /** 🧹 Cancella l'intero stato condiviso (tutte le collezioni) */
+  async wipeState(): Promise<void> {
+    if (!this.db) throw new Error('Firestore non connesso');
+    await updateDoc(doc(this.db, DOC_PATH, DOC_ID), {
+      collections: {},
+      updatedAt: Date.now(),
+    } as any);
+  }
+
   async writeDevice(device: DeviceInfo): Promise<void> {
     if (!this.db) throw new Error('Firestore non connesso');
     await updateDoc(doc(this.db, DOC_PATH, DOC_ID), {

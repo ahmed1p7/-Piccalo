@@ -8,6 +8,7 @@ import {
   mergeCounter,
   mergeValue,
   isDeepEqual,
+  normalizeCollectionData,
 } from '../src/sync/merge';
 
 let passed = 0;
@@ -185,6 +186,39 @@ console.log('\n── isDeepEqual ──');
   check('array uguali', isDeepEqual([{ a: 1 }], [{ a: 1 }]));
   check('array diversi', !isDeepEqual([{ a: 1 }], [{ a: 2 }]));
   check('null vs undefined', !isDeepEqual(null, undefined));
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ⚠️ Normalizzazione dati dal cloud
+//    Il Realtime Database NON salva le array vuote: senza normalizzare,
+//    l'app riceverebbe undefined al posto di [] e andrebbe in crash.
+// ═══════════════════════════════════════════════════════════════════
+console.log('\n── Normalizzazione collezioni dal cloud ──');
+{
+  check(
+    'users senza data (array vuota non salvata) → []',
+    JSON.stringify(normalizeCollectionData('users', undefined)) === '[]'
+  );
+  check(
+    'tables con data vuota → []',
+    JSON.stringify(normalizeCollectionData('tables', null)) === '[]'
+  );
+  check(
+    'inventory con array valido → invariato',
+    normalizeCollectionData('inventory', [{ id: 'a' }]).length === 1
+  );
+  check(
+    'profile senza data → {}',
+    JSON.stringify(normalizeCollectionData('profile', undefined)) === '{}'
+  );
+  check(
+    'profile con dati → invariato',
+    normalizeCollectionData('profile', { name: 'X' }).name === 'X'
+  );
+  check(
+    'profile con array (tipo sbagliato) → {}',
+    JSON.stringify(normalizeCollectionData('profile', [1, 2])) === '{}'
+  );
 }
 
 console.log(

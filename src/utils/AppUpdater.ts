@@ -234,7 +234,10 @@ export async function checkForUpdate(): Promise<{
   } catch {
     lastLoaded = '';
   }
-  const updateAvailable = !!lastLoaded && remote.version !== lastLoaded;
+  // ⚠️ Deve essere PIÙ NUOVO, non semplicemente diverso: altrimenti dopo
+  //    aver installato la 1.2.0 l'app continuerebbe a segnalare la 1.1.5.
+  const updateAvailable =
+    !!lastLoaded && compareVersions(remote.version, lastLoaded) > 0;
   return { updateAvailable, installed, remote };
 }
 

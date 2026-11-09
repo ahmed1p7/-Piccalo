@@ -14,6 +14,7 @@ import {
   PaymentSplitRecord,
   Receipt,
   RestaurantProfile,
+  TablePayment,
   RestaurantTable,
   TableStatus,
   UserAccount,
@@ -21,7 +22,11 @@ import {
 import firebaseSyncManager from '../sync/FirebaseSyncManager';
 import syncManager from '../sync/SyncManager';
 import { getDevice } from '../sync/SyncConfig';
-import { isDeepEqual, type SyncCollection } from '../sync/merge';
+import {
+  isDeepEqual,
+  normalizeCollectionData,
+  type SyncCollection,
+} from '../sync/merge';
 
 export type ActiveView =
   | 'home'
@@ -78,6 +83,17 @@ interface AppContextType {
   setTableStatus: (tableId: string, status: TableStatus) => void;
   freeTable: (tableId: string) => void;
   // Cassa & Ricevute
+  /** 💶 registra un pagamento (anche parziale) su un tavolo */
+  addTablePayment: (params: {
+    tableId: string;
+    amount: number;
+    method: 'contanti' | 'carta';
+    cashGiven?: number;
+    note?: string;
+    splitLabel?: string;
+  }) => { success: boolean; message?: string; payment?: TablePayment; change: number };
+  /** totale già incassato su un tavolo */
+  getTablePaidAmount: (tableId: string) => number;
   closeBillAndGenerateReceipt: (params: {
     tableId?: string;
     tableName?: string;
@@ -98,7 +114,17 @@ interface AppContextType {
   // Backup & Restore
   exportDataAsJSON: () => string;
   importDataFromJSON: (jsonString: string) => boolean;
-  resetToInitialData: () => void;
+  resetToInitialData: (alsoCloud?: boolean) => Promise<{ success: boolean; message?: string }>;
+  completeSetup: (params: {
+    restaurantName: string;
+    username: string;
+    pin: string;
+  }) => { success: boolean; message?: string };
+  needsSetup: boolean;
+  /** true quando l'app ha finito l'avvio (cloud pronto o timeout) */
+  bootstrapDone: boolean;
+  /** salta l'attesa del cloud (tastiera "Continua senza sincronizzazione") */
+  skipBootstrap: () => void;
   resetTodayTransactions: () => { deletedReceipts: number; resetTables: number };
   updateProfile: (updates: Partial<RestaurantProfile>) => void;
 }
@@ -131,29 +157,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   });
 
-  const [currentUser, setCurrentUser] = useState<UserAccount | null>(() => {
-    try {
-      const savedId = localStorage.getItem(STORAGE_KEYS.CURRENT_USER_ID);
-      if (savedId) {
-        // cerca prima fra gli utenti salvati (possono arrivare dalla sincronizzazione)
-        try {
-          const savedUsers = localStorage.getItem(STORAGE_KEYS.USERS);
-          if (savedUsers) {
-            const parsed: UserAccount[] = JSON.parse(savedUsers);
-            const found = parsed.find((u) => u.id === savedId);
-            if (found) return found;
-          }
-        } catch {
-          /* ignore */
-        }
-        const found = INITIAL_USERS.find((u) => u.id === savedId);
-        return found || null;
-      }
-      return null;
-    } catch {
-      return null;
-    }
-  });
+  // 🔒 NESSUN accesso automatico: all'avvio dell'app ogni utente deve
+  // inserire le proprie credenziali. Prima l'app riapriva la sessione
+  // (e all'installazione Moreover entrava subito con l'account Admin).
+  const [currentUser, setCurrentUser] = useState<UserAccount | null>(null);
+
+  // 🆕 Primo avvio: nessun utente esistente → serve la configurazione.
+  // (diventa falso appena l'admin viene creato o gli utenti arrivano dal cloud)
+  const [needsSetup, setNeedsSetup] = useState<boolean>(false);
+  // 🔄 Avvio: l'app aspetta il primo stato dal cloud prima di decidere se
+  //    mostrare la configurazione iniziale. Così un telefono nuovo che si
+  //    collega a un ristorante già attivo adotta i dati da solo.
+  const [bootstrapDone, setBootstrapDone] = useState<boolean>(false);
+  const bootstrapTimer = useRef<any>(null);
 
   const [inventory, setInventory] = useState<InventoryItem[]>(() => {
     try {
@@ -224,15 +240,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // الاتصال التلقائي عند بدء التطبيق (funziona solo se è stato
   // incollato un "codice di sincronizzazione" oppure se la config
   // Firebase è già stata compilata dentro l'APK)
+  const skipBootstrap = () => {
+    if (bootstrapTimer.current) clearTimeout(bootstrapTimer.current);
+    setBootstrapDone(true);
+  };
+
   useEffect(() => {
-    if (firebaseSyncManager.isConfigured()) {
-      firebaseSyncManager.connect().then((success) => {
-        if (success) {
-          console.log('🔥 Sync: connesso automaticamente');
-        }
-      });
+    if (!firebaseSyncManager.isConfigured()) {
+      // nessun cloud configurato (solo LAN) → si parte subito
+      setBootstrapDone(true);
+      return;
     }
+
+    // ⏳ massimo 5 secondi: se il cloud non risponde si parte comunque
+    const safety = setTimeout(() => setBootstrapDone(true), 5000);
+    bootstrapTimer.current = safety;
+    const offReady = firebaseSyncManager.onReady(() => {
+      clearTimeout(safety);
+      setBootstrapDone(true);
+    });
+
+    firebaseSyncManager.connect().then((success) => {
+      if (success) {
+        console.log('🔥 Sync: connesso automaticamente');
+      } else {
+        clearTimeout(safety);
+        setBootstrapDone(true);
+      }
+    });
+
     return () => {
+      clearTimeout(safety);
+      offReady();
       firebaseSyncManager.disconnect();
     };
   }, []);
@@ -298,7 +337,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Applica una singola collezione ricevuta dalla rete locale.
   // Se il valore è identico a quello già presente non lo si applica:
   // altrimenti i due dispositivi si rimanderebbero il dato all'infinito.
-  const applyLanCollection = (key: string, value: any) => {
+  const applyLanCollection = (key: string, rawValue: any) => {
+    // ⚠️ il Realtime DB non salva le array vuote: normalizza sempre
+    const value = normalizeCollectionData(key as SyncCollection, rawValue);
     const same = (current: any) => isDeepEqual(current, value);
 
     switch (key) {
@@ -347,24 +388,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const listener = (event: any) => {
       if (!event || event.type !== 'remote_change') return;
       try {
+        const data = normalizeCollectionData(event.collection, event.data);
         switch (event.collection) {
           case 'users':
-            setUsers(event.data);
+            setUsers(data);
             break;
           case 'inventory':
-            setInventory(event.data);
+            setInventory(data);
             break;
           case 'inventoryLogs':
-            setInventoryLogs(event.data);
+            setInventoryLogs(data);
             break;
           case 'tables':
-            setTables(event.data);
+            setTables(data);
             break;
           case 'receipts':
-            setReceipts(event.data);
+            setReceipts(data);
             break;
           case 'profile':
-            setProfile(event.data);
+            setProfile(data);
             break;
         }
       } catch (e) {
@@ -473,13 +515,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(profile));
   }, [profile]);
 
+  // 🔒 La sessione NON viene ripristinata al riavvio: si esce sempre
+  //    dall'account. L'unica cosa che si ricorda è il nome utente
+  //    (se l'utente lo sceglie), mai la password.
   useEffect(() => {
-    if (currentUser) {
-      localStorage.setItem(STORAGE_KEYS.CURRENT_USER_ID, currentUser.id);
-    } else {
-      localStorage.removeItem(STORAGE_KEYS.CURRENT_USER_ID);
-    }
-  }, [currentUser]);
+    localStorage.removeItem(STORAGE_KEYS.CURRENT_USER_ID);
+  }, []);
 
   // Se gli utenti arrivano dalla sincronizzazione (o il PIN cambia),
   // l'utente collegato viene aggiornato senza dover uscire e rientrare.
@@ -507,6 +548,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Low stock calculation
+  // 🧭 Se non esistono utenti (né locali né arrivati dal cloud) l'app
+  //    chiede la configurazione iniziale invece di mostrare il login.
+  useEffect(() => {
+    if (!bootstrapDone) return;
+    setNeedsSetup(users.length === 0);
+  }, [users, bootstrapDone]);
+
   const lowStockItems = inventory.filter(
     (item) => item.currentQuantity <= item.minThreshold
   );
@@ -919,10 +967,88 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               openedAt: undefined,
               notes: undefined,
               currentOrderItems: [],
+              payments: [],
             }
           : tbl
       )
     );
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 💶 Pagamenti su un tavolo (uno o più, con metodi diversi)
+  // ═══════════════════════════════════════════════════════════════════
+  const getTablePaidAmount = (tableId: string): number => {
+    const tbl = tables.find((t) => t.id === tableId);
+    if (!tbl || !tbl.payments || tbl.payments.length === 0) return 0;
+    return Number(
+      tbl.payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0).toFixed(2)
+    );
+  };
+
+  const addTablePayment = (params: {
+    tableId: string;
+    amount: number;
+    method: 'contanti' | 'carta';
+    cashGiven?: number;
+    note?: string;
+    splitLabel?: string;
+  }): { success: boolean; message?: string; payment?: TablePayment; change: number } => {
+    const amount = Number(params.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return { success: false, message: 'Importo non valido.', change: 0 };
+    }
+
+    const tbl = tables.find((t) => t.id === params.tableId);
+    if (!tbl) {
+      return { success: false, message: 'Tavolo non trovato.', change: 0 };
+    }
+
+    const alreadyPaid = getTablePaidAmount(params.tableId);
+    const due = Number((tbl.billAmount - alreadyPaid).toFixed(2));
+    if (amount - due > 0.009) {
+      return {
+        success: false,
+        message: `L'importo supera il saldo dovuto (${due.toFixed(2)} €).`,
+        change: 0,
+      };
+    }
+
+    let change = 0;
+    if (params.method === 'contanti') {
+      const given = Number(params.cashGiven ?? amount);
+      if (!Number.isFinite(given) || given < amount) {
+        return {
+          success: false,
+          message: "Il contante ricevuto è inferiore all'importo da incassare.",
+          change: 0,
+        };
+      }
+      change = Number((given - amount).toFixed(2));
+    }
+
+    const payment: TablePayment = {
+      id: `pay_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      tableId: params.tableId,
+      tableName: tbl.name,
+      amount: Number(amount.toFixed(2)),
+      method: params.method,
+      cashGiven: params.method === 'contanti' ? Number(params.cashGiven ?? amount) : undefined,
+      changeGiven: change,
+      cashierName: currentUser?.displayName || 'Cassa',
+      createdAt: new Date().toISOString(),
+      note: params.note,
+      splitLabel: params.splitLabel,
+    };
+
+    setTables((prev) =>
+      prev.map((t) =>
+        t.id === params.tableId
+          ? { ...t, payments: [...(t.payments || []), payment] }
+          : t
+      )
+    );
+
+    return { success: true, payment, change };
   };
 
   // Close bill and save receipt
@@ -940,6 +1066,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     notes?: string;
   }): Receipt => {
     const receiptNum = `SCONTR-${String(receipts.length + 1).padStart(3, '0')}`;
+
+    // 🧾 I pagamenti registrati sul tavolo confluiscono nello scontrino:
+    //    così lo scontrino mostra ogni operazione (carta + contanti + ...)
+    const tablePayments = params.tableId
+      ? tables.find((t) => t.id === params.tableId)?.payments || []
+      : [];
+
+    const paidCash = Number(
+      tablePayments
+        .filter((p) => p.method === 'contanti')
+        .reduce((s, p) => s + p.amount, 0)
+        .toFixed(2)
+    );
+    const paidCard = Number(
+      tablePayments
+        .filter((p) => p.method === 'carta')
+        .reduce((s, p) => s + p.amount, 0)
+        .toFixed(2)
+    );
+    const totalChange = Number(
+      tablePayments.reduce((s, p) => s + (p.changeGiven || 0), 0).toFixed(2)
+    );
+
+    const finalCash = tablePayments.length ? paidCash : Number(params.cashAmount || 0);
+    const finalCard = tablePayments.length ? paidCard : Number(params.cardAmount || 0);
+    const finalMethod: PaymentMethod =
+      tablePayments.length === 0
+        ? params.paymentMethod
+        : paidCash > 0 && paidCard > 0
+        ? 'misto'
+        : paidCard > 0
+        ? 'carta'
+        : 'contanti';
+
     const newReceipt: Receipt = {
       id: `rec_${Date.now()}`,
       receiptNumber: receiptNum,
@@ -948,12 +1108,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       coversCount: params.coversCount,
       items: params.items,
       totalAmount: params.totalAmount,
-      paymentMethod: params.paymentMethod,
-      cashAmount: params.cashAmount,
-      cardAmount: params.cardAmount,
-      changeGiven: params.changeGiven,
+      paymentMethod: finalMethod,
+      cashAmount: finalCash,
+      cardAmount: finalCard,
+      changeGiven: tablePayments.length ? totalChange : Number(params.changeGiven || 0),
       cashierName: currentUser?.displayName || 'Cassa',
       splitDetails: params.splitDetails,
+      payments: tablePayments.length ? tablePayments : undefined,
       notes: params.notes,
     };
 
@@ -976,6 +1137,62 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     return newReceipt;
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 🆕 Configurazione iniziale (primo avvio)
+  // ═══════════════════════════════════════════════════════════════════
+  const completeSetup = (params: {
+    restaurantName: string;
+    username: string;
+    pin: string;
+  }): { success: boolean; message?: string } => {
+    const username = params.username.trim();
+    const pin = params.pin.trim();
+
+    if (!username) {
+      return {
+        success: false,
+        message: "Scegli un nome utente per l'amministratore.",
+      };
+    }
+    if (pin.length < 4) {
+      return { success: false, message: 'La password deve avere almeno 4 caratteri.' };
+    }
+    if (users.some((u) => u.username.toLowerCase() === username.toLowerCase())) {
+      return { success: false, message: 'Questo nome utente esiste già.' };
+    }
+
+    const admin: UserAccount = {
+      id: `user_${Date.now()}`,
+      username,
+      displayName: username,
+      pin,
+      role: 'admin',
+      avatarColor: 'bg-cyan-600',
+      permissions: {
+        canAccessCassa: true,
+        canAccessMagazzino: true,
+        canAccessBar: true,
+        canAccessCucina: true,
+        canAccessTavoli: true,
+        canManageUsers: true,
+        canManageBackup: true,
+        canViewReports: true,
+      },
+    };
+
+    setUsers([admin]);
+
+    // Il profilo ristorante parte dai dati inseriti (niente valori fittizi)
+    setProfile((prev) => ({
+      ...prev,
+      name: params.restaurantName.trim() || username,
+    }));
+
+    setNeedsSetup(false);
+    setCurrentUser(admin);
+    return { success: true };
   };
 
   // User management
@@ -1039,14 +1256,58 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const resetToInitialData = () => {
-    setUsers(INITIAL_USERS);
-    setInventory(INITIAL_INVENTORY);
-    setTables(INITIAL_TABLES);
+  /**
+   * 🧹 RIPRISTINO DI FABBRICA VERO
+   * Cancella TUTTO: utenti, magazzino, tavoli, scontrini, log, profilo.
+   * Non ricrea nessun dato di esempio → l'app resta a ZERO elementi.
+   * L'utente torna alla schermata di configurazione iniziale.
+   *
+   * @param alsoCloud se true cancella anche i dati condivisi nel cloud
+   */
+  const resetToInitialData = async (
+    alsoCloud: boolean = false
+  ): Promise<{ success: boolean; message?: string }> => {
+    setUsers([]);
+    setInventory([]);
+    setTables([]);
     setProfile(INITIAL_PROFILE);
     setInventoryLogs([]);
     setReceipts([]);
-    localStorage.clear();
+    setCurrentUser(null);
+    setSelectedTableForCheckout(null);
+    setActiveView('home');
+    setNeedsSetup(true);
+
+    // Svuota solo le chiavi dei dati: la configurazione cloud e l'identità
+    // del dispositivo restano (il telefono resta collegato al ristorante).
+    try {
+      const keep = new Set([
+        'sea_pos_sync_config_v1',
+        'sea_pos_device_v1',
+      ]);
+      Object.keys(localStorage).forEach((key) => {
+        if (!keep.has(key)) localStorage.removeItem(key);
+      });
+    } catch {
+      /* ignore */
+    }
+
+    // Azzera anche la base di merge locale, così i dati vecchi non
+    // "tornano" alla prossima sincronizzazione.
+    firebaseSyncManager.resetLocalState();
+
+    if (alsoCloud) {
+      try {
+        await firebaseSyncManager.wipeCloud();
+      } catch (e: any) {
+        return {
+          success: false,
+          message: 'Dati locali azzerati, ma cancellazione cloud non riuscita: ' + (e?.message || ''),
+        };
+      }
+    }
+
+    return { success: true };
   };
 
   // 🆕 تصفير اليوم: يحذف إيصالات اليوم + يفرغ كل الطاولات
@@ -1123,6 +1384,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         removeOrderItemFromTable,
         setTableStatus,
         freeTable,
+        addTablePayment,
+        getTablePaidAmount,
         closeBillAndGenerateReceipt,
         addUser,
         updateUser,
@@ -1131,6 +1394,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         importDataFromJSON,
         resetToInitialData,
         resetTodayTransactions,
+        completeSetup,
+        needsSetup,
+        bootstrapDone,
+        skipBootstrap,
         updateProfile,
       }}
     >

@@ -89,10 +89,38 @@ export interface RestaurantTable {
   openedAt?: string;
   coversCount?: number;
   notes?: string;
+  /** 🧾 pagamenti già registrati su questo tavolo (possono essere più di uno) */
+  payments?: TablePayment[];
 }
 
 export type PaymentMethod = 'contanti' | 'carta' | 'misto';
 
+/**
+ * 💳 Pagamento registrato su un tavolo.
+ * Un tavolo può avere PIÙ pagamenti (anche con metodi diversi) finché
+ * il totale non è copierto: questo permette di incassare una parte
+ * con la carta e un'altra parte in contanti, anche a distanza di ore.
+ */
+export interface TablePayment {
+  id: string;
+  tableId: string;
+  tableName: string;
+  amount: number; // importo effettivamente incassato (senza contante ricevuto)
+  method: 'contanti' | 'carta';
+  cashGiven?: number; // contante consegnato dal cliente (solo 'contanti')
+  changeGiven: number; // resto restituito
+  cashierName: string;
+  createdAt: string; // ISO
+  note?: string;
+  /** quota di una divisione del conto (se il pagamento proviene da uno split) */
+  splitLabel?: string;
+}
+
+/**
+ * 👥 Quota di un conto diviso.
+ * `amountDue` è calcolato (uguale o proporzionale), `ratio` la percentuale
+ * usata nel caso di divisione non equa.
+ */
 export interface PaymentSplitRecord {
   id: string;
   personLabel: string;
@@ -104,6 +132,8 @@ export interface PaymentSplitRecord {
   changeReturned: number;
   isPaid: boolean;
   assignedItems?: string[]; // IDs of order items assigned to this person
+  /** percentuale (0-100) nel caso di divisione per quote */
+  ratio?: number;
 }
 
 export interface Receipt {
@@ -120,6 +150,8 @@ export interface Receipt {
   changeGiven: number;
   cashierName: string;
   splitDetails?: PaymentSplitRecord[];
+  /** 🧾 dettaglio delle singole operazioni di pagamento (più metodi) */
+  payments?: TablePayment[];
   notes?: string;
 }
 
