@@ -54,9 +54,9 @@ export const UpdateNotification: React.FC<UpdateNotificationProps> = ({ onClose 
 
   return (
     <div className="fixed inset-x-3 top-3 z-[60] sm:inset-x-auto sm:right-4 sm:w-96 animate-slideIn">
-      <div className="bg-slate-900 border-2 border-cyan-500/40 rounded-2xl shadow-2xl overflow-hidden">
+      <div className="bg-neutral-900 border-2 border-amber-500/40 rounded-2xl shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="bg-gradient-to-r from-cyan-600 to-cyan-700 px-4 py-3 flex items-center justify-between">
+        <div className="bg-gradient-to-r from-amber-600 to-cyan-700 px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <ArrowDownCircle className="w-5 h-5 text-white" />
             <h3 className="font-bold text-white text-sm">
@@ -76,11 +76,11 @@ export const UpdateNotification: React.FC<UpdateNotificationProps> = ({ onClose 
         {/* Body */}
         <div className="p-4 space-y-3">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center flex-shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center flex-shrink-0">
               {isDownloading ? (
-                <Loader2 className="w-5 h-5 text-cyan-400 animate-spin" />
+                <Loader2 className="w-5 h-5 text-amber-400 animate-spin" />
               ) : (
-                <Zap className="w-5 h-5 text-cyan-400" />
+                <Zap className="w-5 h-5 text-amber-400" />
               )}
             </div>
             <div className="flex-1 min-w-0">
@@ -89,7 +89,7 @@ export const UpdateNotification: React.FC<UpdateNotificationProps> = ({ onClose 
                   ? 'Download in corso...'
                   : `Nuova versione ${info?.version ?? ''}`}
               </div>
-              <div className="text-xs text-slate-400 mt-0.5">
+              <div className="text-xs text-neutral-400 mt-0.5">
                 {info?.installedVersion
                   ? `Versione installata: ${info.installedVersion}`
                   : 'Aggiornamento dal repository GitHub'}
@@ -98,7 +98,7 @@ export const UpdateNotification: React.FC<UpdateNotificationProps> = ({ onClose 
           </div>
 
           {info?.notes && (
-            <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300">
+            <div className="p-2.5 rounded-xl bg-neutral-950 border border-neutral-800 text-xs text-neutral-300">
               {info.notes}
             </div>
           )}
@@ -106,13 +106,13 @@ export const UpdateNotification: React.FC<UpdateNotificationProps> = ({ onClose 
           {/* Progress bar */}
           {isDownloading && (
             <div className="space-y-1.5">
-              <div className="h-2 w-full rounded-full bg-slate-800 overflow-hidden">
+              <div className="h-2 w-full rounded-full bg-neutral-800 overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-cyan-500 to-sky-400 transition-all duration-300"
+                  className="h-full bg-gradient-to-r from-cyan-500 to-amber-400 transition-all duration-300"
                   style={{ width: `${Math.max(progress, 3)}%` }}
                 />
               </div>
-              <div className="text-[11px] text-slate-400 flex justify-between">
+              <div className="text-[11px] text-neutral-400 flex justify-between">
                 <span>Scaricamento dell'APK</span>
                 <span className="font-mono">{progress}%</span>
               </div>
@@ -120,7 +120,7 @@ export const UpdateNotification: React.FC<UpdateNotificationProps> = ({ onClose 
           )}
 
           {info?.publishedAt && !isDownloading && (
-            <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
+            <div className="text-[11px] text-neutral-500 flex items-center gap-1.5">
               <RefreshCw className="w-3 h-3" />
               <span>
                 Pubblicato il{' '}
@@ -148,13 +148,13 @@ export const UpdateNotification: React.FC<UpdateNotificationProps> = ({ onClose 
           <div className="px-4 pb-4 flex gap-2">
             <button
               onClick={onClose}
-              className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition-colors"
+              className="flex-1 py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 font-semibold text-xs transition-colors"
             >
               Più tardi
             </button>
             <button
               onClick={handleApply}
-              className="flex-1 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
+              className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
             >
               <Download className="w-3.5 h-3.5" />
               Installa ora
@@ -188,14 +188,14 @@ export const UpdateChecker: React.FC = () => {
   };
 
   return (
-    <div className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-slate-800 gap-3">
+    <div className="flex items-center justify-between p-3 rounded-xl bg-neutral-950 border border-neutral-800 gap-3">
       <div className="flex items-center gap-3">
         {status === 'update-available' ? (
-          <ArrowDownCircle className="w-5 h-5 text-cyan-400" />
+          <ArrowDownCircle className="w-5 h-5 text-amber-400" />
         ) : status === 'up-to-date' ? (
           <CheckCircle2 className="w-5 h-5 text-emerald-400" />
         ) : (
-          <Smartphone className="w-5 h-5 text-slate-400" />
+          <Smartphone className="w-5 h-5 text-neutral-400" />
         )}
         <div>
           <div className="text-sm font-semibold text-white">
@@ -209,7 +209,7 @@ export const UpdateChecker: React.FC = () => {
               ? 'Download in corso...'
               : 'Verifica aggiornamenti'}
           </div>
-          <div className="text-[11px] text-slate-400">
+          <div className="text-[11px] text-neutral-400">
             {info?.installedVersion
               ? `Versione installata: ${info.installedVersion}`
               : 'Controlla se c\'è una versione più recente su GitHub'}
@@ -219,7 +219,7 @@ export const UpdateChecker: React.FC = () => {
       <button
         onClick={handleCheck}
         disabled={isChecking}
-        className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-xs font-semibold text-slate-200 flex items-center gap-1.5 transition-colors whitespace-nowrap"
+        className="px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 disabled:opacity-50 text-xs font-semibold text-neutral-200 flex items-center gap-1.5 transition-colors whitespace-nowrap"
       >
         <RefreshCw className={`w-3 h-3 ${isChecking ? 'animate-spin' : ''}`} />
         Verifica

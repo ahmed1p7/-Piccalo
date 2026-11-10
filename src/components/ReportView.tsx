@@ -63,7 +63,7 @@ export const ReportView: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-6 py-6 space-y-6 animate-fadeIn">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-5 rounded-3xl shadow-xl">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-neutral-900 border border-neutral-800 p-5 rounded-3xl shadow-xl">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-2xl bg-teal-500/10 text-teal-400 border border-teal-500/20 flex items-center justify-center font-bold">
             <BarChart3 className="w-6 h-6" />
@@ -72,7 +72,7 @@ export const ReportView: React.FC = () => {
             <h1 className="text-xl sm:text-2xl font-black text-white">
               Report Vendite &amp; Chiusura Cassa (Report Z)
             </h1>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-neutral-400">
               Riepilogo fiscale del turno, incassi contanti, pagamenti POS e archivio scontrini.
             </p>
           </div>
@@ -90,51 +90,51 @@ export const ReportView: React.FC = () => {
       {/* KPI Cards Strip */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total revenue */}
-        <div className="p-5 rounded-3xl bg-slate-900 border border-slate-800 space-y-2 shadow-md">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
+        <div className="p-5 rounded-3xl bg-neutral-900 border border-neutral-800 space-y-2 shadow-md">
+          <div className="flex items-center justify-between text-neutral-400 text-xs">
             <span>Incasso Totale Oggi</span>
             <TrendingUp className="w-4 h-4 text-emerald-400" />
           </div>
           <div className="text-2xl sm:text-3xl font-black text-emerald-400">
             {totalRevenue.toFixed(2)} €
           </div>
-          <p className="text-[11px] text-slate-500">Tutti i metodi inclusi</p>
+          <p className="text-[11px] text-neutral-500">Tutti i metodi inclusi</p>
         </div>
 
         {/* Total Cash */}
-        <div className="p-5 rounded-3xl bg-slate-900 border border-slate-800 space-y-2 shadow-md">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
+        <div className="p-5 rounded-3xl bg-neutral-900 border border-neutral-800 space-y-2 shadow-md">
+          <div className="flex items-center justify-between text-neutral-400 text-xs">
             <span>Contanti in Cassetto</span>
             <Banknote className="w-4 h-4 text-amber-400" />
           </div>
           <div className="text-2xl sm:text-3xl font-black text-amber-400">
             {totalCash.toFixed(2)} €
           </div>
-          <p className="text-[11px] text-slate-500">Da versare a fine turno</p>
+          <p className="text-[11px] text-neutral-500">Da versare a fine turno</p>
         </div>
 
         {/* Total Card */}
-        <div className="p-5 rounded-3xl bg-slate-900 border border-slate-800 space-y-2 shadow-md">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
+        <div className="p-5 rounded-3xl bg-neutral-900 border border-neutral-800 space-y-2 shadow-md">
+          <div className="flex items-center justify-between text-neutral-400 text-xs">
             <span>Carte / Bancomat POS</span>
             <CreditCard className="w-4 h-4 text-blue-400" />
           </div>
           <div className="text-2xl sm:text-3xl font-black text-blue-400">
             {totalCard.toFixed(2)} €
           </div>
-          <p className="text-[11px] text-slate-500">Transazioni POS elettroniche</p>
+          <p className="text-[11px] text-neutral-500">Transazioni POS elettroniche</p>
         </div>
 
         {/* Tickets count & Average */}
-        <div className="p-5 rounded-3xl bg-slate-900 border border-slate-800 space-y-2 shadow-md">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
+        <div className="p-5 rounded-3xl bg-neutral-900 border border-neutral-800 space-y-2 shadow-md">
+          <div className="flex items-center justify-between text-neutral-400 text-xs">
             <span>Scontrini &amp; Media</span>
             <ReceiptIcon className="w-4 h-4 text-purple-400" />
           </div>
           <div className="text-2xl sm:text-3xl font-black text-purple-400">
             {todayReceipts.length}
           </div>
-          <p className="text-[11px] text-slate-400">
+          <p className="text-[11px] text-neutral-400">
             Scontrino medio:{' '}
             <strong className="text-white">{averageTicket.toFixed(2)} €</strong>
           </p>
@@ -142,35 +142,35 @@ export const ReportView: React.FC = () => {
       </div>
 
       {/* Receipts Table with Search */}
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+      <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 shadow-xl space-y-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-neutral-800">
           <div>
             <h3 className="font-bold text-white text-base">Archivio Fiscale Ricevute</h3>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-neutral-400">
               Storico completo dei conti chiusi con dettagli articoli, metodo e ristampa.
             </p>
           </div>
 
           <div className="relative w-full sm:w-64">
-            <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+            <Search className="w-4 h-4 absolute left-3 top-2.5 text-neutral-400" />
             <input
               type="text"
               placeholder="Cerca scontrino, tavolo, cassiere..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+              className="w-full pl-9 pr-3 py-1.5 bg-neutral-950 border border-neutral-700 rounded-xl text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-amber-500"
             />
           </div>
         </div>
 
         {filteredReceipts.length === 0 ? (
-          <div className="p-10 text-center text-slate-400 text-xs">
+          <div className="p-10 text-center text-neutral-400 text-xs">
             Nessun scontrino corrisponde ai criteri di ricerca.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs sm:text-sm">
-              <thead className="bg-slate-950/80 text-slate-400 uppercase tracking-wider text-[11px]">
+              <thead className="bg-neutral-950/80 text-neutral-400 uppercase tracking-wider text-[11px]">
                 <tr>
                   <th className="px-4 py-3">Numero</th>
                   <th className="px-4 py-3">Data &amp; Ora</th>
@@ -191,17 +191,17 @@ export const ReportView: React.FC = () => {
                   });
 
                   return (
-                    <tr key={r.id} className="hover:bg-slate-800/40">
+                    <tr key={r.id} className="hover:bg-neutral-800/40">
                       <td className="px-4 py-3 font-mono font-bold text-amber-400">
                         {r.receiptNumber}
                       </td>
-                      <td className="px-4 py-3 text-slate-300 text-xs">{formattedDate}</td>
+                      <td className="px-4 py-3 text-neutral-300 text-xs">{formattedDate}</td>
                       <td className="px-4 py-3 text-white font-semibold">
                         {r.tableName || 'Banco'}
                       </td>
-                      <td className="px-4 py-3 text-slate-400 text-xs">{r.cashierName}</td>
+                      <td className="px-4 py-3 text-neutral-400 text-xs">{r.cashierName}</td>
                       <td className="px-4 py-3">
-                        <span className="capitalize px-2 py-0.5 rounded-full text-xs bg-slate-800 text-slate-300 border border-slate-700">
+                        <span className="capitalize px-2 py-0.5 rounded-full text-xs bg-neutral-800 text-neutral-300 border border-neutral-700">
                           {r.paymentMethod}
                         </span>
                       </td>
@@ -211,7 +211,7 @@ export const ReportView: React.FC = () => {
                       <td className="px-4 py-3 text-right">
                         <button
                           onClick={() => setSelectedReceiptForPrint(r)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 inline-flex items-center gap-1 text-xs font-semibold"
+                          className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 inline-flex items-center gap-1 text-xs font-semibold"
                         >
                           <Printer className="w-3.5 h-3.5" />
                           <span>Ristampa</span>

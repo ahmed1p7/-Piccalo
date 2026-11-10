@@ -34,7 +34,7 @@ const MainAppContent: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#070c18] text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-slate-950 antialiased">
+    <div className="min-h-screen bg-[#0f0f0f] text-neutral-200 flex flex-col font-sans selection:bg-amber-500 selection:text-neutral-950 antialiased">
       {/* 🔄 إشعار التحديث التلقائي */}
       {showUpdateNotification && (
         <UpdateNotification onClose={() => setShowUpdateNotification(false)} />

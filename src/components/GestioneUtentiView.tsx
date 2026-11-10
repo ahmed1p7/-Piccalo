@@ -185,7 +185,7 @@ export const GestioneUtentiView: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-6 py-6 space-y-6 animate-fadeIn">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-5 rounded-3xl shadow-xl">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-neutral-900 border border-neutral-800 p-5 rounded-3xl shadow-xl">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center justify-center font-bold">
             <Users className="w-6 h-6" />
@@ -194,7 +194,7 @@ export const GestioneUtentiView: React.FC = () => {
             <h1 className="text-xl sm:text-2xl font-black text-white">
               Gestione Personale &amp; Permessi Account
             </h1>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-neutral-400">
               Crea account per camerieri, cuochi, barman e cassieri con PIN a 4 cifre e permessi personalizzati.
             </p>
           </div>
@@ -202,7 +202,7 @@ export const GestioneUtentiView: React.FC = () => {
 
         <button
           onClick={handleOpenAdd}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-lg shadow-amber-500/20 transition-all active:scale-95"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold text-xs shadow-lg shadow-amber-500/20 transition-all active:scale-95"
         >
           <Plus className="w-4 h-4" />
           <span>Nuovo Dipendente</span>
@@ -218,8 +218,8 @@ export const GestioneUtentiView: React.FC = () => {
               key={user.id}
               className={`p-5 rounded-3xl border transition-all flex flex-col justify-between min-h-[220px] ${
                 isMe
-                  ? 'bg-slate-900 border-amber-500/60 shadow-lg shadow-amber-500/10'
-                  : 'bg-slate-900/80 border-slate-800 hover:border-slate-700'
+                  ? 'bg-neutral-900 border-amber-500/60 shadow-lg shadow-amber-500/10'
+                  : 'bg-neutral-900/80 border-neutral-800 hover:border-neutral-700'
               }`}
             >
               <div>
@@ -235,18 +235,18 @@ export const GestioneUtentiView: React.FC = () => {
                       <h3 className="font-bold text-white text-base leading-tight">
                         {user.displayName}
                       </h3>
-                      <p className="text-xs text-slate-400">@{user.username}</p>
+                      <p className="text-xs text-neutral-400">@{user.username}</p>
                     </div>
                   </div>
 
-                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 capitalize">
+                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-neutral-800 text-neutral-300 border border-neutral-700 capitalize">
                     {user.role.replace('_', ' ')}
                   </span>
                 </div>
 
                 {/* PIN and Permissions chips */}
                 <div className="space-y-2 mt-4">
-                  <div className="text-xs text-slate-400 flex items-center gap-1.5">
+                  <div className="text-xs text-neutral-400 flex items-center gap-1.5">
                     <KeyRound className="w-3.5 h-3.5 text-amber-400" />
                     <span>PIN di Accesso:</span>
                     <strong className="text-white font-mono tracking-widest">{user.pin}</strong>
@@ -283,7 +283,7 @@ export const GestioneUtentiView: React.FC = () => {
               </div>
 
               {/* Action Buttons */}
-              <div className="pt-4 mt-3 border-t border-slate-800 flex items-center justify-between text-xs">
+              <div className="pt-4 mt-3 border-t border-neutral-800 flex items-center justify-between text-xs">
                 <button
                   onClick={() => loginUserDirect(user)}
                   className="text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1"
@@ -296,14 +296,14 @@ export const GestioneUtentiView: React.FC = () => {
                   <button
                     onClick={() => setUserForPasswordChange(user)}
                     title="Modifica password di questo utente"
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-300 hover:bg-cyan-950/40 transition-colors"
+                    className="p-1.5 rounded-lg text-neutral-400 hover:text-amber-300 hover:bg-amber-950/40 transition-colors"
                   >
                     <KeyRound className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={() => handleOpenEdit(user)}
                     title="Modifica profilo e permessi"
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                    className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"
                   >
                     <Edit2 className="w-3.5 h-3.5" />
                   </button>
@@ -314,7 +314,7 @@ export const GestioneUtentiView: React.FC = () => {
                           deleteUser(user.id);
                         }
                       }}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 transition-colors"
+                      className="p-1.5 rounded-lg text-neutral-400 hover:text-rose-400 hover:bg-rose-950/40 transition-colors"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -328,15 +328,15 @@ export const GestioneUtentiView: React.FC = () => {
 
       {/* MODAL: ADD / EDIT USER */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl my-auto space-y-5 max-h-[95vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div className="fixed inset-0 z-50 bg-neutral-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-neutral-900 border border-neutral-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl my-auto space-y-5 max-h-[95vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-neutral-800">
               <h3 className="font-bold text-white text-base">
                 {editingUser ? 'Modifica Account Dipendente' : 'Crea Nuovo Account Dipendente'}
               </h3>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-white"
+                className="text-neutral-400 hover:text-white"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -345,7 +345,7 @@ export const GestioneUtentiView: React.FC = () => {
             <form onSubmit={handleSubmit} className="space-y-4 text-xs sm:text-sm">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-semibold text-slate-300 block mb-1">
+                  <label className="font-semibold text-neutral-300 block mb-1">
                     Nome Completo:
                   </label>
                   <input
@@ -354,12 +354,12 @@ export const GestioneUtentiView: React.FC = () => {
                     placeholder="Es. Mario Rossi"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500"
+                    className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500"
                   />
                 </div>
 
                 <div>
-                  <label className="font-semibold text-slate-300 block mb-1">
+                  <label className="font-semibold text-neutral-300 block mb-1">
                     Username (Login):
                   </label>
                   <input
@@ -368,13 +368,13 @@ export const GestioneUtentiView: React.FC = () => {
                     placeholder="Es. mario"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500"
+                    className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="font-semibold text-slate-300 block mb-1">
+                <label className="font-semibold text-neutral-300 block mb-1">
                   PIN di Accesso a 4 Cifre *:
                 </label>
                 <input
@@ -384,16 +384,16 @@ export const GestioneUtentiView: React.FC = () => {
                   placeholder="Es. 5555"
                   value={pin}
                   onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white font-mono font-black text-xl tracking-widest focus:outline-none focus:border-amber-500"
+                  className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-4 py-2.5 text-white font-mono font-black text-xl tracking-widest focus:outline-none focus:border-amber-500"
                 />
-                <span className="text-[11px] text-slate-400 mt-1 block">
+                <span className="text-[11px] text-neutral-400 mt-1 block">
                   Usato per il login rapido dal tastierino numerico su tablet.
                 </span>
               </div>
 
               {/* Role Presets */}
               <div>
-                <label className="font-semibold text-slate-300 block mb-1.5">
+                <label className="font-semibold text-neutral-300 block mb-1.5">
                   Ruolo Predefinito (Imposta i permessi standard):
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -410,8 +410,8 @@ export const GestioneUtentiView: React.FC = () => {
                       onClick={() => applyRolePreset(r.id as UserRole)}
                       className={`p-2 rounded-xl text-xs font-bold border transition-all text-center ${
                         role === r.id
-                          ? 'bg-amber-500 text-slate-950 border-amber-400'
-                          : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-slate-700'
+                          ? 'bg-amber-500 text-neutral-950 border-amber-400'
+                          : 'bg-neutral-950 text-neutral-300 border-neutral-800 hover:border-neutral-700'
                       }`}
                     >
                       {r.label}
@@ -421,8 +421,8 @@ export const GestioneUtentiView: React.FC = () => {
               </div>
 
               {/* Granular Checkboxes for Permissions */}
-              <div className="space-y-2 pt-2 border-t border-slate-800">
-                <span className="font-semibold text-slate-300 block">
+              <div className="space-y-2 pt-2 border-t border-neutral-800">
+                <span className="font-semibold text-neutral-300 block">
                   Permessi &amp; Sezioni Visibili:
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
@@ -443,7 +443,7 @@ export const GestioneUtentiView: React.FC = () => {
                         className={`p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition-colors ${
                           isChecked
                             ? 'bg-amber-950/40 border-amber-500/50 text-white font-medium'
-                            : 'bg-slate-950 border-slate-800 text-slate-400'
+                            : 'bg-neutral-950 border-neutral-800 text-neutral-400'
                         }`}
                       >
                         {isChecked ? (
@@ -458,17 +458,17 @@ export const GestioneUtentiView: React.FC = () => {
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-slate-800 flex items-center justify-end gap-2">
+              <div className="pt-3 border-t border-neutral-800 flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-slate-400 hover:text-white"
+                  className="px-4 py-2 text-neutral-400 hover:text-white"
                 >
                   Annulla
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold transition-all shadow-md shadow-amber-500/20"
+                  className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold transition-all shadow-md shadow-amber-500/20"
                 >
                   {editingUser ? 'Salva Modifiche' : 'Crea Account'}
                 </button>

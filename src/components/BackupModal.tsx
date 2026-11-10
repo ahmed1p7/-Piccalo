@@ -77,14 +77,14 @@ export const BackupModal: React.FC<BackupModalProps> = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+    <div className="fixed inset-0 z-50 bg-neutral-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-neutral-900 border border-neutral-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5">
+        <div className="flex items-center justify-between pb-3 border-b border-neutral-800">
           <div className="flex items-center gap-2">
             <Database className="w-5 h-5 text-amber-400" />
             <h3 className="font-bold text-white text-base">Backup &amp; Ripristino Dati</h3>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white">
+          <button onClick={onClose} className="text-neutral-400 hover:text-white">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -108,17 +108,17 @@ export const BackupModal: React.FC<BackupModalProps> = ({ onClose }) => {
 
         <div className="space-y-3">
           {/* Download JSON Backup */}
-          <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
+          <div className="p-4 rounded-2xl bg-neutral-950 border border-neutral-800 space-y-2">
             <h4 className="text-xs font-bold text-white uppercase tracking-wider">
               1. Esporta Copia di Sicurezza
             </h4>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-neutral-400">
               Salva un file JSON sul dispositivo contenente magazzino, storico vendite, tavoli e
               account del personale.
             </p>
             <button
               onClick={handleDownload}
-              className="w-full mt-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md shadow-amber-500/20"
+              className="w-full mt-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md shadow-amber-500/20"
             >
               <Download className="w-4 h-4" />
               <span>Scarica Backup (.json)</span>
@@ -126,11 +126,11 @@ export const BackupModal: React.FC<BackupModalProps> = ({ onClose }) => {
           </div>
 
           {/* Upload JSON Backup */}
-          <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
+          <div className="p-4 rounded-2xl bg-neutral-950 border border-neutral-800 space-y-2">
             <h4 className="text-xs font-bold text-white uppercase tracking-wider">
               2. Carica &amp; Ripristina da File
             </h4>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-neutral-400">
               Seleziona un backup precedentemente esportato per ripristinare tutte le informazioni.
             </p>
             <input
@@ -142,7 +142,7 @@ export const BackupModal: React.FC<BackupModalProps> = ({ onClose }) => {
             />
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="w-full mt-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center gap-2 transition-all"
+              className="w-full mt-1 py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-neutral-200 font-bold text-xs flex items-center justify-center gap-2 transition-all"
             >
               <Upload className="w-4 h-4" />
               <span>Seleziona File JSON</span>
@@ -154,7 +154,7 @@ export const BackupModal: React.FC<BackupModalProps> = ({ onClose }) => {
             <h4 className="text-xs font-bold text-rose-300 uppercase tracking-wider">
               3. Ripristino di Fabbrica
             </h4>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-neutral-400">
               Ricarica i dati iniziali di prova (pizze, piatti, ingredienti e account standard).
             </p>
             <button
@@ -170,7 +170,7 @@ export const BackupModal: React.FC<BackupModalProps> = ({ onClose }) => {
         <div className="pt-2 flex justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 hover:text-white text-xs font-semibold"
+            className="px-4 py-2 rounded-xl bg-neutral-800 text-neutral-300 hover:text-white text-xs font-semibold"
           >
             Chiudi
           </button>

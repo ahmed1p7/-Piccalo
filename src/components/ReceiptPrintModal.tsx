@@ -61,24 +61,24 @@ export const ReceiptPrintModal: React.FC<ReceiptPrintModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full shadow-2xl overflow-hidden flex flex-col my-auto">
+    <div className="fixed inset-0 z-50 bg-neutral-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-neutral-900 border border-neutral-800 rounded-3xl max-w-md w-full shadow-2xl overflow-hidden flex flex-col my-auto">
         {/* Modal Header */}
-        <div className="p-4 bg-slate-800/60 border-b border-slate-700/60 flex items-center justify-between">
+        <div className="p-4 bg-neutral-800/60 border-b border-neutral-700/60 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Printer className="w-5 h-5 text-amber-400" />
             <h3 className="font-bold text-white text-base">Anteprima Ricevuta Fiscale</h3>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
+            className="p-1.5 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-700 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Thermal Receipt Paper Simulation */}
-        <div className="p-6 bg-slate-950 flex justify-center">
+        <div className="p-6 bg-neutral-950 flex justify-center">
           <div
             id="thermal-receipt"
             className="w-full max-w-xs bg-white text-slate-900 p-5 rounded-sm shadow-xl font-mono text-xs border border-dashed border-slate-300 relative selection:bg-amber-200"
@@ -141,7 +141,7 @@ export const ReceiptPrintModal: React.FC<ReceiptPrintModalProps> = ({
 
             {/* Total and Payment Breakdown */}
             <div className="py-3 border-b border-slate-400 border-dashed space-y-1">
-              <div className="flex justify-between text-base font-black text-slate-950">
+              <div className="flex justify-between text-base font-black text-neutral-950">
                 <span>TOTALE COMPLESSIVO</span>
                 <span>{receipt.totalAmount.toFixed(2)} €</span>
               </div>
@@ -192,10 +192,10 @@ export const ReceiptPrintModal: React.FC<ReceiptPrintModalProps> = ({
               <p className="font-bold text-[10px] uppercase tracking-wider text-slate-700">
                 Grazie per la visita!
               </p>
-              <div className="h-7 w-4/5 mx-auto bg-slate-800 flex items-center justify-center text-[9px] text-white tracking-[0.3em] font-mono">
+              <div className="h-7 w-4/5 mx-auto bg-neutral-800 flex items-center justify-center text-[9px] text-white tracking-[0.3em] font-mono">
                 ||||||||||||||||||||||||||||
               </div>
-              <p className="text-[9px] text-slate-500">
+              <p className="text-[9px] text-neutral-500">
                 Arrivederci al Ristorante Sea
               </p>
             </div>
@@ -203,10 +203,10 @@ export const ReceiptPrintModal: React.FC<ReceiptPrintModalProps> = ({
         </div>
 
         {/* Modal Actions */}
-        <div className="p-4 bg-slate-900 border-t border-slate-800 flex items-center justify-between gap-3">
+        <div className="p-4 bg-neutral-900 border-t border-neutral-800 flex items-center justify-between gap-3">
           <button
             onClick={handleCopy}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-neutral-700 bg-neutral-800 hover:bg-neutral-700 text-xs font-semibold text-neutral-300 transition-colors"
           >
             {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
             <span>{copied ? 'Copiato!' : 'Copia Testo'}</span>
@@ -215,13 +215,13 @@ export const ReceiptPrintModal: React.FC<ReceiptPrintModalProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+              className="px-4 py-2 rounded-xl text-xs font-semibold text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"
             >
               Chiudi
             </button>
             <button
               onClick={handlePrint}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition-all shadow-md shadow-amber-500/20"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 text-xs font-bold transition-all shadow-md shadow-amber-500/20"
             >
               <Printer className="w-4 h-4" />
               <span>Stampa Scontrino</span>

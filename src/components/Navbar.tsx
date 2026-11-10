@@ -92,7 +92,7 @@ export const Navbar: React.FC = () => {
 
   return (
     <>
-      <header className="sticky top-0 z-40 bg-[#0a1122]/90 backdrop-blur-md border-b border-slate-800/80 text-slate-100 shadow-sm">
+      <header className="sticky top-0 z-40 bg-[#1a1a1a]/90 backdrop-blur-md border-b border-neutral-800/80 text-neutral-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between h-16 gap-4">
             {/* Zone 1: Brand Wordmark & Local Wi-Fi badge */}
@@ -100,19 +100,19 @@ export const Navbar: React.FC = () => {
               onClick={() => setActiveView('home')}
               className="flex items-center gap-3 cursor-pointer group shrink-0"
             >
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-600 via-teal-500 to-sky-400 flex items-center justify-center text-slate-950 font-black shadow-md shadow-cyan-500/20 group-hover:scale-105 transition-transform duration-200">
-                <Waves className="w-5 h-5 text-slate-950" />
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-600 via-amber-500 to-amber-400 flex items-center justify-center text-neutral-950 font-black shadow-md shadow-amber-500/20 group-hover:scale-105 transition-transform duration-200">
+                <Waves className="w-5 h-5 text-neutral-950" />
               </div>
               <div className="leading-tight">
                 <div className="flex items-center gap-2">
                   <span className="font-extrabold text-base tracking-tight text-white font-sans">
                     Sea
                   </span>
-                  <span className="text-[10px] uppercase font-semibold text-cyan-400/90 tracking-wider">
+                  <span className="text-[10px] uppercase font-semibold text-amber-400/90 tracking-wider">
                     POS
                   </span>
                 </div>
-                <div className="text-[11px] text-slate-400 font-normal hidden sm:block">
+                <div className="text-[11px] text-neutral-400 font-normal hidden sm:block">
                   {profile.name}
                 </div>
               </div>
@@ -130,11 +130,11 @@ export const Navbar: React.FC = () => {
                       onClick={() => setActiveView(item.id)}
                       className={`relative flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
                         isActive
-                          ? 'bg-gradient-to-r from-cyan-600/30 to-cyan-500/20 text-white shadow-lg border border-cyan-500/40'
-                          : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60'
+                          ? 'bg-gradient-to-r from-amber-600/30 to-cyan-500/20 text-white shadow-lg border border-amber-500/40'
+                          : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/60'
                       }`}
                     >
-                      <span className={isActive ? 'text-cyan-300' : 'text-slate-400'}>
+                      <span className={isActive ? 'text-amber-300' : 'text-neutral-400'}>
                         {item.icon}
                       </span>
                       <span>{item.label}</span>
@@ -142,7 +142,7 @@ export const Navbar: React.FC = () => {
                         <span
                           className={`text-[10px] font-mono px-1.5 py-0.5 rounded-md ${
                             isActive
-                              ? 'bg-cyan-500/30 text-cyan-200'
+                              ? 'bg-amber-500/30 text-amber-200'
                               : 'bg-rose-500/20 text-rose-300'
                           }`}
                         >
@@ -178,8 +178,8 @@ export const Navbar: React.FC = () => {
                 title="Sincronizzazione cloud tra i dispositivi"
                 className={`px-2.5 py-1.5 rounded-lg border text-xs flex items-center gap-1.5 transition-colors ${
                   wifiConnected
-                    ? 'border-cyan-500/20 bg-cyan-950/30 text-cyan-400 hover:bg-cyan-950/50'
-                    : 'border-slate-700 bg-slate-900/30 text-slate-500 hover:bg-slate-800/50'
+                    ? 'border-amber-500/20 bg-amber-950/30 text-amber-400 hover:bg-amber-950/50'
+                    : 'border-neutral-700 bg-neutral-900/30 text-neutral-500 hover:bg-neutral-800/50'
                 }`}
               >
                 <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -197,14 +197,14 @@ export const Navbar: React.FC = () => {
                 <button
                   onClick={() => setShowBackupModal(true)}
                   title="Backup & Ripristino Dati"
-                  className="p-1.5 rounded-lg border border-slate-800 bg-slate-900/80 text-slate-400 hover:text-slate-200 hover:border-slate-700 transition-colors"
+                  className="p-1.5 rounded-lg border border-neutral-800 bg-neutral-900/80 text-neutral-400 hover:text-neutral-200 hover:border-neutral-700 transition-colors"
                 >
                   <Database className="w-4 h-4" />
                 </button>
               )}
 
               {/* Staff Profile and Actions */}
-              <div className="flex items-center gap-2 pl-2 border-l border-slate-800">
+              <div className="flex items-center gap-2 pl-2 border-l border-neutral-800">
                 <div className="flex items-center gap-2">
                   <div
                     className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs text-white shadow-sm ${currentUser.avatarColor}`}
@@ -215,7 +215,7 @@ export const Navbar: React.FC = () => {
                     <div className="text-xs font-semibold text-white leading-tight">
                       {currentUser.displayName}
                     </div>
-                    <div className="text-[10px] text-slate-400 capitalize">
+                    <div className="text-[10px] text-neutral-400 capitalize">
                       {currentUser.role.replace('_', ' ')}
                     </div>
                   </div>
@@ -224,7 +224,7 @@ export const Navbar: React.FC = () => {
                 <button
                   onClick={() => setShowChangePasswordModal(true)}
                   title="Modifica password personale"
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-300 hover:bg-slate-800 transition-colors"
+                  className="p-1.5 rounded-lg text-neutral-400 hover:text-amber-300 hover:bg-neutral-800 transition-colors"
                 >
                   <KeyRound className="w-3.5 h-3.5" />
                 </button>
@@ -232,7 +232,7 @@ export const Navbar: React.FC = () => {
                 <button
                   onClick={logout}
                   title="Esci dal turno"
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-950/30 transition-colors"
+                  className="p-1.5 rounded-lg text-neutral-400 hover:text-rose-400 hover:bg-rose-950/30 transition-colors"
                 >
                   <LogOut className="w-3.5 h-3.5" />
                 </button>

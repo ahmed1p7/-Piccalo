@@ -332,7 +332,7 @@ export const CassaView: React.FC = () => {
       )}
 
       {/* Header bar: Table selection & Quick Sale */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 bg-neutral-900 border border-neutral-800 p-4 rounded-2xl">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center font-bold">
             <Calculator className="w-5 h-5" />
@@ -341,7 +341,7 @@ export const CassaView: React.FC = () => {
             <h2 className="text-lg font-black text-white flex items-center gap-2">
               Punto Cassa &amp; Gestione Conto
             </h2>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-neutral-400">
               {selectedTable ? (
                 <span className="text-amber-400 font-semibold">
                   Conto attivo: {selectedTable.name} ({selectedTable.coversCount} coperti)
@@ -359,8 +359,8 @@ export const CassaView: React.FC = () => {
             onClick={handleQuickSale}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
               !selectedTable
-                ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
-                : 'bg-slate-800 text-slate-300 hover:text-white'
+                ? 'bg-emerald-500 text-neutral-950 shadow-md shadow-emerald-500/20'
+                : 'bg-neutral-800 text-neutral-300 hover:text-white'
             }`}
           >
             ⚡ Rapido Banco
@@ -377,8 +377,8 @@ export const CassaView: React.FC = () => {
                   onClick={() => handleSelectTable(tbl)}
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 border ${
                     isSelected
-                      ? 'bg-cyan-500 text-slate-950 border-cyan-400 shadow-md shadow-cyan-500/20'
-                      : 'bg-slate-800/80 text-slate-300 border-slate-700 hover:border-slate-600'
+                      ? 'bg-amber-500 text-neutral-950 border-amber-400 shadow-md shadow-amber-500/20'
+                      : 'bg-neutral-800/80 text-neutral-300 border-neutral-700 hover:border-neutral-600'
                   }`}
                 >
                   <Grid className="w-3 h-3" />
@@ -397,14 +397,14 @@ export const CassaView: React.FC = () => {
         {/* Left Column (5 cols): Bill Details & Quick Amount Controls */}
         <div className="lg:col-span-5 space-y-4">
           {/* Bill Total Input card */}
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+          <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-5 shadow-xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-neutral-800">
               <div className="flex items-center gap-2">
-                <ReceiptIcon className="w-4 h-4 text-cyan-400" />
+                <ReceiptIcon className="w-4 h-4 text-amber-400" />
                 <h3 className="font-bold text-white text-sm">Conto del Tavolo / Asporto</h3>
               </div>
               {selectedTable && (
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-800 font-bold">
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-950 text-amber-300 border border-amber-800 font-bold">
                   {selectedTable.name}
                 </span>
               )}
@@ -412,7 +412,7 @@ export const CassaView: React.FC = () => {
 
             {/* Quick manual direct amount input */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-300 flex items-center justify-between">
+              <label className="text-xs font-semibold text-neutral-300 flex items-center justify-between">
                 <span>Importo Totale Conto (€):</span>
                 {selectedTable && (
                   <button
@@ -421,7 +421,7 @@ export const CassaView: React.FC = () => {
                       const amt = parseFloat(manualTotalInput) || 0;
                       updateTableBillAmount(selectedTable.id, amt);
                     }}
-                    className="text-cyan-400 hover:text-cyan-300 text-xs font-bold underline"
+                    className="text-amber-400 hover:text-amber-300 text-xs font-bold underline"
                   >
                     Salva importo sul Tavolo
                   </button>
@@ -435,15 +435,15 @@ export const CassaView: React.FC = () => {
                   placeholder="0.00"
                   value={manualTotalInput}
                   onChange={(e) => setManualTotalInput(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-2xl px-4 py-3.5 text-3xl font-black text-amber-400 font-mono placeholder-slate-600 focus:outline-none focus:border-cyan-500"
+                  className="w-full bg-neutral-950 border border-neutral-700 rounded-2xl px-4 py-3.5 text-3xl font-black text-amber-400 font-mono placeholder-slate-600 focus:outline-none focus:border-amber-500"
                 />
-                <span className="absolute right-4 top-4 text-slate-400 font-bold text-xl">€</span>
+                <span className="absolute right-4 top-4 text-neutral-400 font-bold text-xl">€</span>
               </div>
             </div>
 
             {/* Quick preset increments for bill total */}
             <div className="space-y-1">
-              <span className="text-[11px] text-slate-400 font-semibold">
+              <span className="text-[11px] text-neutral-400 font-semibold">
                 Aggiunte Rapide al Conto:
               </span>
               <div className="grid grid-cols-4 gap-1.5">
@@ -455,7 +455,7 @@ export const CassaView: React.FC = () => {
                       const cur = parseFloat(manualTotalInput) || 0;
                       setManualTotalInput((cur + val).toFixed(2));
                     }}
-                    className="py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold border border-slate-700 transition-all active:scale-95"
+                    className="py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-bold border border-neutral-700 transition-all active:scale-95"
                   >
                     +{val} €
                   </button>
@@ -464,9 +464,9 @@ export const CassaView: React.FC = () => {
             </div>
 
             {/* Discount and Covers controls */}
-            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-800/80">
+            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-neutral-800/80">
               <div>
-                <label className="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
+                <label className="text-[11px] font-semibold text-neutral-400 flex items-center gap-1">
                   <Percent className="w-3 h-3" /> Sconto %
                 </label>
                 <div className="flex gap-1 mt-1">
@@ -477,8 +477,8 @@ export const CassaView: React.FC = () => {
                       onClick={() => setDiscountPercent(pct)}
                       className={`flex-1 py-1 rounded-lg text-xs font-bold transition-colors ${
                         discountPercent === pct
-                          ? 'bg-amber-500 text-slate-950'
-                          : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                          ? 'bg-amber-500 text-neutral-950'
+                          : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'
                       }`}
                     >
                       {pct}%
@@ -488,14 +488,14 @@ export const CassaView: React.FC = () => {
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
+                <label className="text-[11px] font-semibold text-neutral-400 flex items-center gap-1">
                   <Users className="w-3 h-3" /> Coperti
                 </label>
                 <div className="flex items-center gap-1 mt-1">
                   <button
                     type="button"
                     onClick={() => setCoversCount((c) => Math.max(1, c - 1))}
-                    className="w-8 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 font-bold text-xs"
+                    className="w-8 py-1 rounded-lg bg-neutral-800 text-neutral-300 hover:bg-neutral-700 font-bold text-xs"
                   >
                     -
                   </button>
@@ -505,7 +505,7 @@ export const CassaView: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setCoversCount((c) => c + 1)}
-                    className="w-8 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 font-bold text-xs"
+                    className="w-8 py-1 rounded-lg bg-neutral-800 text-neutral-300 hover:bg-neutral-700 font-bold text-xs"
                   >
                     +
                   </button>
@@ -514,8 +514,8 @@ export const CassaView: React.FC = () => {
             </div>
 
             {/* Subtotal calculation row */}
-            <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-1 text-xs">
-              <div className="flex justify-between text-slate-400">
+            <div className="p-3.5 rounded-2xl bg-neutral-950 border border-neutral-800 space-y-1 text-xs">
+              <div className="flex justify-between text-neutral-400">
                 <span>Subtotale Conto:</span>
                 <span className="font-mono">{rawTotal.toFixed(2)} €</span>
               </div>
@@ -525,7 +525,7 @@ export const CassaView: React.FC = () => {
                   <span className="font-mono">-{discountAmount.toFixed(2)} €</span>
                 </div>
               )}
-              <div className="flex justify-between text-base font-black text-white pt-1 border-t border-slate-800">
+              <div className="flex justify-between text-base font-black text-white pt-1 border-t border-neutral-800">
                 <span>TOTALE DA INCASSARE:</span>
                 <span className="text-amber-400 text-2xl font-mono">{finalTotal.toFixed(2)} €</span>
               </div>
@@ -535,9 +535,9 @@ export const CassaView: React.FC = () => {
 
         {/* Right Column (7 cols): Payment Method, Split Bill, and Accurate Resto Calculation */}
         <div className="lg:col-span-7 space-y-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-6">
+          <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 shadow-2xl space-y-6">
             {/* Split Bill Toggle & Mode */}
-            <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+            <div className="flex items-center justify-between pb-4 border-b border-neutral-800">
               <div className="flex items-center gap-2">
                 <Wallet className="w-5 h-5 text-amber-400" />
                 <h3 className="font-extrabold text-white text-base">Modalità di Pagamento</h3>
@@ -548,8 +548,8 @@ export const CassaView: React.FC = () => {
                 onClick={() => setIsSplitMode(!isSplitMode)}
                 className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border ${
                   isSplitMode
-                    ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md shadow-amber-500/20'
-                    : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white hover:bg-slate-700'
+                    ? 'bg-amber-500 text-neutral-950 border-amber-400 shadow-md shadow-amber-500/20'
+                    : 'bg-neutral-800 text-neutral-300 border-neutral-700 hover:text-white hover:bg-neutral-700'
                 }`}
               >
                 <Split className="w-4 h-4" />
@@ -570,7 +570,7 @@ export const CassaView: React.FC = () => {
                     className={`p-4 rounded-2xl border text-center transition-all flex flex-col items-center gap-2 ${
                       paymentMethod === 'contanti'
                         ? 'bg-emerald-950/60 border-emerald-500 text-emerald-300 ring-2 ring-emerald-500/30 font-bold'
-                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                        : 'bg-neutral-950 border-neutral-800 text-neutral-400 hover:border-neutral-700'
                     }`}
                   >
                     <Banknote className="w-6 h-6" />
@@ -586,7 +586,7 @@ export const CassaView: React.FC = () => {
                     className={`p-4 rounded-2xl border text-center transition-all flex flex-col items-center gap-2 ${
                       paymentMethod === 'carta'
                         ? 'bg-blue-950/60 border-blue-500 text-blue-300 ring-2 ring-blue-500/30 font-bold'
-                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                        : 'bg-neutral-950 border-neutral-800 text-neutral-400 hover:border-neutral-700'
                     }`}
                   >
                     <CreditCard className="w-6 h-6" />
@@ -600,7 +600,7 @@ export const CassaView: React.FC = () => {
                     className={`p-4 rounded-2xl border text-center transition-all flex flex-col items-center gap-2 ${
                       paymentMethod === 'misto'
                         ? 'bg-purple-950/60 border-purple-500 text-purple-300 ring-2 ring-purple-500/30 font-bold'
-                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                        : 'bg-neutral-950 border-neutral-800 text-neutral-400 hover:border-neutral-700'
                     }`}
                   >
                     <Split className="w-6 h-6" />
@@ -613,7 +613,7 @@ export const CassaView: React.FC = () => {
                   <div className="space-y-3">
                     <div className="space-y-1.5">
                       <div className="flex justify-between items-center text-xs">
-                        <span className="font-semibold text-slate-300">
+                        <span className="font-semibold text-neutral-300">
                           Importo Contanti Ricevuto dal Cliente (€):
                         </span>
                         <button
@@ -630,9 +630,9 @@ export const CassaView: React.FC = () => {
                           placeholder="0.00"
                           value={cashGiven}
                           onChange={(e) => setCashGiven(e.target.value)}
-                          className="w-full bg-slate-950 border border-slate-700 rounded-2xl px-4 py-3.5 text-2xl font-black text-white focus:outline-none focus:border-emerald-500"
+                          className="w-full bg-neutral-950 border border-neutral-700 rounded-2xl px-4 py-3.5 text-2xl font-black text-white focus:outline-none focus:border-emerald-500"
                         />
-                        <span className="absolute right-4 top-4 text-slate-400 font-bold text-lg">
+                        <span className="absolute right-4 top-4 text-neutral-400 font-bold text-lg">
                           €
                         </span>
                       </div>
@@ -640,7 +640,7 @@ export const CassaView: React.FC = () => {
 
                     {/* Quick Cash Presets (5, 10, 20, 50, 100) */}
                     <div className="space-y-1">
-                      <span className="text-[11px] text-slate-400 font-semibold">
+                      <span className="text-[11px] text-neutral-400 font-semibold">
                         Tagli Banconote Rapidi:
                       </span>
                       <div className="grid grid-cols-5 gap-2">
@@ -648,7 +648,7 @@ export const CassaView: React.FC = () => {
                           <button
                             key={val}
                             onClick={() => handleCashPreset(val)}
-                            className="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-bold text-sm transition-all active:scale-95 shadow"
+                            className="py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 border border-neutral-700 text-white font-bold text-sm transition-all active:scale-95 shadow"
                           >
                             {val} €
                           </button>
@@ -668,7 +668,7 @@ export const CassaView: React.FC = () => {
                         {finalTotal.toFixed(2)} €
                       </span>
                     </div>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-neutral-400">
                       Inserisci o passa la carta sul terminale POS. Una volta approvata la
                       transazione, premi Chiudi Conto.
                     </p>
@@ -682,7 +682,7 @@ export const CassaView: React.FC = () => {
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs text-slate-300 font-semibold">
+                        <label className="text-xs text-neutral-300 font-semibold">
                           Quota Contanti (€):
                         </label>
                         <input
@@ -698,12 +698,12 @@ export const CassaView: React.FC = () => {
                               setCardPaid((finalTotal - parsed).toFixed(2));
                             }
                           }}
-                          className="w-full mt-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-lg font-bold text-emerald-400 focus:outline-none focus:border-emerald-500"
+                          className="w-full mt-1 bg-neutral-950 border border-neutral-700 rounded-xl px-3 py-2 text-lg font-bold text-emerald-400 focus:outline-none focus:border-emerald-500"
                         />
                       </div>
 
                       <div>
-                        <label className="text-xs text-slate-300 font-semibold">
+                        <label className="text-xs text-neutral-300 font-semibold">
                           Quota Carta POS (€):
                         </label>
                         <input
@@ -712,7 +712,7 @@ export const CassaView: React.FC = () => {
                           placeholder="0.00"
                           value={cardPaid}
                           onChange={(e) => setCardPaid(e.target.value)}
-                          className="w-full mt-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-lg font-bold text-blue-400 focus:outline-none focus:border-blue-500"
+                          className="w-full mt-1 bg-neutral-950 border border-neutral-700 rounded-xl px-3 py-2 text-lg font-bold text-blue-400 focus:outline-none focus:border-blue-500"
                         />
                       </div>
                     </div>
@@ -720,8 +720,8 @@ export const CassaView: React.FC = () => {
                 )}
 
                 {/* ACCURATE RESTO / MANCANTE DISPLAY (Requested by User) */}
-                <div className="p-5 rounded-3xl bg-slate-950 border-2 border-slate-800 space-y-3">
-                  <div className="flex items-center justify-between text-xs text-slate-400 font-medium">
+                <div className="p-5 rounded-3xl bg-neutral-950 border-2 border-neutral-800 space-y-3">
+                  <div className="flex items-center justify-between text-xs text-neutral-400 font-medium">
                     <span>Riepilogo Calcolo Cassa:</span>
                     <span>
                       Ricevuto:{' '}
@@ -781,10 +781,10 @@ export const CassaView: React.FC = () => {
             {/* SPLIT BILL VIEW (Alla Romana / Diviso per persone) */}
             {isSplitMode && (
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-950 border border-slate-800">
+                <div className="flex items-center justify-between p-3 rounded-2xl bg-neutral-950 border border-neutral-800">
                   <div className="space-y-0.5">
                     <div className="text-xs font-bold text-white">Divisione del Conto</div>
-                    <div className="text-[11px] text-slate-400">
+                    <div className="text-[11px] text-neutral-400">
                       Totale: {finalTotal.toFixed(2)} € • Quota per persona:{' '}
                       <strong className="text-amber-400">
                         {(finalTotal / splitPeopleCount).toFixed(2)} €
@@ -794,11 +794,11 @@ export const CassaView: React.FC = () => {
 
                   {/* Number of people selector */}
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-400 font-semibold">Persone:</span>
-                    <div className="flex items-center gap-1 bg-slate-800 p-1 rounded-xl">
+                    <span className="text-xs text-neutral-400 font-semibold">Persone:</span>
+                    <div className="flex items-center gap-1 bg-neutral-800 p-1 rounded-xl">
                       <button
                         onClick={() => setSplitPeopleCount((c) => Math.max(2, c - 1))}
-                        className="w-7 h-7 rounded-lg bg-slate-700 text-white font-bold text-xs"
+                        className="w-7 h-7 rounded-lg bg-neutral-700 text-white font-bold text-xs"
                       >
                         -
                       </button>
@@ -807,7 +807,7 @@ export const CassaView: React.FC = () => {
                       </span>
                       <button
                         onClick={() => setSplitPeopleCount((c) => c + 1)}
-                        className="w-7 h-7 rounded-lg bg-slate-700 text-white font-bold text-xs"
+                        className="w-7 h-7 rounded-lg bg-neutral-700 text-white font-bold text-xs"
                       >
                         +
                       </button>
@@ -824,7 +824,7 @@ export const CassaView: React.FC = () => {
                         className={`p-3 rounded-2xl border transition-all ${
                           person.isPaid
                             ? 'bg-emerald-950/40 border-emerald-500/50'
-                            : 'bg-slate-950 border-slate-800'
+                            : 'bg-neutral-950 border-neutral-800'
                         }`}
                       >
                         <div className="flex items-center justify-between text-xs mb-2">
@@ -849,7 +849,7 @@ export const CassaView: React.FC = () => {
                                 person.cashGiven
                               )
                             }
-                            className="bg-slate-800 border border-slate-700 text-white text-xs rounded-xl px-2 py-1.5 focus:outline-none"
+                            className="bg-neutral-800 border border-neutral-700 text-white text-xs rounded-xl px-2 py-1.5 focus:outline-none"
                           >
                             <option value="contanti">Contanti</option>
                             <option value="carta">Carta POS</option>
@@ -870,7 +870,7 @@ export const CassaView: React.FC = () => {
                                 given
                               );
                             }}
-                            className="w-24 bg-slate-800 border border-slate-700 text-white text-xs rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-amber-500"
+                            className="w-24 bg-neutral-800 border border-neutral-700 text-white text-xs rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-amber-500"
                           />
 
                           {/* Mark Paid Quick Button */}
@@ -886,7 +886,7 @@ export const CassaView: React.FC = () => {
                             className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-colors ${
                               person.isPaid
                                 ? 'bg-emerald-600 text-white'
-                                : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                                : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'
                             }`}
                           >
                             {person.isPaid ? 'Pagato ✓' : 'Salda Quota'}
@@ -907,11 +907,11 @@ export const CassaView: React.FC = () => {
             )}
 
             {/* ACTION BUTTONS: Chiudi Conto & Stampa */}
-            <div className="pt-2 border-t border-slate-800 flex flex-col sm:flex-row items-center gap-3">
+            <div className="pt-2 border-t border-neutral-800 flex flex-col sm:flex-row items-center gap-3">
               <button
                 onClick={handleCloseBill}
                 disabled={finalTotal <= 0}
-                className="w-full sm:flex-1 py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 font-black text-base shadow-xl shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 active:scale-98"
+                className="w-full sm:flex-1 py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-neutral-950 font-black text-base shadow-xl shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 active:scale-98"
               >
                 <CheckCircle2 className="w-5 h-5" />
                 <span>Chiudi Conto ({finalTotal.toFixed(2)} €)</span>
@@ -920,7 +920,7 @@ export const CassaView: React.FC = () => {
               {lastReceipt && (
                 <button
                   onClick={() => setShowSuccessToast(false)}
-                  className="w-full sm:w-auto px-5 py-4 rounded-2xl border border-slate-700 bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm transition-all flex items-center justify-center gap-2"
+                  className="w-full sm:w-auto px-5 py-4 rounded-2xl border border-neutral-700 bg-neutral-800 hover:bg-neutral-700 text-white font-bold text-sm transition-all flex items-center justify-center gap-2"
                 >
                   <Printer className="w-4 h-4 text-amber-400" />
                   <span>Stampa Ultimo</span>

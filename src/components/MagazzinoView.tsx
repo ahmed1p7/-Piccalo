@@ -215,7 +215,7 @@ export const MagazzinoView: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-6 py-6 space-y-6 animate-fadeIn">
       {/* Magazzino Header & Low Stock Banner */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-5 rounded-3xl shadow-xl">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-neutral-900 border border-neutral-800 p-5 rounded-3xl shadow-xl">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center justify-center font-bold">
             <Package className="w-6 h-6" />
@@ -224,7 +224,7 @@ export const MagazzinoView: React.FC = () => {
             <h1 className="text-xl sm:text-2xl font-black text-white">
               Gestione Magazzino &amp; Scorte
             </h1>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-neutral-400">
               Controllo materie prime alimentari, bevande, prodotti finiti e soglie d&apos;allerta.
             </p>
           </div>
@@ -234,7 +234,7 @@ export const MagazzinoView: React.FC = () => {
         <div className="flex items-center gap-2">
           <button
             onClick={() => handleOpenAddModal()}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs shadow-lg shadow-amber-500/20 transition-all active:scale-95"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold text-xs shadow-lg shadow-amber-500/20 transition-all active:scale-95"
           >
             <Plus className="w-4 h-4" />
             <span>Nuovo Articolo</span>
@@ -243,13 +243,13 @@ export const MagazzinoView: React.FC = () => {
       </div>
 
       {/* Sub-Tabs: 1. Materiali | 2. Prodotti | 3. Storico Movimenti | 4. Inventario Fisico */}
-      <div className="flex items-center gap-2 border-b border-slate-800 pb-2 overflow-x-auto">
+      <div className="flex items-center gap-2 border-b border-neutral-800 pb-2 overflow-x-auto">
         <button
           onClick={() => setActiveTab('materiali')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
             activeTab === 'materiali'
-              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-              : 'bg-slate-900 text-slate-300 hover:text-white border border-slate-800'
+              ? 'bg-amber-500 text-neutral-950 shadow-md shadow-amber-500/20'
+              : 'bg-neutral-900 text-neutral-300 hover:text-white border border-neutral-800'
           }`}
         >
           <Boxes className="w-4 h-4" />
@@ -260,8 +260,8 @@ export const MagazzinoView: React.FC = () => {
           onClick={() => setActiveTab('prodotti')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
             activeTab === 'prodotti'
-              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-              : 'bg-slate-900 text-slate-300 hover:text-white border border-slate-800'
+              ? 'bg-amber-500 text-neutral-950 shadow-md shadow-amber-500/20'
+              : 'bg-neutral-900 text-neutral-300 hover:text-white border border-neutral-800'
           }`}
         >
           <Package className="w-4 h-4" />
@@ -272,8 +272,8 @@ export const MagazzinoView: React.FC = () => {
           onClick={() => setActiveTab('movimenti')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
             activeTab === 'movimenti'
-              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-              : 'bg-slate-900 text-slate-300 hover:text-white border border-slate-800'
+              ? 'bg-amber-500 text-neutral-950 shadow-md shadow-amber-500/20'
+              : 'bg-neutral-900 text-neutral-300 hover:text-white border border-neutral-800'
           }`}
         >
           <History className="w-4 h-4" />
@@ -284,8 +284,8 @@ export const MagazzinoView: React.FC = () => {
           onClick={() => setActiveTab('inventario_fisico')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap ${
             activeTab === 'inventario_fisico'
-              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-              : 'bg-slate-900 text-slate-300 hover:text-white border border-slate-800'
+              ? 'bg-amber-500 text-neutral-950 shadow-md shadow-amber-500/20'
+              : 'bg-neutral-900 text-neutral-300 hover:text-white border border-neutral-800'
           }`}
         >
           <RefreshCw className="w-4 h-4" />
@@ -295,22 +295,22 @@ export const MagazzinoView: React.FC = () => {
 
       {/* FILTER & SEARCH BAR (for Materiali and Prodotti tabs) */}
       {(activeTab === 'materiali' || activeTab === 'prodotti') && (
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-neutral-900/60 p-4 rounded-2xl border border-neutral-800">
           <div className="flex flex-1 items-center gap-2">
             {/* Search input */}
             <div className="relative flex-1">
-              <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
+              <Search className="w-4 h-4 absolute left-3.5 top-3 text-neutral-400" />
               <input
                 type="text"
                 placeholder="Cerca per nome o fornitore..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                className="w-full pl-9 pr-4 py-2 bg-neutral-950 border border-neutral-700 rounded-xl text-xs sm:text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-amber-500"
               />
               {searchTerm && (
                 <button
                   onClick={() => setSearchTerm('')}
-                  className="absolute right-3 top-2.5 text-slate-400 hover:text-white"
+                  className="absolute right-3 top-2.5 text-neutral-400 hover:text-white"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -319,11 +319,11 @@ export const MagazzinoView: React.FC = () => {
 
             {/* Category filter */}
             <div className="flex items-center gap-1.5">
-              <Filter className="w-4 h-4 text-slate-400 hidden sm:block" />
+              <Filter className="w-4 h-4 text-neutral-400 hidden sm:block" />
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="bg-slate-950 border border-slate-700 text-slate-200 text-xs sm:text-sm rounded-xl px-3 py-2 focus:outline-none focus:border-amber-500"
+                className="bg-neutral-950 border border-neutral-700 text-neutral-200 text-xs sm:text-sm rounded-xl px-3 py-2 focus:outline-none focus:border-amber-500"
               >
                 <option value="tutti">Tutte le Categorie</option>
                 <option value="cibo">Alimentare / Cibo</option>
@@ -340,8 +340,8 @@ export const MagazzinoView: React.FC = () => {
             onClick={() => setFilterLowStockOnly(!filterLowStockOnly)}
             className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition-colors whitespace-nowrap ${
               filterLowStockOnly
-                ? 'bg-amber-500 text-slate-950 border-amber-400'
-                : 'bg-slate-950 text-slate-300 border-slate-700 hover:border-slate-600'
+                ? 'bg-amber-500 text-neutral-950 border-amber-400'
+                : 'bg-neutral-950 text-neutral-300 border-neutral-700 hover:border-neutral-600'
             }`}
           >
             <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
@@ -352,9 +352,9 @@ export const MagazzinoView: React.FC = () => {
 
       {/* TAB 1 & 2: ITEMS TABLE (MATERIALI / PRODOTTI) */}
       {(activeTab === 'materiali' || activeTab === 'prodotti') && (
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-xl">
+        <div className="bg-neutral-900 border border-neutral-800 rounded-3xl overflow-hidden shadow-xl">
           {filteredItems.length === 0 ? (
-            <div className="p-12 text-center text-slate-400 space-y-2">
+            <div className="p-12 text-center text-neutral-400 space-y-2">
               <Package className="w-10 h-10 mx-auto text-slate-600 mb-2" />
               <p className="font-semibold text-white">Nessun articolo trovato.</p>
               <p className="text-xs">
@@ -364,7 +364,7 @@ export const MagazzinoView: React.FC = () => {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs sm:text-sm">
-                <thead className="bg-slate-950/80 text-slate-400 uppercase tracking-wider text-[11px] border-b border-slate-800">
+                <thead className="bg-neutral-950/80 text-neutral-400 uppercase tracking-wider text-[11px] border-b border-neutral-800">
                   <tr>
                     <th className="px-5 py-3.5">Nome Articolo</th>
                     <th className="px-4 py-3.5">Categoria</th>
@@ -382,18 +382,18 @@ export const MagazzinoView: React.FC = () => {
                     return (
                       <tr
                         key={item.id}
-                        className="hover:bg-slate-800/40 transition-colors"
+                        className="hover:bg-neutral-800/40 transition-colors"
                       >
                         {/* Name & Notes */}
                         <td className="px-5 py-3">
                           <div className="font-bold text-white text-sm">{item.name}</div>
                           {item.notes && (
-                            <div className="text-[11px] text-slate-400 truncate max-w-xs">
+                            <div className="text-[11px] text-neutral-400 truncate max-w-xs">
                               {item.notes}
                             </div>
                           )}
                           {item.expirationDate && (
-                            <div className="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5">
+                            <div className="text-[10px] text-neutral-500 flex items-center gap-1 mt-0.5">
                               <Calendar className="w-3 h-3" /> Scadenza: {item.expirationDate}
                             </div>
                           )}
@@ -401,7 +401,7 @@ export const MagazzinoView: React.FC = () => {
 
                         {/* Category */}
                         <td className="px-4 py-3">
-                          <span className="capitalize px-2.5 py-0.5 rounded-full text-xs bg-slate-800 text-slate-300 border border-slate-700">
+                          <span className="capitalize px-2.5 py-0.5 rounded-full text-xs bg-neutral-800 text-neutral-300 border border-neutral-700">
                             {item.category}
                           </span>
                         </td>
@@ -410,24 +410,24 @@ export const MagazzinoView: React.FC = () => {
                         <td className="px-4 py-3 font-mono">
                           <div className="text-base font-black text-white flex items-baseline gap-1">
                             <span>{item.currentQuantity}</span>
-                            <span className="text-xs font-normal text-slate-400">
+                            <span className="text-xs font-normal text-neutral-400">
                               {item.unit}
                             </span>
                           </div>
                           {item.costPrice ? (
-                            <div className="text-[10px] text-slate-500">
+                            <div className="text-[10px] text-neutral-500">
                               Costo: {item.costPrice.toFixed(2)} €
                             </div>
                           ) : null}
                         </td>
 
                         {/* Min Threshold */}
-                        <td className="px-4 py-3 font-mono text-slate-400 text-xs">
+                        <td className="px-4 py-3 font-mono text-neutral-400 text-xs">
                           {item.minThreshold} {item.unit}
                         </td>
 
                         {/* Supplier */}
-                        <td className="px-4 py-3 text-slate-300 text-xs">
+                        <td className="px-4 py-3 text-neutral-300 text-xs">
                           {item.supplier || '-'}
                         </td>
 
@@ -451,21 +451,21 @@ export const MagazzinoView: React.FC = () => {
                             <button
                               onClick={() => handleOpenQuickAdjust(item, -1)}
                               title="Scarica 1 unità"
-                              className="w-7 h-7 rounded-lg bg-slate-800 hover:bg-rose-950 hover:text-rose-400 text-slate-300 font-bold flex items-center justify-center border border-slate-700"
+                              className="w-7 h-7 rounded-lg bg-neutral-800 hover:bg-rose-950 hover:text-rose-400 text-neutral-300 font-bold flex items-center justify-center border border-neutral-700"
                             >
                               -1
                             </button>
                             <button
                               onClick={() => handleOpenQuickAdjust(item, 1)}
                               title="Carica 1 unità"
-                              className="w-7 h-7 rounded-lg bg-slate-800 hover:bg-emerald-950 hover:text-emerald-400 text-slate-300 font-bold flex items-center justify-center border border-slate-700"
+                              className="w-7 h-7 rounded-lg bg-neutral-800 hover:bg-emerald-950 hover:text-emerald-400 text-neutral-300 font-bold flex items-center justify-center border border-neutral-700"
                             >
                               +1
                             </button>
                             <button
                               onClick={() => handleOpenQuickAdjust(item, 5)}
                               title="Carica 5 unità"
-                              className="px-2 h-7 rounded-lg bg-slate-800 hover:bg-amber-950 hover:text-amber-400 text-slate-300 font-bold text-xs flex items-center justify-center border border-slate-700"
+                              className="px-2 h-7 rounded-lg bg-neutral-800 hover:bg-amber-950 hover:text-amber-400 text-neutral-300 font-bold text-xs flex items-center justify-center border border-neutral-700"
                             >
                               +5
                             </button>
@@ -478,7 +478,7 @@ export const MagazzinoView: React.FC = () => {
                             <button
                               onClick={() => handleOpenEditModal(item)}
                               title="Modifica Articolo"
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+                              className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800"
                             >
                               <Edit2 className="w-4 h-4" />
                             </button>
@@ -489,7 +489,7 @@ export const MagazzinoView: React.FC = () => {
                                 }
                               }}
                               title="Elimina"
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-950/40"
+                              className="p-1.5 rounded-lg text-neutral-400 hover:text-rose-400 hover:bg-rose-950/40"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -507,13 +507,13 @@ export const MagazzinoView: React.FC = () => {
 
       {/* TAB 3: REGISTRO MOVIMENTI & CONSUMI (Inventory Logs) */}
       {activeTab === 'movimenti' && (
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 shadow-xl space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-neutral-800">
             <div>
               <h3 className="font-bold text-white text-base">
                 Registro Modifiche &amp; Consumi Magazzino
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-neutral-400">
                 Storico completo di chi ha modificato le quantità, quando e per quale motivo.
               </p>
             </div>
@@ -521,7 +521,7 @@ export const MagazzinoView: React.FC = () => {
 
           <div className="divide-y divide-slate-800">
             {inventoryLogs.length === 0 ? (
-              <p className="text-xs text-slate-400 py-6 text-center">Nessun movimento registrato finora.</p>
+              <p className="text-xs text-neutral-400 py-6 text-center">Nessun movimento registrato finora.</p>
             ) : (
               inventoryLogs.map((log) => (
                 <div key={log.id} className="py-3.5 flex items-center justify-between text-xs sm:text-sm">
@@ -541,7 +541,7 @@ export const MagazzinoView: React.FC = () => {
                     </div>
                     <div>
                       <div className="font-bold text-white">{log.itemName}</div>
-                      <div className="text-xs text-slate-400">
+                      <div className="text-xs text-neutral-400">
                         {log.reason || 'Movimento magazzino'} • Operatore:{' '}
                         <span className="text-amber-400 font-semibold">{log.userName}</span>
                       </div>
@@ -556,7 +556,7 @@ export const MagazzinoView: React.FC = () => {
                     >
                       {log.deltaQuantity >= 0 ? `+${log.deltaQuantity}` : log.deltaQuantity}
                     </div>
-                    <div className="text-[11px] text-slate-500 flex items-center justify-end gap-1">
+                    <div className="text-[11px] text-neutral-500 flex items-center justify-end gap-1">
                       <Clock className="w-3 h-3" /> {log.timestamp}
                     </div>
                   </div>
@@ -569,20 +569,20 @@ export const MagazzinoView: React.FC = () => {
 
       {/* TAB 4: INVENTARIO FISICO (Physical Count vs Recorded) */}
       {activeTab === 'inventario_fisico' && (
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-slate-800">
+        <div className="bg-neutral-900 border border-neutral-800 rounded-3xl p-6 shadow-xl space-y-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-neutral-800">
             <div>
               <h3 className="font-bold text-white text-base">
                 Verifica &amp; Quadratura Inventario Fisico
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-neutral-400">
                 Inserisci il conteggio reale fatto a mano in magazzino. Il sistema calcolerà le
                 differenze e rettificherà le giacenze automaticamente.
               </p>
             </div>
             <button
               onClick={handleApplyPhysicalInventory}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-md shadow-emerald-500/20"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-bold text-xs shadow-md shadow-emerald-500/20"
             >
               <CheckCircle2 className="w-4 h-4" />
               <span>Salva Rettifiche</span>
@@ -590,19 +590,19 @@ export const MagazzinoView: React.FC = () => {
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-slate-400">Note sulla verifica:</label>
+            <label className="text-xs font-semibold text-neutral-400">Note sulla verifica:</label>
             <input
               type="text"
               value={physicalNotes}
               onChange={(e) => setPhysicalNotes(e.target.value)}
               placeholder="Es. Inventario mensile fine mese, controllo celle frigorifere"
-              className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+              className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
             />
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs sm:text-sm">
-              <thead className="bg-slate-950/80 text-slate-400 uppercase tracking-wider text-[11px]">
+              <thead className="bg-neutral-950/80 text-neutral-400 uppercase tracking-wider text-[11px]">
                 <tr>
                   <th className="px-4 py-3">Articolo</th>
                   <th className="px-4 py-3">Quantità a Sistema</th>
@@ -615,12 +615,12 @@ export const MagazzinoView: React.FC = () => {
                   const counted = physicalCounts[item.id] ?? item.currentQuantity;
                   const diff = counted - item.currentQuantity;
                   return (
-                    <tr key={item.id} className="hover:bg-slate-800/40">
+                    <tr key={item.id} className="hover:bg-neutral-800/40">
                       <td className="px-4 py-3">
                         <div className="font-bold text-white">{item.name}</div>
-                        <div className="text-[11px] text-slate-500 capitalize">{item.type}</div>
+                        <div className="text-[11px] text-neutral-500 capitalize">{item.type}</div>
                       </td>
-                      <td className="px-4 py-3 font-mono font-bold text-slate-300">
+                      <td className="px-4 py-3 font-mono font-bold text-neutral-300">
                         {item.currentQuantity} {item.unit}
                       </td>
                       <td className="px-4 py-3">
@@ -633,9 +633,9 @@ export const MagazzinoView: React.FC = () => {
                               const val = parseFloat(e.target.value) || 0;
                               setPhysicalCounts((prev) => ({ ...prev, [item.id]: val }));
                             }}
-                            className="w-24 bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-white font-mono font-bold text-sm focus:outline-none focus:border-amber-500"
+                            className="w-24 bg-neutral-950 border border-neutral-700 rounded-xl px-3 py-1.5 text-white font-mono font-bold text-sm focus:outline-none focus:border-amber-500"
                           />
-                          <span className="text-slate-400 text-xs">{item.unit}</span>
+                          <span className="text-neutral-400 text-xs">{item.unit}</span>
                         </div>
                       </td>
                       <td className="px-4 py-3 font-mono font-bold">
@@ -658,15 +658,15 @@ export const MagazzinoView: React.FC = () => {
 
       {/* MODAL: ADD / EDIT INVENTORY ITEM */}
       {isAddEditModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl my-auto space-y-5">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div className="fixed inset-0 z-50 bg-neutral-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-neutral-900 border border-neutral-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl my-auto space-y-5">
+            <div className="flex items-center justify-between pb-3 border-b border-neutral-800">
               <h3 className="font-bold text-white text-base">
                 {editingItem ? 'Modifica Articolo' : 'Registra Nuovo Articolo'}
               </h3>
               <button
                 onClick={() => setIsAddEditModalOpen(false)}
-                className="text-slate-400 hover:text-white"
+                className="text-neutral-400 hover:text-white"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -675,7 +675,7 @@ export const MagazzinoView: React.FC = () => {
             <form onSubmit={handleSaveAddEdit} className="space-y-4 text-xs sm:text-sm">
               {/* Type: Materiale vs Prodotto */}
               <div>
-                <label className="font-semibold text-slate-300 block mb-1">
+                <label className="font-semibold text-neutral-300 block mb-1">
                   Tipologia Articolo:
                 </label>
                 <div className="grid grid-cols-2 gap-2">
@@ -684,8 +684,8 @@ export const MagazzinoView: React.FC = () => {
                     onClick={() => setFormData({ ...formData, type: 'materiale' })}
                     className={`py-2 rounded-xl font-bold border transition-all ${
                       formData.type === 'materiale'
-                        ? 'bg-amber-500 text-slate-950 border-amber-400'
-                        : 'bg-slate-950 text-slate-300 border-slate-800'
+                        ? 'bg-amber-500 text-neutral-950 border-amber-400'
+                        : 'bg-neutral-950 text-neutral-300 border-neutral-800'
                     }`}
                   >
                     1. Materiale (Materia Prima)
@@ -695,8 +695,8 @@ export const MagazzinoView: React.FC = () => {
                     onClick={() => setFormData({ ...formData, type: 'prodotto' })}
                     className={`py-2 rounded-xl font-bold border transition-all ${
                       formData.type === 'prodotto'
-                        ? 'bg-amber-500 text-slate-950 border-amber-400'
-                        : 'bg-slate-950 text-slate-300 border-slate-800'
+                        ? 'bg-amber-500 text-neutral-950 border-amber-400'
+                        : 'bg-neutral-950 text-neutral-300 border-neutral-800'
                     }`}
                   >
                     2. Prodotto (Finito / Bevanda)
@@ -706,7 +706,7 @@ export const MagazzinoView: React.FC = () => {
 
               {/* Name */}
               <div>
-                <label className="font-semibold text-slate-300 block mb-1">
+                <label className="font-semibold text-neutral-300 block mb-1">
                   Nome dell&apos;Articolo *
                 </label>
                 <input
@@ -715,20 +715,20 @@ export const MagazzinoView: React.FC = () => {
                   placeholder="Es. Farina Caputo 00, Mozzarella di Bufala, Birra Moretti..."
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-white focus:outline-none focus:border-amber-500"
+                  className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3.5 py-2 text-white focus:outline-none focus:border-amber-500"
                 />
               </div>
 
               {/* Category & Unit */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-semibold text-slate-300 block mb-1">Categoria:</label>
+                  <label className="font-semibold text-neutral-300 block mb-1">Categoria:</label>
                   <select
                     value={formData.category}
                     onChange={(e) =>
                       setFormData({ ...formData, category: e.target.value as ItemCategory })
                     }
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500"
+                    className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500"
                   >
                     <option value="cibo">Alimentare / Cibo</option>
                     <option value="bevande">Bevande &amp; Vini</option>
@@ -739,13 +739,13 @@ export const MagazzinoView: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="font-semibold text-slate-300 block mb-1">
+                  <label className="font-semibold text-neutral-300 block mb-1">
                     Unità di Misura:
                   </label>
                   <select
                     value={formData.unit}
                     onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500"
+                    className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500"
                   >
                     <option value="kg">kg (Chilogrammi)</option>
                     <option value="lt">lt (Litri)</option>
@@ -759,7 +759,7 @@ export const MagazzinoView: React.FC = () => {
               {/* Quantities: Current & Min Alert Threshold */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-semibold text-slate-300 block mb-1">
+                  <label className="font-semibold text-neutral-300 block mb-1">
                     Quantità Attuale:
                   </label>
                   <input
@@ -771,12 +771,12 @@ export const MagazzinoView: React.FC = () => {
                     onChange={(e) =>
                       setFormData({ ...formData, currentQuantity: parseFloat(e.target.value) || 0 })
                     }
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-white font-mono font-bold focus:outline-none focus:border-amber-500"
+                    className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3.5 py-2 text-white font-mono font-bold focus:outline-none focus:border-amber-500"
                   />
                 </div>
 
                 <div>
-                  <label className="font-semibold text-slate-300 block mb-1">
+                  <label className="font-semibold text-neutral-300 block mb-1">
                     Soglia Minima (Alert):
                   </label>
                   <input
@@ -788,7 +788,7 @@ export const MagazzinoView: React.FC = () => {
                     onChange={(e) =>
                       setFormData({ ...formData, minThreshold: parseFloat(e.target.value) || 0 })
                     }
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-white font-mono font-bold focus:outline-none focus:border-amber-500"
+                    className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3.5 py-2 text-white font-mono font-bold focus:outline-none focus:border-amber-500"
                   />
                 </div>
               </div>
@@ -796,25 +796,25 @@ export const MagazzinoView: React.FC = () => {
               {/* Supplier & Expiration Date */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-semibold text-slate-300 block mb-1">Fornitore:</label>
+                  <label className="font-semibold text-neutral-300 block mb-1">Fornitore:</label>
                   <input
                     type="text"
                     placeholder="Es. Molino Caputo, Caseificio..."
                     value={formData.supplier}
                     onChange={(e) => setFormData({ ...formData, supplier: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-white focus:outline-none focus:border-amber-500"
+                    className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3.5 py-2 text-white focus:outline-none focus:border-amber-500"
                   />
                 </div>
 
                 <div>
-                  <label className="font-semibold text-slate-300 block mb-1">
+                  <label className="font-semibold text-neutral-300 block mb-1">
                     Data Scadenza (facoltativa):
                   </label>
                   <input
                     type="date"
                     value={formData.expirationDate}
                     onChange={(e) => setFormData({ ...formData, expirationDate: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-white focus:outline-none focus:border-amber-500"
+                    className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3.5 py-2 text-white focus:outline-none focus:border-amber-500"
                   />
                 </div>
               </div>
@@ -822,7 +822,7 @@ export const MagazzinoView: React.FC = () => {
               {/* Pricing */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-semibold text-slate-300 block mb-1">
+                  <label className="font-semibold text-neutral-300 block mb-1">
                     Costo Acquisto Fornitore (€):
                   </label>
                   <input
@@ -833,13 +833,13 @@ export const MagazzinoView: React.FC = () => {
                     onChange={(e) =>
                       setFormData({ ...formData, costPrice: parseFloat(e.target.value) || 0 })
                     }
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-white focus:outline-none focus:border-amber-500"
+                    className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3.5 py-2 text-white focus:outline-none focus:border-amber-500"
                   />
                 </div>
 
                 {formData.type === 'prodotto' && (
                   <div>
-                    <label className="font-semibold text-slate-300 block mb-1">
+                    <label className="font-semibold text-neutral-300 block mb-1">
                       Prezzo Vendita al Pubblico (€):
                     </label>
                     <input
@@ -850,7 +850,7 @@ export const MagazzinoView: React.FC = () => {
                       onChange={(e) =>
                         setFormData({ ...formData, sellPrice: parseFloat(e.target.value) || 0 })
                       }
-                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-emerald-400 font-bold focus:outline-none focus:border-emerald-500"
+                      className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3.5 py-2 text-emerald-400 font-bold focus:outline-none focus:border-emerald-500"
                     />
                   </div>
                 )}
@@ -858,7 +858,7 @@ export const MagazzinoView: React.FC = () => {
 
               {/* Notes */}
               <div>
-                <label className="font-semibold text-slate-300 block mb-1">
+                <label className="font-semibold text-neutral-300 block mb-1">
                   Note &amp; Istruzioni di Conservazione:
                 </label>
                 <textarea
@@ -866,22 +866,22 @@ export const MagazzinoView: React.FC = () => {
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                   placeholder="Note, posizione in magazzino (es. Scaffale A2, Cella 4°C)..."
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-white focus:outline-none focus:border-amber-500"
+                  className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3.5 py-2 text-white focus:outline-none focus:border-amber-500"
                 />
               </div>
 
               {/* Actions */}
-              <div className="pt-3 border-t border-slate-800 flex items-center justify-end gap-2">
+              <div className="pt-3 border-t border-neutral-800 flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setIsAddEditModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-slate-400 hover:text-white"
+                  className="px-4 py-2 rounded-xl text-neutral-400 hover:text-white"
                 >
                   Annulla
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold transition-all shadow-md shadow-amber-500/20"
+                  className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold transition-all shadow-md shadow-amber-500/20"
                 >
                   {editingItem ? 'Salva Modifiche' : 'Registra Articolo'}
                 </button>
@@ -893,42 +893,42 @@ export const MagazzinoView: React.FC = () => {
 
       {/* QUICK ADJUST MODAL */}
       {quickAdjustModalItem && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 bg-neutral-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-neutral-900 border border-neutral-800 rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-4">
             <h3 className="font-bold text-white text-base">
               Rettifica Scorta: {quickAdjustModalItem.name}
             </h3>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-neutral-400">
               Giacenza attuale: <strong>{quickAdjustModalItem.currentQuantity} {quickAdjustModalItem.unit}</strong>
             </p>
 
             <div className="space-y-3 text-xs">
               <div>
-                <label className="font-semibold text-slate-300 block mb-1">Variazione Quantità:</label>
+                <label className="font-semibold text-neutral-300 block mb-1">Variazione Quantità:</label>
                 <div className="flex items-center gap-2">
                   <input
                     type="number"
                     step="0.5"
                     value={adjustDelta}
                     onChange={(e) => setAdjustDelta(parseFloat(e.target.value) || 0)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono font-bold text-base focus:outline-none"
+                    className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3 py-2 text-white font-mono font-bold text-base focus:outline-none"
                   />
-                  <span className="text-slate-400 font-bold">{quickAdjustModalItem.unit}</span>
+                  <span className="text-neutral-400 font-bold">{quickAdjustModalItem.unit}</span>
                 </div>
               </div>
 
               <div>
-                <label className="font-semibold text-slate-300 block mb-1">Causale / Motivo:</label>
+                <label className="font-semibold text-neutral-300 block mb-1">Causale / Motivo:</label>
                 <input
                   type="text"
                   value={adjustReason}
                   onChange={(e) => setAdjustReason(e.target.value)}
                   placeholder="Es. Consegna fornitore, scarto, consumo..."
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none"
+                  className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3 py-2 text-white focus:outline-none"
                 />
               </div>
 
-              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs">
+              <div className="p-3 rounded-xl bg-neutral-950 border border-neutral-800 text-xs">
                 Nuova giacenza finale prevista:{' '}
                 <strong className="text-amber-400">
                   {Math.max(0, quickAdjustModalItem.currentQuantity + adjustDelta)} {quickAdjustModalItem.unit}
@@ -939,13 +939,13 @@ export const MagazzinoView: React.FC = () => {
             <div className="pt-2 flex items-center justify-end gap-2">
               <button
                 onClick={() => setQuickAdjustModalItem(null)}
-                className="px-3 py-1.5 text-xs text-slate-400 hover:text-white"
+                className="px-3 py-1.5 text-xs text-neutral-400 hover:text-white"
               >
                 Annulla
               </button>
               <button
                 onClick={handleConfirmQuickAdjust}
-                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs"
+                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold text-xs"
               >
                 Conferma Movimento
               </button>

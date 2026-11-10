@@ -71,23 +71,23 @@ export const LoginScreen: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#070c18] text-slate-100 flex flex-col justify-between selection:bg-cyan-500 selection:text-slate-950">
+    <div className="min-h-screen bg-[#0f0f0f] text-neutral-200 flex flex-col justify-between selection:bg-amber-500 selection:text-neutral-950">
       {/* Top Header */}
-      <header className="px-6 py-4 flex items-center justify-between border-b border-slate-800/80 bg-[#0a1122]/70 backdrop-blur-md">
+      <header className="px-6 py-4 flex items-center justify-between border-b border-neutral-800/80 bg-[#1a1a1a]/70 backdrop-blur-md">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-600 via-teal-500 to-sky-400 flex items-center justify-center font-black text-slate-950 shadow-md shadow-cyan-500/20">
-            <Waves className="w-5 h-5 text-slate-950" />
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-600 via-amber-500 to-amber-400 flex items-center justify-center font-black text-neutral-950 shadow-md shadow-amber-500/20">
+            <Waves className="w-5 h-5 text-neutral-950" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-lg font-bold tracking-tight text-white">
+              <span className="text-lg font-bold tracking-tight text-neutral-100">
                 Sea
               </span>
-              <span className="text-[10px] font-mono text-cyan-400 font-semibold uppercase tracking-wider">
+              <span className="text-[10px] font-mono text-amber-400 font-semibold uppercase tracking-wider">
                 POS Ristorante
               </span>
             </div>
-            <p className="text-xs text-slate-400">{profile.name}</p>
+            <p className="text-xs text-neutral-400">{profile.name}</p>
           </div>
         </div>
 
@@ -105,24 +105,24 @@ export const LoginScreen: React.FC = () => {
 
       {/* Main Centered Login Box */}
       <main className="flex-1 flex items-center justify-center p-4 sm:p-6">
-        <div className="w-full max-w-md bg-[#0d1527] border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+        <div className="w-full max-w-md bg-[#1a1a1a] border border-neutral-800 rounded-2xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
           {/* Header */}
           <div className="text-center space-y-1 mb-6">
-            <h1 className="text-xl font-bold text-white tracking-tight">Accesso al Sistema</h1>
-            <p className="text-xs text-slate-400">
+            <h1 className="text-xl font-bold text-neutral-100 tracking-tight">Accesso al Sistema</h1>
+            <p className="text-xs text-neutral-400">
               Inserisci le tue credenziali o il PIN per iniziare il turno
             </p>
           </div>
 
           {/* Mode Switcher: Tastiera vs Tastierino POS */}
-          <div className="flex rounded-lg bg-slate-900/80 p-1 mb-5 border border-slate-800">
+          <div className="flex rounded-lg bg-neutral-900/80 p-1 mb-5 border border-neutral-800">
             <button
               type="button"
               onClick={() => setInputMode('form')}
               className={`flex-1 py-1.5 rounded-md text-xs font-medium transition-all ${
                 inputMode === 'form'
-                  ? 'bg-slate-800 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-neutral-800 text-neutral-100 shadow-sm'
+                  : 'text-neutral-400 hover:text-neutral-200'
               }`}
             >
               Tastiera Standard
@@ -132,8 +132,8 @@ export const LoginScreen: React.FC = () => {
               onClick={() => setInputMode('keypad')}
               className={`flex-1 py-1.5 rounded-md text-xs font-medium transition-all ${
                 inputMode === 'keypad'
-                  ? 'bg-slate-800 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-neutral-800 text-neutral-100 shadow-sm'
+                  : 'text-neutral-400 hover:text-neutral-200'
               }`}
             >
               Tastierino Numerico (Touch)
@@ -151,11 +151,11 @@ export const LoginScreen: React.FC = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Username Input */}
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-300 block">
+              <label className="text-xs font-semibold text-neutral-300 block">
                 Nome Utente
               </label>
               <div className="relative">
-                <User className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                <User className="w-4 h-4 text-neutral-400 absolute left-3 top-3" />
                 <input
                   type="text"
                   required
@@ -165,7 +165,7 @@ export const LoginScreen: React.FC = () => {
                     setUsername(e.target.value);
                     setErrorMessage('');
                   }}
-                  className="w-full bg-slate-900 border border-slate-700/80 rounded-xl pl-9 pr-3 py-2.5 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400 transition-colors font-medium"
+                  className="w-full bg-neutral-900 border border-neutral-700/80 rounded-xl pl-9 pr-3 py-2.5 text-xs sm:text-sm text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-amber-400 transition-colors font-medium"
                 />
               </div>
             </div>
@@ -173,13 +173,13 @@ export const LoginScreen: React.FC = () => {
             {/* Password Input */}
             <div className="space-y-1">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-slate-300 block">
+                <label className="text-xs font-semibold text-neutral-300 block">
                   Password o PIN
                 </label>
-                <span className="text-[11px] text-slate-500 font-mono">4 cifre</span>
+                <span className="text-[11px] text-neutral-500 font-mono">4 cifre</span>
               </div>
               <div className="relative">
-                <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                <Lock className="w-4 h-4 text-neutral-400 absolute left-3 top-3" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
@@ -189,12 +189,12 @@ export const LoginScreen: React.FC = () => {
                     setPassword(e.target.value);
                     setErrorMessage('');
                   }}
-                  className="w-full bg-slate-900 border border-slate-700/80 rounded-xl pl-9 pr-10 py-2.5 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400 transition-colors font-mono tracking-widest text-base"
+                  className="w-full bg-neutral-900 border border-neutral-700/80 rounded-xl pl-9 pr-10 py-2.5 text-xs sm:text-sm text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-amber-400 transition-colors font-mono tracking-widest text-base"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-2.5 text-slate-400 hover:text-white transition-colors p-1"
+                  className="absolute right-3 top-2.5 text-neutral-400 hover:text-neutral-100 transition-colors p-1"
                   tabIndex={-1}
                 >
                   {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
@@ -211,7 +211,7 @@ export const LoginScreen: React.FC = () => {
                       key={digit}
                       type="button"
                       onClick={() => handleKeypadDigit(digit)}
-                      className="py-3 bg-slate-900 hover:bg-slate-800 active:bg-slate-700 rounded-xl font-mono text-lg font-bold text-white border border-slate-800 transition-all active:scale-95 shadow-sm"
+                      className="py-3 bg-neutral-900 hover:bg-neutral-800 active:bg-neutral-700 rounded-xl font-mono text-lg font-bold text-neutral-100 border border-neutral-800 transition-all active:scale-95 shadow-sm"
                     >
                       {digit}
                     </button>
@@ -219,21 +219,21 @@ export const LoginScreen: React.FC = () => {
                   <button
                     type="button"
                     onClick={handleKeypadClear}
-                    className="py-3 bg-slate-900/60 hover:bg-slate-800 active:bg-slate-700 rounded-xl text-xs font-semibold text-slate-400 border border-slate-800 transition-all active:scale-95"
+                    className="py-3 bg-neutral-900/60 hover:bg-neutral-800 active:bg-neutral-700 rounded-xl text-xs font-semibold text-neutral-400 border border-neutral-800 transition-all active:scale-95"
                   >
                     C
                   </button>
                   <button
                     type="button"
                     onClick={() => handleKeypadDigit('0')}
-                    className="py-3 bg-slate-900 hover:bg-slate-800 active:bg-slate-700 rounded-xl font-mono text-lg font-bold text-white border border-slate-800 transition-all active:scale-95 shadow-sm"
+                    className="py-3 bg-neutral-900 hover:bg-neutral-800 active:bg-neutral-700 rounded-xl font-mono text-lg font-bold text-neutral-100 border border-neutral-800 transition-all active:scale-95 shadow-sm"
                   >
                     0
                   </button>
                   <button
                     type="button"
                     onClick={handleKeypadBackspace}
-                    className="py-3 bg-slate-900/60 hover:bg-slate-800 active:bg-slate-700 rounded-xl flex items-center justify-center text-slate-400 hover:text-white border border-slate-800 transition-all active:scale-95"
+                    className="py-3 bg-neutral-900/60 hover:bg-neutral-800 active:bg-neutral-700 rounded-xl flex items-center justify-center text-neutral-400 hover:text-neutral-100 border border-neutral-800 transition-all active:scale-95"
                   >
                     <Delete className="w-4 h-4" />
                   </button>
@@ -245,7 +245,7 @@ export const LoginScreen: React.FC = () => {
             <button
               type="submit"
               disabled={isLoading || !username.trim() || !password.trim()}
-              className="w-full mt-2 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 active:bg-cyan-600 text-slate-950 font-bold text-xs sm:text-sm transition-all shadow-md shadow-cyan-500/20 active:scale-98 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              className="w-full mt-2 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-neutral-950 font-bold text-xs sm:text-sm transition-all shadow-md shadow-amber-500/20 active:scale-98 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
             >
               <span>Accedi al Turno</span>
               <ArrowRight className="w-4 h-4" />
@@ -259,7 +259,7 @@ export const LoginScreen: React.FC = () => {
             <button
               type="button"
               onClick={() => setShowSyncModal(true)}
-              className="px-3 py-2.5 rounded-xl bg-cyan-950/40 border border-cyan-800/50 text-cyan-300 hover:bg-cyan-900/40 text-xs font-semibold flex items-center justify-center gap-2 transition-colors"
+              className="px-3 py-2.5 rounded-xl bg-amber-950/40 border border-amber-800/50 text-amber-300 hover:bg-amber-900/40 text-xs font-semibold flex items-center justify-center gap-2 transition-colors"
             >
               <Cloud className="w-4 h-4" />
               Collega un nuovo dispositivo
@@ -268,56 +268,56 @@ export const LoginScreen: React.FC = () => {
               type="button"
               onClick={handleCheckUpdate}
               disabled={checkingUpdate}
-              className="px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700 text-xs font-semibold flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+              className="px-3 py-2.5 rounded-xl bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-neutral-200 hover:border-neutral-700 text-xs font-semibold flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
             >
               <RefreshCw className={`w-4 h-4 ${checkingUpdate ? 'animate-spin' : ''}`} />
               Verifica aggiornamenti
             </button>
           </div>
 
-          <p className="mt-2 text-[11px] text-slate-500 text-center leading-relaxed">
+          <p className="mt-2 text-[11px] text-neutral-500 text-center leading-relaxed">
             Nuovo telefono? Clicca <strong>Collega un nuovo dispositivo</strong> e
             incolla il codice di sincronizzazione: arrivano subito utenti, tavoli,
             magazzino e scontrini. Non serve conoscere il PIN.
           </p>
 
           {/* Quick-fill helper for test accounts */}
-          <div className="mt-5 pt-4 border-t border-slate-800/80">
-            <div className="text-[11px] text-slate-400 font-medium mb-2">
+          <div className="mt-5 pt-4 border-t border-neutral-800/80">
+            <div className="text-[11px] text-neutral-400 font-medium mb-2">
               Seleziona rapida account di prova:
             </div>
             <div className="grid grid-cols-2 gap-1.5">
               <button
                 type="button"
                 onClick={() => handleQuickFill('Admin', '5555')}
-                className="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-left hover:border-cyan-500/50 transition-colors"
+                className="px-2.5 py-1.5 rounded-lg bg-neutral-900 border border-neutral-800 text-left hover:border-amber-500/50 transition-colors"
               >
-                <div className="text-xs font-semibold text-white">Admin (5555)</div>
-                <div className="text-[10px] text-cyan-400">Direttore • Tutti i permessi</div>
+                <div className="text-xs font-semibold text-neutral-100">Admin (5555)</div>
+                <div className="text-[10px] text-amber-400">Direttore • Tutti i permessi</div>
               </button>
               <button
                 type="button"
                 onClick={() => handleQuickFill('alessio', '1111')}
-                className="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-left hover:border-cyan-500/50 transition-colors"
+                className="px-2.5 py-1.5 rounded-lg bg-neutral-900 border border-neutral-800 text-left hover:border-amber-500/50 transition-colors"
               >
-                <div className="text-xs font-semibold text-white">Alessio (1111)</div>
-                <div className="text-[10px] text-slate-400">Cameriere • Tavoli &amp; Cassa</div>
+                <div className="text-xs font-semibold text-neutral-100">Alessio (1111)</div>
+                <div className="text-[10px] text-neutral-400">Cameriere • Tavoli &amp; Cassa</div>
               </button>
               <button
                 type="button"
                 onClick={() => handleQuickFill('luigi', '2222')}
-                className="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-left hover:border-cyan-500/50 transition-colors"
+                className="px-2.5 py-1.5 rounded-lg bg-neutral-900 border border-neutral-800 text-left hover:border-amber-500/50 transition-colors"
               >
-                <div className="text-xs font-semibold text-white">Luigi (2222)</div>
-                <div className="text-[10px] text-slate-400">Cucina • Magazzino Dispensa</div>
+                <div className="text-xs font-semibold text-neutral-100">Luigi (2222)</div>
+                <div className="text-[10px] text-neutral-400">Cucina • Magazzino Dispensa</div>
               </button>
               <button
                 type="button"
                 onClick={() => handleQuickFill('elena', '4444')}
-                className="px-2.5 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-left hover:border-cyan-500/50 transition-colors"
+                className="px-2.5 py-1.5 rounded-lg bg-neutral-900 border border-neutral-800 text-left hover:border-amber-500/50 transition-colors"
               >
-                <div className="text-xs font-semibold text-white">Elena (4444)</div>
-                <div className="text-[10px] text-slate-400">Cassa • Conto &amp; Report</div>
+                <div className="text-xs font-semibold text-neutral-100">Elena (4444)</div>
+                <div className="text-[10px] text-neutral-400">Cassa • Conto &amp; Report</div>
               </button>
             </div>
           </div>
@@ -328,9 +328,9 @@ export const LoginScreen: React.FC = () => {
       {showSyncModal && <SyncModal onClose={() => setShowSyncModal(false)} />}
 
       {/* Footer */}
-      <footer className="px-6 py-3 border-t border-slate-800/80 bg-[#070c18] text-slate-400 text-xs flex flex-col sm:flex-row items-center justify-between gap-2">
+      <footer className="px-6 py-3 border-t border-neutral-800/80 bg-[#0f0f0f] text-neutral-400 text-xs flex flex-col sm:flex-row items-center justify-between gap-2">
         <span>Sea • Ristorante &amp; Bistrot POS</span>
-        <span className="font-mono text-[11px] text-slate-400">
+        <span className="font-mono text-[11px] text-neutral-400">
           Rete Locale Wi-Fi Protetta
         </span>
       </footer>

@@ -75,7 +75,7 @@ export const CucinaMagazzinoView: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-6 py-6 space-y-6 animate-fadeIn">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-slate-900 border border-slate-800 p-5 rounded-3xl shadow-xl">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-neutral-900 border border-neutral-800 p-5 rounded-3xl shadow-xl">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-2xl bg-orange-500/10 text-orange-400 border border-orange-500/20 flex items-center justify-center font-bold">
             <ChefHat className="w-6 h-6" />
@@ -87,7 +87,7 @@ export const CucinaMagazzinoView: React.FC = () => {
                 Cucina Live
               </span>
             </h1>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-neutral-400">
               Giacenze alimentari, ingredienti freschi, farine, condimenti e scorte minime per lo chef.
             </p>
           </div>
@@ -110,20 +110,20 @@ export const CucinaMagazzinoView: React.FC = () => {
       </div>
 
       {/* Filter and Search */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-slate-900/70 p-4 rounded-2xl border border-slate-800">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-neutral-900/70 p-4 rounded-2xl border border-neutral-800">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
+          <Search className="w-4 h-4 absolute left-3.5 top-3 text-neutral-400" />
           <input
             type="text"
             placeholder="Cerca ingrediente (es. Mozzarella, Farina, Olio, Pomodoro)..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 bg-slate-950 border border-slate-700 rounded-xl text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-orange-500"
+            className="w-full pl-9 pr-4 py-2 bg-neutral-950 border border-neutral-700 rounded-xl text-xs sm:text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-orange-500"
           />
           {searchTerm && (
             <button
               onClick={() => setSearchTerm('')}
-              className="absolute right-3 top-2.5 text-slate-400 hover:text-white"
+              className="absolute right-3 top-2.5 text-neutral-400 hover:text-white"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -136,8 +136,8 @@ export const CucinaMagazzinoView: React.FC = () => {
             onClick={() => setSelectedSubCategory('tutti')}
             className={`px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
               selectedSubCategory === 'tutti'
-                ? 'bg-orange-500 text-slate-950'
-                : 'bg-slate-950 text-slate-300 border border-slate-800 hover:border-slate-700'
+                ? 'bg-orange-500 text-neutral-950'
+                : 'bg-neutral-950 text-neutral-300 border border-neutral-800 hover:border-neutral-700'
             }`}
           >
             Tutti gli Alimenti
@@ -146,8 +146,8 @@ export const CucinaMagazzinoView: React.FC = () => {
             onClick={() => setSelectedSubCategory('materiali')}
             className={`px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
               selectedSubCategory === 'materiali'
-                ? 'bg-orange-500 text-slate-950'
-                : 'bg-slate-950 text-slate-300 border border-slate-800 hover:border-slate-700'
+                ? 'bg-orange-500 text-neutral-950'
+                : 'bg-neutral-950 text-neutral-300 border border-neutral-800 hover:border-neutral-700'
             }`}
           >
             Materie Prime Cucina
@@ -156,8 +156,8 @@ export const CucinaMagazzinoView: React.FC = () => {
             onClick={() => setSelectedSubCategory('allerte')}
             className={`px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
               selectedSubCategory === 'allerte'
-                ? 'bg-amber-500 text-slate-950'
-                : 'bg-slate-950 text-amber-300 border border-amber-900/60 hover:border-amber-700'
+                ? 'bg-amber-500 text-neutral-950'
+                : 'bg-neutral-950 text-amber-300 border border-amber-900/60 hover:border-amber-700'
             }`}
           >
             <AlertTriangle className="w-3.5 h-3.5" />
@@ -180,7 +180,7 @@ export const CucinaMagazzinoView: React.FC = () => {
                   ? 'bg-rose-950/30 border-rose-500/60 shadow-rose-950/20'
                   : isLow
                   ? 'bg-amber-950/30 border-amber-500/60 shadow-amber-950/20'
-                  : 'bg-slate-900/90 border-slate-800 hover:border-slate-700'
+                  : 'bg-neutral-900/90 border-neutral-800 hover:border-neutral-700'
               }`}
             >
               <div>
@@ -190,7 +190,7 @@ export const CucinaMagazzinoView: React.FC = () => {
                     <h3 className="font-extrabold text-white text-base leading-tight truncate">
                       {item.name}
                     </h3>
-                    <div className="text-xs text-slate-400 mt-0.5">
+                    <div className="text-xs text-neutral-400 mt-0.5">
                       Fornitore: {item.supplier || 'Produzione interna'}
                     </div>
                   </div>
@@ -200,8 +200,8 @@ export const CucinaMagazzinoView: React.FC = () => {
                       isOut
                         ? 'bg-rose-500 text-white'
                         : isLow
-                        ? 'bg-amber-500 text-slate-950 animate-pulse'
-                        : 'bg-slate-800 text-slate-300'
+                        ? 'bg-amber-500 text-neutral-950 animate-pulse'
+                        : 'bg-neutral-800 text-neutral-300'
                     }`}
                   >
                     {isOut ? 'Esaurito' : isLow ? 'Quasi Finito' : 'Disponibile'}
@@ -209,19 +209,19 @@ export const CucinaMagazzinoView: React.FC = () => {
                 </div>
 
                 {/* Quantities display */}
-                <div className="mt-3 flex items-baseline justify-between p-3 rounded-2xl bg-slate-950/80 border border-slate-800/80">
+                <div className="mt-3 flex items-baseline justify-between p-3 rounded-2xl bg-neutral-950/80 border border-neutral-800/80">
                   <div>
-                    <div className="text-[10px] text-slate-400 uppercase font-semibold">
+                    <div className="text-[10px] text-neutral-400 uppercase font-semibold">
                       Giacenza Attuale:
                     </div>
                     <div className="text-2xl font-black text-white font-mono flex items-baseline gap-1">
                       <span>{item.currentQuantity}</span>
-                      <span className="text-xs font-semibold text-slate-400">{item.unit}</span>
+                      <span className="text-xs font-semibold text-neutral-400">{item.unit}</span>
                     </div>
                   </div>
 
                   <div className="text-right">
-                    <div className="text-[10px] text-slate-400 uppercase font-semibold">
+                    <div className="text-[10px] text-neutral-400 uppercase font-semibold">
                       Scorta Minima:
                     </div>
                     <div className="text-xs font-mono font-bold text-amber-400">
@@ -231,21 +231,21 @@ export const CucinaMagazzinoView: React.FC = () => {
                 </div>
 
                 {item.expirationDate && (
-                  <div className="text-[11px] text-slate-400 flex items-center gap-1 mt-2">
-                    <Calendar className="w-3 h-3 text-slate-500" />
+                  <div className="text-[11px] text-neutral-400 flex items-center gap-1 mt-2">
+                    <Calendar className="w-3 h-3 text-neutral-500" />
                     <span>Scadenza: {item.expirationDate}</span>
                   </div>
                 )}
               </div>
 
               {/* Fast +/- Quick Actions for Kitchen Staff */}
-              <div className="pt-3 mt-3 border-t border-slate-800/80 flex items-center justify-between gap-2">
-                <span className="text-[11px] text-slate-400 font-semibold">Consumo Veloce:</span>
+              <div className="pt-3 mt-3 border-t border-neutral-800/80 flex items-center justify-between gap-2">
+                <span className="text-[11px] text-neutral-400 font-semibold">Consumo Veloce:</span>
                 <div className="flex items-center gap-1.5">
                   <button
                     onClick={() => handleQuickAdjust(item, -1)}
                     title="Ho consumato 1 unità"
-                    className="h-8 px-2.5 rounded-xl bg-slate-800 hover:bg-rose-950 hover:text-rose-300 text-slate-200 font-bold text-xs border border-slate-700 flex items-center gap-0.5 active:scale-95"
+                    className="h-8 px-2.5 rounded-xl bg-neutral-800 hover:bg-rose-950 hover:text-rose-300 text-neutral-200 font-bold text-xs border border-neutral-700 flex items-center gap-0.5 active:scale-95"
                   >
                     -1 {item.unit}
                   </button>
@@ -253,7 +253,7 @@ export const CucinaMagazzinoView: React.FC = () => {
                   <button
                     onClick={() => handleQuickAdjust(item, -5)}
                     title="Ho consumato 5 unità"
-                    className="h-8 px-2.5 rounded-xl bg-slate-800 hover:bg-rose-950 hover:text-rose-300 text-slate-200 font-bold text-xs border border-slate-700 flex items-center gap-0.5 active:scale-95"
+                    className="h-8 px-2.5 rounded-xl bg-neutral-800 hover:bg-rose-950 hover:text-rose-300 text-neutral-200 font-bold text-xs border border-neutral-700 flex items-center gap-0.5 active:scale-95"
                   >
                     -5 {item.unit}
                   </button>
@@ -261,7 +261,7 @@ export const CucinaMagazzinoView: React.FC = () => {
                   <button
                     onClick={() => handleQuickAdjust(item, 5)}
                     title="Arrivo / Ricarica +5 unità"
-                    className="h-8 px-2.5 rounded-xl bg-slate-800 hover:bg-emerald-950 hover:text-emerald-300 text-slate-200 font-bold text-xs border border-slate-700 flex items-center gap-0.5 active:scale-95"
+                    className="h-8 px-2.5 rounded-xl bg-neutral-800 hover:bg-emerald-950 hover:text-emerald-300 text-neutral-200 font-bold text-xs border border-neutral-700 flex items-center gap-0.5 active:scale-95"
                   >
                     +5 {item.unit}
                   </button>

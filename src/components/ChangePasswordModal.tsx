@@ -57,19 +57,19 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-5 animate-fadeIn">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+    <div className="fixed inset-0 z-50 bg-neutral-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-neutral-900 border border-neutral-800 rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-5 animate-fadeIn">
+        <div className="flex items-center justify-between pb-3 border-b border-neutral-800">
           <div className="flex items-center gap-2">
-            <KeyRound className="w-5 h-5 text-cyan-400" />
+            <KeyRound className="w-5 h-5 text-amber-400" />
             <h3 className="font-bold text-white text-base">Modifica Password</h3>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white">
+          <button onClick={onClose} className="text-neutral-400 hover:text-white">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="text-xs text-slate-400">
+        <div className="text-xs text-neutral-400">
           Stai modificando la password per:{' '}
           <strong className="text-white">
             {target.displayName} (@{target.username})
@@ -90,7 +90,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
 
         <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
           <div>
-            <label className="text-slate-300 font-semibold block mb-1">
+            <label className="text-neutral-300 font-semibold block mb-1">
               Nuova Password / PIN *:
             </label>
             <div className="relative">
@@ -101,12 +101,12 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
                 placeholder="Almeno 4 caratteri o cifre..."
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white pr-10 focus:outline-none focus:border-cyan-500 font-mono text-sm"
+                className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3.5 py-2.5 text-white pr-10 focus:outline-none focus:border-amber-500 font-mono text-sm"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-3 text-slate-400 hover:text-white"
+                className="absolute right-3 top-3 text-neutral-400 hover:text-white"
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -114,7 +114,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
           </div>
 
           <div>
-            <label className="text-slate-300 font-semibold block mb-1">
+            <label className="text-neutral-300 font-semibold block mb-1">
               Conferma Nuova Password *:
             </label>
             <input
@@ -124,7 +124,7 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
               placeholder="Ripeti la password..."
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-cyan-500 font-mono text-sm"
+              className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-amber-500 font-mono text-sm"
             />
           </div>
 
@@ -132,13 +132,13 @@ export const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl text-slate-400 hover:text-white font-semibold"
+              className="px-4 py-2 rounded-xl text-neutral-400 hover:text-white font-semibold"
             >
               Annulla
             </button>
             <button
               type="submit"
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-slate-950 font-bold transition-all shadow-md shadow-cyan-500/20"
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-400 hover:to-teal-400 text-neutral-950 font-bold transition-all shadow-md shadow-amber-500/20"
             >
               Aggiorna Password
             </button>
