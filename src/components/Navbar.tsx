@@ -10,6 +10,8 @@ import {
   KeyRound,
   LogOut,
   Package,
+  RefreshCw,
+  Store,
   Users,
   Waves,
   Wifi,
@@ -31,67 +33,81 @@ export const Navbar: React.FC = () => {
     tables,
     wifiConnected,
     syncDevicesCount,
+    users,
   } = useApp();
 
   const [showBackupModal, setShowBackupModal] = useState(false);
   const [showWifiModal, setShowWifiModal] = useState(false);
   const [showSyncModal, setShowSyncModal] = useState(false);
   const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
 
   if (!currentUser) return null;
 
   const permissions = currentUser.permissions;
-  const activeTablesCount = tables.filter((t) => t.status === 'occupato' || t.status === 'in_conto').length;
+  const activeTablesCount = tables.filter(
+    (t) => t.status === 'occupato' || t.status === 'in_conto'
+  ).length;
 
-  const navItems: { id: ActiveView; label: string; icon: React.ReactNode; badge?: number; visible: boolean }[] = [
-    {
-      id: 'home',
-      label: 'Home',
-      icon: <Home className="w-3.5 h-3.5" />,
-      visible: true,
-    },
+  const navItems: {
+    id: ActiveView;
+    label: string;
+    icon: React.ReactNode;
+    badge?: number;
+    visible: boolean;
+  }[] = [
+    { id: 'home', label: 'Home', icon: <Home className="w-4 h-4" />, visible: true },
     {
       id: 'tavoli',
       label: 'Tavoli',
-      icon: <Grid className="w-3.5 h-3.5" />,
+      icon: <Grid className="w-4 h-4" />,
       badge: activeTablesCount,
       visible: permissions.canAccessTavoli,
     },
     {
       id: 'cassa',
-      label: 'Cassa & Conto',
-      icon: <CreditCard className="w-3.5 h-3.5" />,
+      label: 'Cassa',
+      icon: <CreditCard className="w-4 h-4" />,
       visible: permissions.canAccessCassa,
     },
     {
       id: 'magazzino',
       label: 'Magazzino',
-      icon: <Package className="w-3.5 h-3.5" />,
+      icon: <Package className="w-4 h-4" />,
       badge: lowStockItems.length,
       visible: permissions.canAccessMagazzino,
     },
     {
       id: 'cucina',
-      label: 'Dispensa Cucina',
-      icon: <ChefHat className="w-3.5 h-3.5" />,
+      label: 'Cucina',
+      icon: <ChefHat className="w-4 h-4" />,
       visible: permissions.canAccessCucina,
     },
     {
       id: 'report',
-      label: 'Chiusura & Report',
-      icon: <BarChart3 className="w-3.5 h-3.5" />,
+      label: 'Report',
+      icon: <BarChart3 className="w-4 h-4" />,
       visible: permissions.canViewReports,
     },
     {
       id: 'utenti',
       label: 'Personale',
-      icon: <Users className="w-3.5 h-3.5" />,
+      icon: <Users className="w-4 h-4" />,
+      badge: users.length,
       visible: permissions.canManageUsers,
     },
   ];
 
+  const visibleItems = navItems.filter((i) => i.visible);
+
+  const goTo = (view: ActiveView) => {
+    setActiveView(view);
+    setShowMenu(false);
+  };
+
   return (
     <>
+<<<<<<< HEAD
       <header className="sticky top-0 z-40 bg-[#1a1a1a]/90 backdrop-blur-md border-b border-neutral-800/80 text-neutral-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex items-center justify-between h-16 gap-4">
@@ -114,10 +130,31 @@ export const Navbar: React.FC = () => {
                 </div>
                 <div className="text-[11px] text-neutral-400 font-normal hidden sm:block">
                   {profile.name}
+=======
+      {/* ══ Barra superiore ══ */}
+      <header className="sticky top-0 z-40 bg-ink-900/95 backdrop-blur-md border-b border-ink-700 text-mist-100">
+        <div className="mx-auto max-w-6xl px-3 sm:px-5">
+          <div className="flex items-center justify-between h-14 gap-2">
+            {/* Marchio */}
+            <button
+              onClick={() => goTo('home')}
+              className="flex items-center gap-2.5 min-w-0 group"
+            >
+              <div className="h-9 w-9 shrink-0 rounded-xl bg-gradient-to-tr from-brand-600 via-brand-500 to-brand-300 flex items-center justify-center shadow-md shadow-brand-500/25">
+                <Waves className="w-5 h-5 text-ink-950" />
+              </div>
+              <div className="leading-tight min-w-0 text-left">
+                <div className="text-sm font-bold tracking-tight text-mist-100 truncate max-w-[10rem]">
+                  {profile.name?.trim() || 'Il mio ristorante'}
+                </div>
+                <div className="text-[10px] text-mist-500 truncate max-w-[10rem]">
+                  {currentUser.displayName}
+>>>>>>> 08b20035d63be84df4a67f3304b216d48dfe8c29
                 </div>
               </div>
-            </div>
+            </button>
 
+<<<<<<< HEAD
             {/* Zone 2: Navigation Links - تصميم محسّن */}
             <nav className="flex items-center gap-1 overflow-x-auto py-1 scrollbar-none">
               {navItems
@@ -152,46 +189,69 @@ export const Navbar: React.FC = () => {
                     </button>
                   );
                 })}
+=======
+            {/* Navigazione desktop */}
+            <nav className="hidden md:flex items-center gap-1">
+              {visibleItems.map((item) => {
+                const isActive = activeView === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => goTo(item.id)}
+                    className={`relative flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+                      isActive
+                        ? 'bg-brand-500/15 text-brand-300 border border-brand-500/30'
+                        : 'text-mist-500 hover:text-mist-100 hover:bg-ink-800 border border-transparent'
+                    }`}
+                  >
+                    <span className={isActive ? 'text-brand-300' : 'text-mist-500'}>
+                      {item.icon}
+                    </span>
+                    <span>{item.label}</span>
+                    {item.badge !== undefined && item.badge > 0 && (
+                      <span
+                        className={`text-[10px] font-mono px-1.5 py-0.5 rounded-md ${
+                          isActive
+                            ? 'bg-brand-500/25 text-brand-200'
+                            : item.id === 'utenti'
+                            ? 'bg-ink-700 text-mist-300'
+                            : 'bg-rose-600/20 text-rose-400'
+                        }`}
+                      >
+                        {item.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+>>>>>>> 08b20035d63be84df4a67f3304b216d48dfe8c29
             </nav>
 
-            {/* Zone 3: Wi-Fi, Tools & User Profile */}
-            <div className="flex items-center gap-2 shrink-0">
-              {/* Wi-Fi Status Button */}
-              <button
-                onClick={() => setShowWifiModal(true)}
-                title="Stato Rete Wi-Fi Locale"
-                className={`px-2.5 py-1.5 rounded-lg border text-xs flex items-center gap-1.5 transition-colors ${
-                  wifiConnected
-                    ? 'border-emerald-500/20 bg-emerald-950/30 text-emerald-400 hover:bg-emerald-950/50'
-                    : 'border-rose-500/20 bg-rose-950/30 text-rose-400 hover:bg-rose-950/50'
-                }`}
-              >
-                <Wifi className="w-3.5 h-3.5" />
-                <span className="hidden xl:inline text-[11px] font-medium font-mono">
-                  {wifiConnected ? profile.wifiSsid : 'Offline'}
-                </span>
-              </button>
-
-              {/* 🆕 Sync Button - تزامن الأجهزة */}
+            {/* Strumenti */}
+            <div className="flex items-center gap-1.5 shrink-0">
               <button
                 onClick={() => setShowSyncModal(true)}
                 title="Sincronizzazione cloud tra i dispositivi"
-                className={`px-2.5 py-1.5 rounded-lg border text-xs flex items-center gap-1.5 transition-colors ${
+                className={`relative p-2 rounded-lg border transition-colors ${
                   wifiConnected
+<<<<<<< HEAD
                     ? 'border-amber-500/20 bg-amber-950/30 text-amber-400 hover:bg-amber-950/50'
                     : 'border-neutral-700 bg-neutral-900/30 text-neutral-500 hover:bg-neutral-800/50'
+=======
+                    ? 'border-brand-500/25 bg-brand-500/15 text-brand-300'
+                    : 'border-ink-700 bg-ink-900 text-mist-500'
+>>>>>>> 08b20035d63be84df4a67f3304b216d48dfe8c29
                 }`}
               >
-                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 12a9 9 0 0 1-9 9m9-9a9 9 0 0 0-9-9m9 9H3m9 9a9 9 0 0 1-9-9m9 9c-2.5-2.5-3.5-5.5-3.5-9s1-6.5 3.5-9m0 18c2.5-2.5 3.5-5.5 3.5-9s-1-6.5-3.5-9"/>
-                </svg>
-                <span className="hidden xl:inline text-[11px] font-medium font-mono">
-                  {wifiConnected
-                    ? `Sync ON · ${Math.max(syncDevicesCount, 1)}`
-                    : 'Sync'}
-                </span>
+                <RefreshCw className="w-4 h-4" />
+                {syncDevicesCount > 1 && (
+                  <span className="absolute -top-1 -right-1 min-w-[15px] h-[15px] px-1 rounded-full bg-brand-500 text-[9px] font-bold text-ink-950 flex items-center justify-center">
+                    {syncDevicesCount}
+                  </span>
+                )}
               </button>
 
+<<<<<<< HEAD
               {/* Backup & System Data */}
               {permissions.canManageBackup && (
                 <button
@@ -236,13 +296,143 @@ export const Navbar: React.FC = () => {
                 >
                   <LogOut className="w-3.5 h-3.5" />
                 </button>
+=======
+              <button
+                onClick={() => setShowWifiModal(true)}
+                title="Stato rete Wi-Fi locale"
+                className={`hidden sm:flex p-2 rounded-lg border transition-colors ${
+                  wifiConnected
+                    ? 'border-mint-400/25 bg-mint-600/15 text-mint-400'
+                    : 'border-rose-400/25 bg-rose-600/15 text-rose-400'
+                }`}
+              >
+                <Wifi className="w-4 h-4" />
+              </button>
+
+              {/* Menu utente */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowMenu((v) => !v)}
+                  className={`h-9 w-9 rounded-lg flex items-center justify-center font-bold text-xs text-white ${currentUser.avatarColor}`}
+                  title="Menu utente"
+                >
+                  {currentUser.displayName.charAt(0).toUpperCase()}
+                </button>
+
+                {showMenu && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setShowMenu(false)}
+                    />
+                    <div className="absolute right-0 top-11 z-50 w-56 surface p-2 shadow-2xl animate-scaleIn">
+                      <div className="px-2.5 py-2 border-b border-ink-700 mb-1.5">
+                        <div className="text-sm font-bold text-mist-100 truncate">
+                          {currentUser.displayName}
+                        </div>
+                        <div className="text-[11px] text-mist-500 capitalize">
+                          {currentUser.role.replace('_', ' ')}
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          setShowMenu(false);
+                          setShowChangePasswordModal(true);
+                        }}
+                        className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-mist-300 hover:bg-ink-800 hover:text-mist-100 transition-colors"
+                      >
+                        <KeyRound className="w-3.5 h-3.5" />
+                        Cambia password
+                      </button>
+
+                      {permissions.canManageBackup && (
+                        <button
+                          onClick={() => {
+                            setShowMenu(false);
+                            setShowBackupModal(true);
+                          }}
+                          className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-mist-300 hover:bg-ink-800 hover:text-mist-100 transition-colors"
+                        >
+                          <Database className="w-3.5 h-3.5" />
+                          Backup &amp; ripristino
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => {
+                          setShowMenu(false);
+                          goTo('impostazioni');
+                        }}
+                        className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-mist-300 hover:bg-ink-800 hover:text-mist-100 transition-colors"
+                      >
+                        <Store className="w-3.5 h-3.5" />
+                        Impostazioni
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setShowMenu(false);
+                          setShowWifiModal(true);
+                        }}
+                        className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-mist-300 hover:bg-ink-800 hover:text-mist-100 transition-colors"
+                      >
+                        <Wifi className="w-3.5 h-3.5" />
+                        Rete locale Wi-Fi
+                      </button>
+
+                      <button
+                        onClick={logout}
+                        className="w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs font-semibold text-rose-400 hover:bg-rose-600/10 transition-colors"
+                      >
+                        <LogOut className="w-3.5 h-3.5" />
+                        Esci dal turno
+                      </button>
+                    </div>
+                  </>
+                )}
+>>>>>>> 08b20035d63be84df4a67f3304b216d48dfe8c29
               </div>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Modals */}
+      {/* ══ Barra di navigazione inferiore (mobile) ══ */}
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-ink-900/95 backdrop-blur-md border-t border-ink-700">
+        <div className="flex items-stretch overflow-x-auto scrollbar-none">
+          {visibleItems.map((item) => {
+            const isActive = activeView === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => goTo(item.id)}
+                className={`relative flex-1 min-w-[64px] flex flex-col items-center justify-center gap-1 py-2.5 transition-colors ${
+                  isActive ? 'text-brand-300' : 'text-mist-500'
+                }`}
+              >
+                {isActive && (
+                  <span className="absolute top-0 left-1/2 -translate-x-1/2 h-0.5 w-8 rounded-b-full bg-brand-400" />
+                )}
+                <span className="relative">
+                  {item.icon}
+                  {item.badge !== undefined && item.badge > 0 && (
+                    <span className="absolute -top-1.5 -right-2 min-w-[14px] h-[14px] px-1 rounded-full bg-rose-600 text-[9px] font-bold text-white flex items-center justify-center">
+                      {item.badge}
+                    </span>
+                  )}
+                </span>
+                <span className="text-[10px] font-semibold">{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+
+      {/* Spazio per la barra inferiore */}
+      <div className="md:hidden h-16" />
+
+      {/* Modali */}
       {showBackupModal && <BackupModal onClose={() => setShowBackupModal(false)} />}
       {showWifiModal && <WifiModal onClose={() => setShowWifiModal(false)} />}
       {showSyncModal && <SyncModal onClose={() => setShowSyncModal(false)} />}

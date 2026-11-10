@@ -13,7 +13,14 @@ Sistema gestionale per ristorante con **sincronizzazione cloud tra più telefoni
 - ☁️ **Sync cloud multi-dispositivo** — N telefoni, N account, un unico codice
 - 🔀 **Merge intelligente** — due telefoni che lavorano in parallelo non si sovrascrivono
 - 📡 **Sync LAN (Wi-Fi)** — alternativa gratuita senza cloud
-- 💳 **Cassa** — pagamenti contanti/carta/misto + divisione conto
+- 💳 **Cassa** — pagamenti contanti/carta, **divisione del conto** (quote uguali o
+  percentuali) e **pagamenti multipli** sullo stesso tavolo
+- 🔐 **Accesso individuale** — nessun accesso automatico: ogni dipendente entra
+  con le sue credenziali
+- 🧹 **Zero dati** — avvio pulito e "Ripristino di fabbrica" che cancella tutto
+  senza ricreare dati d'esempio
+- ⚙️ **Impostazioni** — dati del ristorante (escono sulla ricevuta), Wi-Fi,
+  sincronizzazione e manutenzione
 - 🍽️ **Tavoli** — gestione tavoli con conti separati
 - 📦 **Magazzino** — inventario materie prime e prodotti
 - 👨‍🍳 **Cucina** — vista cucina per chef
@@ -158,14 +165,36 @@ Il server mostra l'IP locale (es. `192.168.1.100`). Sui telefoni:
 
 ---
 
-## 🔐 Credenziali default
+## 🔐 Primo avvio e accessi
 
-```
-Username: Admin
-PIN: 5555
-```
+L'app **non contiene più account predefiniti** (niente `Admin/5555` pubblico) e
+**non accede da solo**: all'avvio compare la schermata di configurazione dove
+il titolare crea il proprio account amministratore.
 
-⚠️ Cambia il PIN dopo il primo accesso (icona chiave in alto).
+| | |
+|---|---|
+| Configurazione | nome ristorante + nome utente + password |
+| Dipendenti | **Personale → Nuovo dipendente** (ruolo + permessi) |
+| Accesso | ogni dispositivo chiede le credenziali, niente sessione ripristinata |
+| Ripristino di fabbrica | **Utente ⚙ → Backup → Ripristino di fabbrica** → azzera tutto |
+
+Dopo l'azzeramento l'app resta **completamente vuota** (zero utenti, zero
+tavoli, zero magazzino, zero scontrini) e torna alla configurazione iniziale.
+
+---
+
+## 💳 Dividere il conto e pagamenti multipli
+
+Dal pulsante **Incassa** (cassa o card del tavolo):
+
+- **Pagamento unico** — contanti (con calcolo del resto) o carta
+- **Dividi il conto** — N persone, quote uguali o percentuali personalizzate;
+  ogni quota si paga con il metodo che si vuole
+- **Pagamenti multipli** — più incassi sullo stesso tavolo (carta + contanti),
+  il saldo residuo resta visibile finché non è a zero, poi **Chiudi conto**
+
+I calcoli sono in [`src/utils/cassa.ts`](src/utils/cassa.ts) e coperti dai test
+(`npm run test:cassa`).
 
 ---
 

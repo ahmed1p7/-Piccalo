@@ -1,7 +1,7 @@
 {
   "name": "sea-pos",
   "private": true,
-  "version": "1.1.5",
+  "version": "1.2.0",
   "type": "module",
   "description": "Sea POS - Sistema gestionale per ristorante con sincronizzazione cloud multi-dispositivo (Firebase) e APK Android installabile",
   "scripts": {
@@ -13,7 +13,11 @@
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
     "test": "tsx tests/merge.test.ts",
-    "test:rtdb": "tsx tests/realtime-db.test.ts"
+    "test:rtdb": "tsx tests/realtime-db.test.ts",
+    "check:conflicts": "node scripts/check-conflicts.mjs",
+    "prebuild": "node scripts/check-conflicts.mjs",
+    "pretest": "node scripts/check-conflicts.mjs",
+    "test:cassa": "tsx tests/cassa.test.ts"
   },
   "dependencies": {
     "@capacitor/android": "^8.6.0",

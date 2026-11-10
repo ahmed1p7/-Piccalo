@@ -31,13 +31,16 @@ jobs:
       - name: 📦 Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: 📦 Install dependencies
         # 🔧 استخدام --legacy-peer-deps لتجنب تعارض esbuild بين vite@8 و esbuild@0.25
         run: npm install --legacy-peer-deps --no-fund --no-audit
         env:
           CI: false
+
+      - name: 🔍 Controllo marcatori di conflitto
+        run: npm run check:conflicts
 
       - name: ⚡ Build
         run: npm run build

@@ -3,9 +3,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { LoginScreen } from './components/LoginScreen';
+import { SetupScreen } from './components/SetupScreen';
 import { Navbar } from './components/Navbar';
 import { HomeDashboard } from './components/HomeDashboard';
 import { CassaView } from './components/CassaView';
@@ -14,27 +15,69 @@ import { TavoliView } from './components/TavoliView';
 import { CucinaMagazzinoView } from './components/CucinaMagazzinoView';
 import { ReportView } from './components/ReportView';
 import { GestioneUtentiView } from './components/GestioneUtentiView';
+import { ImpostazioniView } from './components/ImpostazioniView';
 import { UpdateNotification } from './components/UpdateNotification';
+import { Waves } from 'lucide-react';
 
 const MainAppContent: React.FC = () => {
-  const { currentUser, activeView } = useApp();
+  const { currentUser, activeView, needsSetup, bootstrapDone, skipBootstrap } = useApp();
   const [showUpdateNotification, setShowUpdateNotification] = useState(true);
+  const [canSkip, setCanSkip] = useState(false);
 
-  // Se non si è loggati: schermata di login + notifica aggiornamenti
-  // (l'avviso di aggiornamento deve comparire anche senza login)
+  // dopo 2,5 secondi offersi di proseguire anche senza cloud
+  useEffect(() => {
+    if (bootstrapDone) return;
+    const t = setTimeout(() => setCanSkip(true), 2500);
+    return () => clearTimeout(t);
+  }, [bootstrapDone]);
+
+  // 🔄 Avvio: l'app si collega da sola al ristorante e adotta i dati
+  //    (utenti, tavoli, magazzino, scontrini) senza nessuna operazione.
+  if (!bootstrapDone) {
+    return (
+      <div className="min-h-screen bg-ink-950 text-mist-100 flex flex-col items-center justify-center gap-4">
+        <div className="h-14 w-14 rounded-2xl bg-brand-500/15 border border-brand-500/30 text-brand-300 flex items-center justify-center animate-pulse">
+          <Waves className="w-7 h-7" />
+        </div>
+        <p className="text-xs text-mist-500 tracking-wide">
+          Connessione al ristorante…
+        </p>
+        {canSkip && (
+          <button
+            onClick={skipBootstrap}
+            className="text-[11px] font-semibold text-mist-500 underline underline-offset-4 hover:text-mist-300 transition-colors"
+          >
+            Continua senza sincronizzazione
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  // ── Primo avvio (o dopo ripristino di fabbrica): configurazione ──
+  if (needsSetup) {
+    return <SetupScreen />;
+  }
+
+  // ── Non loggati: schermata di login + notifica aggiornamenti ──
+  // (nessun accesso automatico: ogni utente inserisce le sue credenziali)
   if (!currentUser) {
     return (
-      <>
+      <div className="min-h-screen bg-ink-950 text-mist-100">
         <LoginScreen />
         {showUpdateNotification && (
           <UpdateNotification onClose={() => setShowUpdateNotification(false)} />
         )}
-      </>
+      </div>
     );
   }
 
   return (
+<<<<<<< HEAD
     <div className="min-h-screen bg-[#0f0f0f] text-neutral-200 flex flex-col font-sans selection:bg-amber-500 selection:text-neutral-950 antialiased">
+=======
+    <div className="min-h-screen bg-ink-950 text-mist-100 flex flex-col font-sans selection:bg-brand-500 selection:text-ink-950 antialiased">
+>>>>>>> 08b20035d63be84df4a67f3304b216d48dfe8c29
       {/* 🔄 إشعار التحديث التلقائي */}
       {showUpdateNotification && (
         <UpdateNotification onClose={() => setShowUpdateNotification(false)} />
@@ -52,6 +95,7 @@ const MainAppContent: React.FC = () => {
         {activeView === 'cucina' && <CucinaMagazzinoView />}
         {activeView === 'report' && <ReportView />}
         {activeView === 'utenti' && <GestioneUtentiView />}
+        {activeView === 'impostazioni' && <ImpostazioniView />}
       </main>
     </div>
   );

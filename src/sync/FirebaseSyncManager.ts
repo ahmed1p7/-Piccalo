@@ -17,6 +17,7 @@
 import { getEffectiveConfig, getDevice, type DeviceInfo } from './SyncConfig';
 import {
   mergeCollection,
+  normalizeCollectionData,
   isDeepEqual,
   SYNC_COLLECTIONS,
   type SyncCollection,
@@ -61,8 +62,16 @@ class FirebaseSyncManager {
 
   private devices: DeviceInfo[] = [];
   private firstSnapshotDone = false;
+  private readyCallbacks = new Set<() => void>();
   private heartbeatTimer: any = null;
   private pendingWrites = 0;
+  /**
+   * 🔒 Coda di scrittura: le push verso il cloud vengono eseguite in fila.
+   * Senza questo, una push vecchia (es. il "seed" iniziale) può arrivare
+   * DOPO una più recente e sovrascriverla (si perdeva il tavolo appena
+   * creato mentre l'app si connetteva per la prima volta).
+   */
+  private writeQueue: Promise<void> = Promise.resolve();
   private transportName = '';
 
   // ═══════════════════════════════════════════════════════════════════
@@ -182,11 +191,61 @@ class FirebaseSyncManager {
     return true;
   }
 
+  /**
+   * 📡 Notifica "primo stato ricevuto dal cloud".
+   * L'app la usa per non mostrare la configurazione iniziale a un telefono
+   * che sta ricevendo i dati del ristorante: attende lo snapshot e poi
+   * adotta utenti, tavoli, magazzino e scontrini senza nessuna operazione.
+   */
+  onReady(callback: () => void): () => void {
+    this.readyCallbacks.add(callback);
+    if (this.firstSnapshotDone) {
+      // lo snapshot è già arrivato: notifica subito
+      setTimeout(() => callback(), 0);
+    }
+    return () => this.readyCallbacks.delete(callback);
+  }
+
+  /** true se lo stato del cloud è già stato ricevuto almeno una volta */
+  isReady(): boolean {
+    return this.firstSnapshotDone;
+  }
+
   disconnect() {
     this.transport?.disconnect();
     this.transport = null;
     this._stopHeartbeat();
     this._setStatus('disconnected');
+  }
+
+  /**
+   * 🧹 Azzera la base di merge locale (dopo un "Ripristino di Fabbrica").
+   * Senza questo i dati vecchi potrebbero tornare con la prossima
+   * sincronizzazione, perché la base li considererebbe "già sincronizzati".
+   */
+  resetLocalState() {
+    this.base = {};
+    this.local = {};
+    this.dirty = new Set();
+    this.firstSnapshotDone = false;
+    try {
+      localStorage.removeItem(BASE_STORAGE_KEY);
+      localStorage.removeItem(DIRTY_STORAGE_KEY);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  /**
+   * ☁️ Cancella TUTTE le collezioni condivise nel cloud.
+   * Usato dal "Ripristino di Fabbrica" quando l'utente sceglie di
+   * cancellare anche i dati degli altri dispositivi.
+   */
+  async wipeCloud(): Promise<boolean> {
+    if (!this.transport) return false;
+    await this.transport.wipeState();
+    this.resetLocalState();
+    return true;
   }
 
   async reconnect(): Promise<boolean> {
@@ -315,7 +374,17 @@ class FirebaseSyncManager {
     }
   }
 
-  private async _pushCollection(collection: SyncCollection, data: any) {
+  private _pushCollection(collection: SyncCollection, data: any): Promise<void> {
+    // serializza: la scrittura parte solo quando le precedenti sono finite
+    this.writeQueue = this.writeQueue
+      .then(() => this._doPushCollection(collection, data))
+      .catch(() => {
+        /* errori gestiti dentro _doPushCollection */
+      });
+    return this.writeQueue;
+  }
+
+  private async _doPushCollection(collection: SyncCollection, data: any) {
     if (!this.transport) return;
 
     const payload: CollectionPayload = {
@@ -361,6 +430,13 @@ class FirebaseSyncManager {
     // ── Primo stato: adozione dei dati esistenti ──
     if (!this.firstSnapshotDone) {
       this.firstSnapshotDone = true;
+      this.readyCallbacks.forEach((cb) => {
+        try {
+          cb();
+        } catch {
+          /* ignore */
+        }
+      });
       const hasRemoteData = Object.keys(remoteCollections).length > 0;
 
       if (!hasRemoteData) {
@@ -373,7 +449,7 @@ class FirebaseSyncManager {
         const payload = remoteCollections[collection];
         if (!payload) continue;
 
-        const remoteData = payload.data;
+        const remoteData = normalizeCollectionData(collection, payload.data);
         const baseData = this.base[collection];
         const localData = this.local[collection];
 
@@ -411,7 +487,7 @@ class FirebaseSyncManager {
       const payload = remoteCollections[collection];
       if (!payload) continue;
 
-      const remoteData = payload.data;
+      const remoteData = normalizeCollectionData(collection, payload.data);
       const baseData = this.base[collection];
       const localData =
         this.local[collection] !== undefined ? this.local[collection] : remoteData;
@@ -448,9 +524,18 @@ class FirebaseSyncManager {
    * Primo dispositivo: pubblica lo stato locale nel cloud.
    */
   private async _seedFromLocal() {
+    // snapshot dei dati al momento del seed
+    const snapshot: Record<string, any> = { ...this.local };
+
     for (const collection of SYNC_COLLECTIONS) {
-      const data = this.local[collection];
+      const data = snapshot[collection];
       if (data === undefined) continue;
+
+      // ⚠️ Se nel frattempo la collezione è cambiata (es. l'utente ha
+      //    appena creato un tavolo) NON la sovrascriviamo con il vecchio
+      //    valore: la modifica più recente deve vincere.
+      if (!isDeepEqual(this.local[collection], data)) continue;
+
       await this._pushCollection(collection, data);
     }
   }

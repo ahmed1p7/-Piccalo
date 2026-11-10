@@ -46,5 +46,12 @@ check('sceglie la versione più alta', best?.version === '1.1.4', best?.version)
 check('ignora prerelease e draft', best?.version !== '2.0.0' && best?.version !== '9.9.9');
 check('ignora i tag non semver', best?.version !== null);
 
+console.log('\n── Confronto "più nuovo" (non solo diverso) ──');
+{
+  check('1.2.0 > 1.1.5 → aggiornamento', compareVersions('1.2.0', '1.1.5') > 0);
+  check('1.1.5 > 1.2.0 → nessun aggiornamento (versione più vecchia)', compareVersions('1.1.5', '1.2.0') < 0);
+  check('stessa versione → nessun aggiornamento', compareVersions('1.2.0', '1.2.0') === 0);
+}
+
 console.log(`\n═══ Risultato: ${passed} test passati, ${failed} falliti ═══\n`);
 process.exit(failed > 0 ? 1 : 0);

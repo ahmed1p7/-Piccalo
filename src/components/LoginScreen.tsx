@@ -1,12 +1,17 @@
-import React, { useState } from 'react';
-import { useApp } from '../context/AppContext';
-import { SyncModal } from './SyncModal';
-import updateManager from '../utils/UpdateManager';
+/**
+ * 🔐 Accesso al sistema
+ *
+ * Regole di sicurezza:
+ *  - nessun accesso automatico: all'avvio si parte sempre da qui
+ *  - i campi sono VUOTI (niente Admin/5555 precompilati)
+ *  - nessun account predefinito esiste nell'app
+ *  - la password non viene mai salvata; al massimo il nome utente
+ */
+
+import React, { useEffect, useState } from 'react';
 import {
   ArrowRight,
   Cloud,
-  Delete,
-  Download,
   Eye,
   EyeOff,
   KeyRound,
@@ -14,30 +19,66 @@ import {
   RefreshCw,
   User,
   Waves,
-  Wifi,
 } from 'lucide-react';
+import { useApp } from '../context/AppContext';
+import { SyncModal } from './SyncModal';
+import updateManager from '../utils/UpdateManager';
+import { Btn, Field, Input } from './ui';
+
+const REMEMBER_KEY = 'sea_pos_remember_username_v1';
 
 export const LoginScreen: React.FC = () => {
-  const { login, profile, wifiConnected } = useApp();
+  const { login, profile } = useApp();
 
-  const [username, setUsername] = useState<string>('Admin');
-  const [password, setPassword] = useState<string>('5555');
-  const [showPassword, setShowPassword] = useState<boolean>(false);
-  const [errorMessage, setErrorMessage] = useState<string>('');
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [inputMode, setInputMode] = useState<'form' | 'keypad'>('form');
-  const [showSyncModal, setShowSyncModal] = useState<boolean>(false);
-  const [checkingUpdate, setCheckingUpdate] = useState<boolean>(false);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [showSyncModal, setShowSyncModal] = useState(false);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [remember, setRemember] = useState(false);
+
+  // Solo il NOME UTENTE viene ricordato (mai la password)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(REMEMBER_KEY);
+      if (saved) {
+        setUsername(saved);
+        setRemember(true);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   const handleSubmit = (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
+    e?.preventDefault();
     setErrorMessage('');
-    setIsLoading(true);
 
+    if (!username.trim()) {
+      setErrorMessage('Inserisci il tuo nome utente.');
+      return;
+    }
+    if (!password.trim()) {
+      setErrorMessage('Inserisci la password.');
+      return;
+    }
+
+    setIsLoading(true);
     const res = login(username, password);
     setIsLoading(false);
+
     if (!res.success) {
       setErrorMessage(res.message || 'Nome utente o password non corretti.');
+      return;
+    }
+
+    try {
+      if (remember) localStorage.setItem(REMEMBER_KEY, username.trim());
+      else localStorage.removeItem(REMEMBER_KEY);
+    } catch {
+      /* ignore */
     }
   };
 
@@ -47,30 +88,10 @@ export const LoginScreen: React.FC = () => {
     setCheckingUpdate(false);
   };
 
-  const handleQuickFill = (u: string, p: string) => {
-    setUsername(u);
-    setPassword(p);
-    setErrorMessage('');
-  };
-
-  const handleKeypadDigit = (digit: string) => {
-    if (password.length < 8) {
-      setPassword((prev) => prev + digit);
-      setErrorMessage('');
-    }
-  };
-
-  const handleKeypadBackspace = () => {
-    setPassword((prev) => prev.slice(0, -1));
-    setErrorMessage('');
-  };
-
-  const handleKeypadClear = () => {
-    setPassword('');
-    setErrorMessage('');
-  };
+  const restaurantName = profile.name?.trim() || 'Sea POS';
 
   return (
+<<<<<<< HEAD
     <div className="min-h-screen bg-[#0f0f0f] text-neutral-200 flex flex-col justify-between selection:bg-amber-500 selection:text-neutral-950">
       {/* Top Header */}
       <header className="px-6 py-4 flex items-center justify-between border-b border-neutral-800/80 bg-[#1a1a1a]/70 backdrop-blur-md">
@@ -166,10 +187,48 @@ export const LoginScreen: React.FC = () => {
                     setErrorMessage('');
                   }}
                   className="w-full bg-neutral-900 border border-neutral-700/80 rounded-xl pl-9 pr-3 py-2.5 text-xs sm:text-sm text-neutral-100 placeholder-neutral-500 focus:outline-none focus:border-amber-400 transition-colors font-medium"
+=======
+    <div className="min-h-screen bg-ink-950 text-mist-100 flex flex-col font-sans">
+      {/* Sfondo decorativo */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute -top-32 -left-24 h-72 w-72 rounded-full bg-brand-500/20 blur-3xl" />
+        <div className="absolute -bottom-32 -right-24 h-72 w-72 rounded-full bg-violet-400/10 blur-3xl" />
+      </div>
+
+      <div className="relative flex-1 flex flex-col items-center justify-center px-5 py-8">
+        <div className="w-full max-w-sm">
+          {/* Marchio */}
+          <div className="text-center mb-6">
+            <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-500/15 border border-brand-500/30 text-brand-300 mb-3">
+              <Waves className="w-7 h-7" />
+            </div>
+            <h1 className="text-xl font-bold tracking-tight">{restaurantName}</h1>
+            <p className="mt-1 text-xs uppercase tracking-[0.2em] text-mist-500">
+              Punto cassa
+            </p>
+          </div>
+
+          <form
+            onSubmit={handleSubmit}
+            className="surface p-5 space-y-4 animate-slideUp"
+          >
+            <Field label="Nome utente">
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-mist-500 pointer-events-none" />
+                <Input
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Il tuo nome utente"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  autoComplete="username"
+                  className="!pl-10"
+>>>>>>> 08b20035d63be84df4a67f3304b216d48dfe8c29
                 />
               </div>
-            </div>
+            </Field>
 
+<<<<<<< HEAD
             {/* Password Input */}
             <div className="space-y-1">
               <div className="flex items-center justify-between">
@@ -181,10 +240,15 @@ export const LoginScreen: React.FC = () => {
               <div className="relative">
                 <Lock className="w-4 h-4 text-neutral-400 absolute left-3 top-3" />
                 <input
+=======
+            <Field label="Password">
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-mist-500 pointer-events-none" />
+                <Input
+>>>>>>> 08b20035d63be84df4a67f3304b216d48dfe8c29
                   type={showPassword ? 'text' : 'password'}
-                  required
-                  placeholder="••••"
                   value={password}
+<<<<<<< HEAD
                   onChange={(e) => {
                     setPassword(e.target.value);
                     setErrorMessage('');
@@ -196,12 +260,26 @@ export const LoginScreen: React.FC = () => {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-2.5 text-neutral-400 hover:text-neutral-100 transition-colors p-1"
                   tabIndex={-1}
+=======
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••"
+                  autoCapitalize="none"
+                  autoComplete="current-password"
+                  className="!pl-10 !pr-11"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg text-mist-500 hover:text-mist-100 hover:bg-ink-800 transition-colors"
+                  aria-label={showPassword ? 'Nascondi password' : 'Mostra password'}
+>>>>>>> 08b20035d63be84df4a67f3304b216d48dfe8c29
                 >
-                  {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-            </div>
+            </Field>
 
+<<<<<<< HEAD
             {/* Touch Keypad for POS Touchscreens */}
             {inputMode === 'keypad' && (
               <div className="pt-2">
@@ -250,31 +328,64 @@ export const LoginScreen: React.FC = () => {
               <span>Accedi al Turno</span>
               <ArrowRight className="w-4 h-4" />
             </button>
-          </form>
-<<<<<<< HEAD
 =======
+            <label className="flex items-center gap-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={remember}
+                onChange={(e) => setRemember(e.target.checked)}
+                className="h-4 w-4 rounded border-ink-600 bg-ink-900 accent-brand-500"
+              />
+              <span className="text-xs text-mist-500">Ricorda il nome utente</span>
+            </label>
 
-          {/* Collega un nuovo dispositivo + aggiornamenti */}
-          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <button
-              type="button"
+            {errorMessage && (
+              <div className="rounded-xl bg-rose-600/15 border border-rose-400/30 px-3.5 py-2.5 text-xs font-semibold text-rose-400">
+                {errorMessage}
+              </div>
+            )}
+
+            <Btn type="submit" variant="primary" size="lg" full disabled={isLoading}>
+              {isLoading ? 'Accesso…' : 'Accedi'}
+              {!isLoading && <ArrowRight className="w-4 h-4" />}
+            </Btn>
+>>>>>>> 08b20035d63be84df4a67f3304b216d48dfe8c29
+          </form>
+
+          {/* Strumenti */}
+          <div className="mt-4 grid grid-cols-1 gap-2">
+            <Btn
               onClick={() => setShowSyncModal(true)}
+<<<<<<< HEAD
               className="px-3 py-2.5 rounded-xl bg-amber-950/40 border border-amber-800/50 text-amber-300 hover:bg-amber-900/40 text-xs font-semibold flex items-center justify-center gap-2 transition-colors"
+=======
+              variant="soft"
+              size="sm"
+              className="justify-start"
+>>>>>>> 08b20035d63be84df4a67f3304b216d48dfe8c29
             >
-              <Cloud className="w-4 h-4" />
+              <Cloud className="w-3.5 h-3.5 text-brand-300" />
               Collega un nuovo dispositivo
-            </button>
-            <button
-              type="button"
+            </Btn>
+            <Btn
               onClick={handleCheckUpdate}
+              variant="ghost"
+              size="sm"
+              className="justify-start"
               disabled={checkingUpdate}
+<<<<<<< HEAD
               className="px-3 py-2.5 rounded-xl bg-neutral-900 border border-neutral-800 text-neutral-400 hover:text-neutral-200 hover:border-neutral-700 text-xs font-semibold flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+=======
+>>>>>>> 08b20035d63be84df4a67f3304b216d48dfe8c29
             >
-              <RefreshCw className={`w-4 h-4 ${checkingUpdate ? 'animate-spin' : ''}`} />
-              Verifica aggiornamenti
-            </button>
+              <RefreshCw
+                className={`w-3.5 h-3.5 ${checkingUpdate ? 'animate-spin' : ''}`}
+              />
+              {checkingUpdate ? 'Controllo in corso…' : 'Verifica aggiornamenti'}
+            </Btn>
           </div>
 
+<<<<<<< HEAD
           <p className="mt-2 text-[11px] text-neutral-500 text-center leading-relaxed">
             Nuovo telefono? Clicca <strong>Collega un nuovo dispositivo</strong> e
             incolla il codice di sincronizzazione: arrivano subito utenti, tavoli,
@@ -322,10 +433,18 @@ export const LoginScreen: React.FC = () => {
             </div>
           </div>
 >>>>>>> 1c4b43691b05bfa1a7f1a73fe4124e224f6cf903
+=======
+          <p className="mt-4 text-[11px] leading-relaxed text-mist-500 text-center">
+            Ogni dipendente entra con le proprie credenziali.
+            <br />
+            Se non riesci ad accedere, chiedi all'amministratore di reimpostare la tua password.
+          </p>
+>>>>>>> 08b20035d63be84df4a67f3304b216d48dfe8c29
         </div>
-      </main>
+      </div>
 
       {showSyncModal && <SyncModal onClose={() => setShowSyncModal(false)} />}
+<<<<<<< HEAD
 
       {/* Footer */}
       <footer className="px-6 py-3 border-t border-neutral-800/80 bg-[#0f0f0f] text-neutral-400 text-xs flex flex-col sm:flex-row items-center justify-between gap-2">
@@ -334,6 +453,8 @@ export const LoginScreen: React.FC = () => {
           Rete Locale Wi-Fi Protetta
         </span>
       </footer>
+=======
+>>>>>>> 08b20035d63be84df4a67f3304b216d48dfe8c29
     </div>
   );
 };
