@@ -31,6 +31,7 @@ export const DesktopSidebar: React.FC<{
   userName: string;
   userRole?: string;
   syncOnline: boolean;
+  syncError: boolean;
   devicesCount: number;
   onOpenSync: () => void;
   onLogout: () => void;
@@ -42,6 +43,7 @@ export const DesktopSidebar: React.FC<{
   userName,
   userRole,
   syncOnline,
+  syncError,
   devicesCount,
   onOpenSync,
   onLogout,
@@ -113,14 +115,16 @@ export const DesktopSidebar: React.FC<{
         <button
           onClick={onOpenSync}
           className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-semibold border transition-colors ${
-            syncOnline
+            syncError
+              ? 'border-rose-400/40 bg-rose-600/15 text-rose-400'
+              : syncOnline
               ? 'border-brand-500/25 bg-brand-500/10 text-brand-300'
               : 'border-ink-700 bg-ink-850 text-mist-500'
           }`}
         >
           <RefreshCw className="w-4 h-4" />
           <span className="flex-1 text-left">
-            {syncOnline ? 'Sync attivo' : 'Sync non attivo'}
+            {syncError ? 'Sync bloccato' : syncOnline ? 'Sync attivo' : 'Sync non attivo'}
           </span>
           {devicesCount > 1 && (
             <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-ink-700 text-mist-300">

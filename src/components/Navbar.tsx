@@ -36,6 +36,7 @@ export const Navbar: React.FC = () => {
     wifiConnected,
     syncDevicesCount,
     users,
+    syncStatus,
   } = useApp();
 
   const [showBackupModal, setShowBackupModal] = useState(false);
@@ -127,6 +128,7 @@ export const Navbar: React.FC = () => {
         userName={currentUser.displayName}
         userRole={currentUser.role.replace('_', ' ')}
         syncOnline={wifiConnected}
+        syncError={syncStatus === 'error'}
         devicesCount={syncDevicesCount}
         onOpenSync={() => setShowSyncModal(true)}
         onLogout={logout}
@@ -205,9 +207,15 @@ export const Navbar: React.FC = () => {
             <div className="flex items-center gap-1.5 shrink-0">
               <button
                 onClick={() => setShowSyncModal(true)}
-                title="Sincronizzazione cloud tra i dispositivi"
+                title={
+                  syncStatus === 'error'
+                    ? 'Sincronizzazione cloud bloccata — tocca per la soluzione'
+                    : 'Sincronizzazione cloud tra i dispositivi'
+                }
                 className={`relative p-2 rounded-lg border transition-colors ${
-                  wifiConnected
+                  syncStatus === 'error'
+                    ? 'border-rose-400/40 bg-rose-600/15 text-rose-400'
+                    : wifiConnected
                     ? 'border-brand-500/25 bg-brand-500/15 text-brand-300'
                     : 'border-ink-700 bg-ink-900 text-mist-500'
                 }`}

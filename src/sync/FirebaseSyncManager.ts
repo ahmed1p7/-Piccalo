@@ -194,6 +194,17 @@ class FirebaseSyncManager {
 
     await this._publishDevice();
     this._startHeartbeat();
+
+    // ⚠️ Se il permesso è stato negato durante la connessione (regole del
+    //    Realtime Database non pubblicate) l'errore è già arrivato: non
+    //    sovrascriverlo con "connected", altrimenti l'app sembra
+    //    sincronizzata mentre in realtà è scollegata.
+    const setupError = transport.getLastError?.() ?? this.lastError;
+    if (setupError) {
+      this._setStatus('error', setupError);
+      return false;
+    }
+
     this._setStatus('connected');
     return true;
   }

@@ -8,12 +8,12 @@
  */
 
 import React, { useState } from 'react';
-import { ArrowRight, KeyRound, Store, User, Waves } from 'lucide-react';
+import { AlertTriangle, ArrowRight, KeyRound, Store, User, Waves } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Btn, Field, Input } from './ui';
 
 export const SetupScreen: React.FC = () => {
-  const { completeSetup } = useApp();
+  const { completeSetup, syncStatus, syncError } = useApp();
 
   const [restaurantName, setRestaurantName] = useState('');
   const [username, setUsername] = useState('');
@@ -71,6 +71,37 @@ export const SetupScreen: React.FC = () => {
               nessun dato di esempio, nessun account condiviso.
             </p>
           </div>
+
+          {/* ⚠️ Avviso: il database cloud è bloccato → la sincronizzazione
+              non funzionerà finché le regole non vengono pubblicate. */}
+          {syncStatus === 'error' && (
+            <div className="mb-4 rounded-2xl bg-rose-600/10 border border-rose-400/30 p-4 space-y-2 animate-slideUp">
+              <div className="flex items-start gap-2 text-xs font-bold text-rose-400">
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-px" />
+                <span>Sincronizzazione cloud bloccata</span>
+              </div>
+              <p className="text-[11px] text-mist-300 leading-relaxed break-words">
+                {syncError}
+              </p>
+              <p className="text-[11px] text-mist-300 leading-relaxed">
+                Senza le regole pubblicate questo dispositivo resta
+                <strong className="text-mist-100"> scollegato</strong> dagli
+                altri: i dati non passano da telefono a telefono.
+              </p>
+              <p className="text-[11px] text-mist-300 leading-relaxed">
+                Apri{' '}
+                <span className="text-brand-300">
+                  console.firebase.google.com → sea-restaurant → Realtime
+                  Database → Rules
+                </span>{' '}
+                e pubblica{' '}
+                <code className="text-brand-300">
+                  {'{ "rules": { ".read": true, ".write": true } }'}
+                </code>
+                , poi riapri l'app.
+              </p>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="surface p-5 space-y-4 animate-slideUp">
             <Field
