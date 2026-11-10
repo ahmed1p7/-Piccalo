@@ -98,7 +98,7 @@ async def main():
         # ── 4. Esci e rientra come dipendente ──
         await page.click("button[title='Menu utente']")
         await page.wait_for_timeout(600)
-        await page.click("button:has-text('Esci dal turno')")
+        await click_exact(page, "Esci dal turno")
         await page.wait_for_timeout(2500)
         body = await page.inner_text("body")
         check("dopo l'uscita compare il login (non accesso automatico)",
@@ -178,7 +178,7 @@ async def main():
         # ── 6. Ripristino di fabbrica (come admin) ──
         await page.click("button[title='Menu utente']")
         await page.wait_for_timeout(600)
-        await page.click("button:has-text('Esci dal turno')")
+        await click_exact(page, "Esci dal turno")
         await page.wait_for_timeout(1200)
         await page.fill("input[placeholder='Il tuo nome utente']", "titolare")
         await page.fill("input[type='password']", "1234")

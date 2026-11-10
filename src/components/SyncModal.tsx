@@ -29,6 +29,7 @@ import {
   Link2,
   Unlink,
   ShieldCheck,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface SyncModalProps {
@@ -39,6 +40,7 @@ export const SyncModal: React.FC<SyncModalProps> = ({ onClose }) => {
   const { currentUser, syncAllNow, pullAllFromCloud } = useApp();
 
   const [connectionStatus, setConnectionStatus] = useState<string>('');
+  const [cloudError, setCloudError] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState<boolean>(false);
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [isConfigured, setIsConfigured] = useState<boolean>(false);
@@ -77,9 +79,10 @@ export const SyncModal: React.FC<SyncModalProps> = ({ onClose }) => {
     setDevice(getDevice());
 
     const removeStatusListener = firebaseSyncManager.addStatusListener(
-      (newStatus, devicesCount) => {
+      (newStatus, devicesCount, error) => {
         setIsConnected(newStatus === 'connected');
         setDevices(firebaseSyncManager.getDevices());
+        setCloudError(newStatus === 'error' ? error ?? 'Errore sconosciuto' : null);
         void devicesCount;
       }
     );
@@ -101,6 +104,7 @@ export const SyncModal: React.FC<SyncModalProps> = ({ onClose }) => {
     const success = await firebaseSyncManager.reconnect();
     setIsConnecting(false);
     setIsConnected(success);
+    setCloudError(success ? null : firebaseSyncManager.getLastError());
     setConnectionStatus(
       success
         ? '✅ Connesso! I dati si sincronizzano con gli altri dispositivi.'
@@ -201,19 +205,19 @@ export const SyncModal: React.FC<SyncModalProps> = ({ onClose }) => {
   const shareCodeValue = shareCode ? encodeSyncCode(shareCode) : '';
 
   return (
-    <div className="fixed inset-0 z-50 bg-neutral-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-neutral-900 border border-neutral-800 rounded-3xl max-w-md w-full shadow-2xl overflow-hidden flex flex-col my-auto max-h-[92vh]">
+    <div className="fixed inset-0 z-50 bg-ink-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-ink-900 border border-ink-800 rounded-3xl max-w-md w-full shadow-2xl overflow-hidden flex flex-col my-auto max-h-[92vh]">
         {/* Header */}
-        <div className="p-4 bg-neutral-800/60 border-b border-neutral-700/60 flex items-center justify-between">
+        <div className="p-4 bg-ink-800/60 border-b border-ink-700/60 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Cloud className="w-5 h-5 text-orange-400" />
+            <Cloud className="w-5 h-5 text-brand-400" />
             <h3 className="font-bold text-white text-base">
               Sincronizzazione Multi-Dispositivo
             </h3>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-700 transition-colors"
+            className="p-1.5 rounded-xl text-mist-500 hover:text-white hover:bg-ink-700 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -247,7 +251,7 @@ export const SyncModal: React.FC<SyncModalProps> = ({ onClose }) => {
                     ? 'Connessione...'
                     : 'Non connesso'}
                 </div>
-                <div className="text-xs text-neutral-400">
+                <div className="text-xs text-mist-500">
                   {isConnected
                     ? `${Math.max(devices.length, 1)} dispositivo/i in uso`
                     : 'Modalità singolo dispositivo (dati salvati sul telefono)'}
@@ -256,7 +260,7 @@ export const SyncModal: React.FC<SyncModalProps> = ({ onClose }) => {
               {isConnected && (
                 <button
                   onClick={handleConnect}
-                  className="p-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 transition-colors"
+                  className="p-2 rounded-xl bg-ink-800 hover:bg-ink-700 text-mist-300 transition-colors"
                   title="Riconnetti"
                 >
                   <RefreshCw className="w-4 h-4" />
@@ -266,8 +270,8 @@ export const SyncModal: React.FC<SyncModalProps> = ({ onClose }) => {
           </div>
 
           {/* ═══ Questo dispositivo ═══ */}
-          <div className="p-4 rounded-2xl bg-neutral-950 border border-neutral-800 space-y-3">
-            <div className="flex items-center gap-2 text-xs font-bold text-orange-300">
+          <div className="p-4 rounded-2xl bg-ink-950 border border-ink-800 space-y-3">
+            <div className="flex items-center gap-2 text-xs font-bold text-brand-300">
               <Smartphone className="w-3.5 h-3.5" />
               Questo dispositivo
             </div>
@@ -276,12 +280,12 @@ export const SyncModal: React.FC<SyncModalProps> = ({ onClose }) => {
                 value={deviceName}
                 onChange={(e) => setDeviceName(e.target.value)}
                 placeholder="Nome (es. Cassa)"
-                className="px-3 py-2 rounded-xl bg-neutral-900 border border-neutral-700 text-sm text-white outline-none focus:border-orange-500"
+                className="px-3 py-2 rounded-xl bg-ink-900 border border-ink-700 text-sm text-white outline-none focus:border-brand-500"
               />
               <select
                 value={deviceRole}
                 onChange={(e) => setDeviceRole(e.target.value)}
-                className="px-3 py-2 rounded-xl bg-neutral-900 border border-neutral-700 text-sm text-white outline-none focus:border-orange-500"
+                className="px-3 py-2 rounded-xl bg-ink-900 border border-ink-700 text-sm text-white outline-none focus:border-brand-500"
               >
                 <option value="cassa">Cassa</option>
                 <option value="cucina">Cucina</option>
@@ -293,23 +297,23 @@ export const SyncModal: React.FC<SyncModalProps> = ({ onClose }) => {
             </div>
             <button
               onClick={handleSaveDevice}
-              className="w-full py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-200 font-semibold text-xs transition-colors"
+              className="w-full py-2 rounded-xl bg-ink-800 hover:bg-ink-700 text-mist-100 font-semibold text-xs transition-colors"
             >
               Salva nome dispositivo
             </button>
           </div>
 
           {/* ═══ Codice di sincronizzazione ═══ */}
-          <div className="p-4 rounded-2xl bg-neutral-950 border border-neutral-800 space-y-3">
+          <div className="p-4 rounded-2xl bg-ink-950 border border-ink-800 space-y-3">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs font-bold text-orange-300">
+              <div className="flex items-center gap-2 text-xs font-bold text-brand-300">
                 <Link2 className="w-3.5 h-3.5" />
                 Codice di sincronizzazione
               </div>
               {isConfigured && (
                 <button
                   onClick={handleCopyCode}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-[11px] font-semibold text-neutral-200 transition-colors"
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-ink-800 hover:bg-ink-700 text-[11px] font-semibold text-mist-100 transition-colors"
                 >
                   {copied ? (
                     <>
@@ -324,7 +328,7 @@ export const SyncModal: React.FC<SyncModalProps> = ({ onClose }) => {
               )}
             </div>
 
-            <p className="text-[11px] text-neutral-400 leading-relaxed">
+            <p className="text-[11px] text-mist-500 leading-relaxed">
               Incolla lo stesso codice su <strong>tutti i telefoni</strong> per
               collegarli: i dati (cassa, tavoli, magazzino) si aggiornano
               automaticamente su tutti i dispositivi, anche con reti diverse.
@@ -338,7 +342,7 @@ export const SyncModal: React.FC<SyncModalProps> = ({ onClose }) => {
               }}
               rows={3}
               placeholder="Incolla qui il codice (base64 oppure JSON)"
-              className="w-full px-3 py-2 rounded-xl bg-neutral-900 border border-neutral-700 text-[11px] font-mono text-neutral-200 outline-none focus:border-orange-500 resize-none"
+              className="w-full px-3 py-2 rounded-xl bg-ink-900 border border-ink-700 text-[11px] font-mono text-mist-100 outline-none focus:border-brand-500 resize-none"
             />
 
             {codeError && (
@@ -349,7 +353,7 @@ export const SyncModal: React.FC<SyncModalProps> = ({ onClose }) => {
               <button
                 onClick={handleSaveCode}
                 disabled={isConnecting || !syncCode.trim()}
-                className="flex-1 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-400 disabled:opacity-50 disabled:cursor-not-allowed text-neutral-950 font-bold text-xs flex items-center justify-center gap-2 transition-all"
+                className="flex-1 py-2.5 rounded-xl bg-brand-500 hover:bg-brand-400 disabled:opacity-50 disabled:cursor-not-allowed text-ink-950 font-bold text-xs flex items-center justify-center gap-2 transition-all"
               >
                 {isConnecting ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -370,8 +374,8 @@ export const SyncModal: React.FC<SyncModalProps> = ({ onClose }) => {
             </div>
 
             {isConfigured && shareCodeValue && (
-              <div className="p-2.5 rounded-xl bg-neutral-900 border border-neutral-800">
-                <div className="text-[10px] text-neutral-500 font-bold mb-1">
+              <div className="p-2.5 rounded-xl bg-ink-900 border border-ink-800">
+                <div className="text-[10px] text-mist-500 font-bold mb-1">
                   CODICE DA CONDIVIDERE
                 </div>
                 <code className="block text-[10px] font-mono text-emerald-300 break-all">
@@ -382,13 +386,13 @@ export const SyncModal: React.FC<SyncModalProps> = ({ onClose }) => {
           </div>
 
           {/* ═══ Dispositivi collegati ═══ */}
-          <div className="p-4 rounded-2xl bg-neutral-950 border border-neutral-800 space-y-2">
-            <div className="flex items-center gap-2 text-xs font-bold text-orange-300">
+          <div className="p-4 rounded-2xl bg-ink-950 border border-ink-800 space-y-2">
+            <div className="flex items-center gap-2 text-xs font-bold text-brand-300">
               <Users className="w-3.5 h-3.5" />
               Dispositivi ({devices.length})
             </div>
             {devices.length === 0 ? (
-              <div className="text-[11px] text-neutral-500">
+              <div className="text-[11px] text-mist-500">
                 Nessun dispositivo registrato nel cloud.
               </div>
             ) : (
@@ -396,9 +400,9 @@ export const SyncModal: React.FC<SyncModalProps> = ({ onClose }) => {
                 {devices.map((d) => (
                   <div
                     key={d.id}
-                    className="flex items-center gap-2 p-2.5 rounded-xl bg-neutral-900 border border-neutral-800"
+                    className="flex items-center gap-2 p-2.5 rounded-xl bg-ink-900 border border-ink-800"
                   >
-                    <Smartphone className="w-4 h-4 text-amber-400 shrink-0" />
+                    <Smartphone className="w-4 h-4 text-cyan-400 shrink-0" />
                     <div className="flex-1 min-w-0">
                       <div className="text-xs font-bold text-white truncate">
                         {d.name}
@@ -408,7 +412,7 @@ export const SyncModal: React.FC<SyncModalProps> = ({ onClose }) => {
                           </span>
                         )}
                       </div>
-                      <div className="text-[10px] text-neutral-500 capitalize">
+                      <div className="text-[10px] text-mist-500 capitalize">
                         {d.role} · {d.platform}
                       </div>
                     </div>
@@ -420,12 +424,12 @@ export const SyncModal: React.FC<SyncModalProps> = ({ onClose }) => {
           </div>
 
           {/* ═══ Sincronizzazione completa ═══ */}
-          <div className="p-4 rounded-2xl bg-neutral-950 border border-neutral-800 space-y-3">
-            <div className="flex items-center gap-2 text-xs font-bold text-orange-300">
+          <div className="p-4 rounded-2xl bg-ink-950 border border-ink-800 space-y-3">
+            <div className="flex items-center gap-2 text-xs font-bold text-brand-300">
               <RefreshCw className="w-3.5 h-3.5" />
               Sincronizzazione completa
             </div>
-            <p className="text-[11px] text-neutral-400 leading-relaxed">
+            <p className="text-[11px] text-mist-500 leading-relaxed">
               Per passare tutto (utenti, tavoli, magazzino, scontrini) a un
               telefono nuovo: invia tutto al cloud, poi sul nuovo telefono
               incolla il codice e scegli &quot;Ripristina dal cloud&quot;.
@@ -434,7 +438,7 @@ export const SyncModal: React.FC<SyncModalProps> = ({ onClose }) => {
               <button
                 onClick={handlePushAll}
                 disabled={syncBusy || !isConnected}
-                className="px-3 py-2.5 rounded-xl bg-amber-950/50 border border-amber-800/50 text-amber-300 hover:bg-amber-900/40 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+                className="px-3 py-2.5 rounded-xl bg-cyan-950/50 border border-cyan-800/50 text-cyan-300 hover:bg-cyan-900/40 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${syncBusy ? 'animate-spin' : ''}`} />
                 Invia tutto
@@ -449,21 +453,21 @@ export const SyncModal: React.FC<SyncModalProps> = ({ onClose }) => {
               </button>
             </div>
             {fullSyncStatus && (
-              <div className="text-[11px] text-neutral-300 leading-relaxed">
+              <div className="text-[11px] text-mist-300 leading-relaxed">
                 {fullSyncStatus}
               </div>
             )}
           </div>
 
           {/* ═══ Rete locale (Wi-Fi) — alternativa senza cloud ═══ */}
-          <div className="p-4 rounded-2xl bg-neutral-950 border border-neutral-800 space-y-3">
-            <div className="flex items-center gap-2 text-xs font-bold text-orange-300">
+          <div className="p-4 rounded-2xl bg-ink-950 border border-ink-800 space-y-3">
+            <div className="flex items-center gap-2 text-xs font-bold text-brand-300">
               <Wifi className="w-3.5 h-3.5" />
               Rete locale (Wi-Fi) — senza cloud
             </div>
-            <p className="text-[11px] text-neutral-400 leading-relaxed">
+            <p className="text-[11px] text-mist-500 leading-relaxed">
               Alternativa gratuita: avvia il server su un PC della stessa rete
-              (<code className="text-orange-300">npm run server</code>) e inserisci
+              (<code className="text-brand-300">npm run server</code>) e inserisci
               qui il suo indirizzo. Funziona solo sulla stessa rete Wi-Fi.
             </p>
             <div className="flex gap-2">
@@ -471,28 +475,28 @@ export const SyncModal: React.FC<SyncModalProps> = ({ onClose }) => {
                 value={lanUrl}
                 onChange={(e) => setLanUrl(e.target.value)}
                 placeholder="http://192.168.1.100:3001"
-                className="flex-1 px-3 py-2 rounded-xl bg-neutral-900 border border-neutral-700 text-xs font-mono text-neutral-200 outline-none focus:border-orange-500"
+                className="flex-1 px-3 py-2 rounded-xl bg-ink-900 border border-ink-700 text-xs font-mono text-mist-100 outline-none focus:border-brand-500"
               />
               <button
                 onClick={handleLanConnect}
                 disabled={lanConnecting || !lanUrl.trim()}
-                className="px-3 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 disabled:opacity-50 text-neutral-200 font-bold text-xs transition-colors whitespace-nowrap"
+                className="px-3 py-2 rounded-xl bg-ink-800 hover:bg-ink-700 disabled:opacity-50 text-mist-100 font-bold text-xs transition-colors whitespace-nowrap"
               >
                 {lanConnecting ? 'Connessione...' : 'Collega'}
               </button>
             </div>
             {lanStatus && (
-              <div className="text-[11px] text-neutral-400">{lanStatus}</div>
+              <div className="text-[11px] text-mist-500">{lanStatus}</div>
             )}
           </div>
 
           {/* Come aggiungere un telefono */}
-          <div className="p-4 rounded-2xl bg-neutral-950 border border-neutral-800 space-y-2">
-            <div className="flex items-center gap-2 text-xs font-bold text-orange-300">
+          <div className="p-4 rounded-2xl bg-ink-950 border border-ink-800 space-y-2">
+            <div className="flex items-center gap-2 text-xs font-bold text-brand-300">
               <Zap className="w-3.5 h-3.5" />
               Come aggiungere un altro telefono
             </div>
-            <ol className="text-[11px] text-neutral-400 space-y-1.5 pl-4 list-decimal">
+            <ol className="text-[11px] text-mist-500 space-y-1.5 pl-4 list-decimal">
               <li>
                 Installa l&apos;app su tutti i telefoni (stesso file APK).
               </li>
@@ -513,8 +517,53 @@ export const SyncModal: React.FC<SyncModalProps> = ({ onClose }) => {
 
           {/* Status Message */}
           {connectionStatus && (
-            <div className="p-3 rounded-xl bg-neutral-950 border border-neutral-800 text-xs text-neutral-300">
+            <div className="p-3 rounded-xl bg-ink-950 border border-ink-800 text-xs text-mist-300">
               {connectionStatus}
+            </div>
+          )}
+
+          {/* ⚠️ Errore di sincronizzazione: dice esattamente cosa fare */}
+          {cloudError && (
+            <div className="p-3.5 rounded-xl bg-rose-600/10 border border-rose-400/30 space-y-2">
+              <div className="flex items-start gap-2 text-xs font-bold text-rose-400">
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-px" />
+                <span>Sincronizzazione bloccata</span>
+              </div>
+              <p className="text-[11px] text-mist-300 leading-relaxed break-words">
+                {cloudError}
+              </p>
+              {/permission|401/i.test(cloudError) ? (
+                <div className="text-[11px] text-mist-300 leading-relaxed space-y-1">
+                  <p className="font-semibold text-mist-100">
+                    Le regole del database bloccano l&apos;accesso. Pubblicale
+                    una volta sola (gratis, 1 minuto):
+                  </p>
+                  <ol className="list-decimal list-inside space-y-0.5">
+                    <li>
+                      Apri{' '}
+                      <span className="text-brand-300">
+                        console.firebase.google.com → sea-restaurant →
+                        Realtime Database → Rules
+                      </span>
+                    </li>
+                    <li>
+                      Incolla{' '}
+                      <code className="text-brand-300">
+                        {'{ "rules": { ".read": true, ".write": true } }'}
+                      </code>
+                    </li>
+                    <li>
+                      Clicca <span className="font-semibold text-mist-100">Publish</span> e
+                      riapri l&apos;app: la sincronizzazione si avvia da sola.
+                    </li>
+                  </ol>
+                </div>
+              ) : (
+                <p className="text-[11px] text-mist-300 leading-relaxed">
+                  Verifica la connessione internet del dispositivo e che il
+                  codice di sincronizzazione sia corretto.
+                </p>
+              )}
             </div>
           )}
 
@@ -524,7 +573,7 @@ export const SyncModal: React.FC<SyncModalProps> = ({ onClose }) => {
               <button
                 onClick={handleConnect}
                 disabled={isConnecting || !isConfigured}
-                className="w-full py-3 rounded-xl bg-orange-500 hover:bg-orange-400 disabled:opacity-50 disabled:cursor-not-allowed text-neutral-950 font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-md shadow-orange-500/20"
+                className="w-full py-3 rounded-xl bg-brand-500 hover:bg-brand-400 disabled:opacity-50 disabled:cursor-not-allowed text-ink-950 font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-md shadow-brand-500/20"
               >
                 {isConnecting ? (
                   <>
@@ -555,8 +604,8 @@ export const SyncModal: React.FC<SyncModalProps> = ({ onClose }) => {
         </div>
 
         {/* Footer */}
-        <div className="p-4 bg-neutral-950/40 border-t border-neutral-800/60">
-          <div className="flex items-center justify-between text-[11px] text-neutral-500">
+        <div className="p-4 bg-ink-950/40 border-t border-ink-800/60">
+          <div className="flex items-center justify-between text-[11px] text-mist-500">
             <div className="flex items-center gap-1.5">
               <Users className="w-3 h-3" />
               <span>

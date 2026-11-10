@@ -40,7 +40,7 @@ export type SyncEvent = {
 };
 
 type SyncListener = (event: SyncEvent) => void;
-type StatusListener = (status: SyncStatus, devicesCount: number) => void;
+type StatusListener = (status: SyncStatus, devicesCount: number, error: string | null) => void;
 
 const BASE_STORAGE_KEY = 'sea_pos_sync_base_v1';
 const DIRTY_STORAGE_KEY = 'sea_pos_sync_dirty_v1';
@@ -49,6 +49,8 @@ const DEVICE_TIMEOUT_MS = 1000 * 60 * 60 * 24 * 14; // 14 giorni
 class FirebaseSyncManager {
   private transport: SyncTransport | null = null;
   private status: SyncStatus = 'disconnected';
+  /** ultimo errore di connessione (mostrato all'utente nelle impostazioni) */
+  private lastError: string | null = null;
   private listeners = new Set<SyncListener>();
   private statusListeners = new Set<StatusListener>();
   private device: DeviceInfo = getDevice();
@@ -119,6 +121,11 @@ class FirebaseSyncManager {
   // ═══════════════════════════════════════════════════════════════════
   // 🔌 Stato
   // ═══════════════════════════════════════════════════════════════════
+  /** ultimo errore verificatosi durante la sincronizzazione */
+  getLastError(): string | null {
+    return this.lastError;
+  }
+
   getStatus(): SyncStatus {
     return this.status;
   }
@@ -176,13 +183,13 @@ class FirebaseSyncManager {
 
     const ok = await transport.connect();
     if (!ok) {
-      this._setStatus('error');
+      this._setStatus('error', transport.getLastError?.() ?? null);
       return false;
     }
 
     transport.subscribe(
       (state) => this._handleState(state),
-      () => this._setStatus('error')
+      (error) => this._setStatus('error', error?.message ?? null)
     );
 
     await this._publishDevice();
@@ -558,15 +565,16 @@ class FirebaseSyncManager {
   private _notifyStatus() {
     this.statusListeners.forEach((l) => {
       try {
-        l(this.status, this.devices.length);
+        l(this.status, this.devices.length, this.lastError);
       } catch (e) {
         /* noop */
       }
     });
   }
 
-  private _setStatus(status: SyncStatus) {
+  private _setStatus(status: SyncStatus, error: string | null = null) {
     this.status = status;
+    this.lastError = status === 'error' ? error : null;
     this._notifyStatus();
   }
 

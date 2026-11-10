@@ -1,54 +1,50 @@
 @import "tailwindcss";
 
 /* ═══════════════════════════════════════════════════════════════════
-<<<<<<< HEAD
-   🎨 Sea POS - Charcoal Minimal Theme
-   ═══════════════════════════════════════════════════════════════════
-   خلفية: أسود فحمي (#0f0f0f)
-   بطاقات: رمادي داكن (#1a1a1a)
-   لون رئيسي: كهرماني/برتقالي (#f59e0b)
-   نص: رمادي فاتح (#e5e5e5)
-   ═══════════════════════════════════════════════════════════════════ */
-
-=======
-   🎨 Sea POS — Design System
-   Palette unica per tutte le schermate: fondi "ink" (blu notte),
-   accento "brand" (ciano) per le azioni primarie, colori semantici
+   🎨 Sea POS — Charcoal Minimal
+   Palette unica per tutte le schermate: fondi "ink" (nero carbone),
+   accento "brand" (ambra) per le azioni primarie, colori semantici
    per denaro / successo / pericolo.
    ═══════════════════════════════════════════════════════════════════ */
 
 @theme {
   /* ── Fondi e superfici ── */
-  --color-ink-950: #04080f;
-  --color-ink-900: #080e18;
-  --color-ink-850: #0c1421;
-  --color-ink-800: #111b2b;
-  --color-ink-700: #182437;
-  --color-ink-600: #23324c;
-  --color-ink-500: #33456a;
+  --color-ink-950: #0f0f0f;
+  --color-ink-900: #131313;
+  --color-ink-850: #1a1a1a;
+  --color-ink-800: #212121;
+  --color-ink-700: #2a2a2a;
+  --color-ink-600: #3a3a3a;
+  --color-ink-500: #4d4d4d;
+  --color-ink-400: #b8b8b8;
+  --color-ink-300: #d4d4d4;
+  --color-ink-200: #ededed;
 
   /* ── Testo ── */
-  --color-mist-100: #eef4ff;
-  --color-mist-300: #b8c6de;
-  --color-mist-500: #7e8fab;
+  --color-mist-100: #e5e5e5;
+  --color-mist-200: #d4d4d4;
+  --color-mist-300: #a3a3a3;
+  --color-mist-400: #8f8f8f;
+  --color-mist-500: #737373;
 
-  /* ── Accento principale ── */
-  --color-brand-300: #67e8f9;
-  --color-brand-400: #22d3ee;
-  --color-brand-500: #06b6d4;
-  --color-brand-600: #0891b2;
+  /* ── Accento principale (ambra) ── */
+  --color-brand-200: #fde68a;
+  --color-brand-300: #fcd34d;
+  --color-brand-400: #fbbf24;
+  --color-brand-500: #f59e0b;
+  --color-brand-600: #d97706;
 
   /* ── Semantici ── */
-  --color-mint-400: #34d399;
-  --color-mint-600: #059669;
-  --color-amber-400: #fbbf24;
-  --color-amber-600: #d97706;
+  --color-mint-400: #4ade80;
+  --color-mint-600: #16a34a;
+  --color-amber-400: #fb923c;
+  --color-amber-600: #ea580c;
   --color-rose-400: #fb7185;
   --color-rose-600: #e11d48;
   --color-violet-400: #a78bfa;
 
   /* ── Ombre ── */
-  --shadow-glow: 0 0 0 1px rgb(34 211 238 / 0.18), 0 8px 30px -12px rgb(34 211 238 / 0.45);
+  --shadow-glow: 0 0 0 1px rgb(245 158 11 / 0.18), 0 8px 30px -12px rgb(245 158 11 / 0.45);
 
   --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont,
     'Segoe UI', Roboto, sans-serif;
@@ -56,22 +52,15 @@
     monospace;
 }
 
->>>>>>> 08b20035d63be84df4a67f3304b216d48dfe8c29
 @layer base {
   html {
     -webkit-tap-highlight-color: transparent;
   }
 
   body {
-<<<<<<< HEAD
-    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background-color: #0f0f0f;
-    color: #e5e5e5;
-=======
     font-family: var(--font-sans);
     background-color: var(--color-ink-950);
     color: var(--color-mist-100);
->>>>>>> 08b20035d63be84df4a67f3304b216d48dfe8c29
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overscroll-behavior-y: none;
@@ -117,7 +106,7 @@
 
 @utility btn-primary {
   @apply btn bg-brand-500 text-ink-950 hover:bg-brand-400
-         shadow-[0_6px_24px_-10px_rgb(6_182_212/0.8)];
+         shadow-[0_6px_24px_-10px_rgb(245_158_11/0.8)];
 }
 
 @utility btn-soft {
@@ -189,6 +178,55 @@
 
 @utility tnum {
   font-variant-numeric: tabular-nums;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   📱 Safe area — barre di sistema Android (targetSdk 36 = edge-to-edge)
+   Con `viewport-fit=cover` il WebView disegna SOTTO la barra di navigazione:
+   senza questi padding i pulsanti del bottom bar finiscono sotto i tasti
+   del sistema (indietro / home / recenti).
+
+   Il plugin Capacitor "SystemBars" (modalità insetsHandling: css) azzera
+   env() nel WebView e inietta invece le variabili --safe-area-inset-*:
+   per questo uso max() tra le due fonti, così funziona sia nell'APK
+   sia nella PWA installata dal browser.
+   ═══════════════════════════════════════════════════════════════════ */
+
+@layer base {
+  :root {
+    --sea-safe-t: max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px));
+    --sea-safe-r: max(env(safe-area-inset-right, 0px), var(--safe-area-inset-right, 0px));
+    --sea-safe-b: max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px));
+    --sea-safe-l: max(env(safe-area-inset-left, 0px), var(--safe-area-inset-left, 0px));
+  }
+}
+
+@utility safe-b {
+  padding-bottom: var(--sea-safe-b);
+}
+
+@utility safe-t {
+  padding-top: var(--sea-safe-t);
+}
+
+@utility safe-x {
+  padding-left: var(--sea-safe-l);
+  padding-right: var(--sea-safe-r);
+}
+
+/* spazio riservato al bottom bar mobile (altezza barra + safe area) */
+@utility bottom-nav-space {
+  height: calc(4rem + var(--sea-safe-b));
+}
+
+/* padding del contenuto principale per non finire sotto il bottom bar */
+@utility content-bottom-space {
+  padding-bottom: calc(4rem + var(--sea-safe-b));
+}
+
+/* il FAB deve salire sopra il bottom bar mobile */
+@utility fab-bottom {
+  bottom: calc(1.5rem + var(--sea-safe-b));
 }
 
 @utility amount {

@@ -114,7 +114,7 @@ async def main():
         # ══ B (admin) per il test del magazzino: il cameriere non ha i permessi ══
         await B.click("button[title='Menu utente']")
         await B.wait_for_timeout(600)
-        await B.click("button:has-text('Esci dal turno')")
+        await B.click("button:visible:has-text('Esci dal turno')")
         await B.wait_for_timeout(1500)
         await B.fill("input[placeholder='Il tuo nome utente']", "titolare")
         await B.fill("input[type='password']", "1234")

@@ -39,6 +39,8 @@ export interface SyncTransport {
   readonly name: string;
   connect(): Promise<boolean>;
   disconnect(): void;
+  /** ultimo errore di trasporto (es. "Permission denied") */
+  getLastError?(): string | null;
   isConnected(): boolean;
   subscribe(
     onState: (state: CloudState) => void,

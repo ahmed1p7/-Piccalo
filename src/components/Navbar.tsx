@@ -21,6 +21,8 @@ import { BackupModal } from './BackupModal';
 import { WifiModal } from './WifiModal';
 import { ChangePasswordModal } from './ChangePasswordModal';
 import { SyncModal } from './SyncModal';
+import { DesktopSidebar } from './DesktopSidebar';
+import { useKeyboardShortcuts, ShortcutMap } from '../utils/useShortcuts';
 
 export const Navbar: React.FC = () => {
   const {
@@ -105,40 +107,39 @@ export const Navbar: React.FC = () => {
     setShowMenu(false);
   };
 
+  // ⌨️ Scorciatoie da tastiera (uso computer): F1..F7 e Alt+1..7
+  // cambiano schermata, Esc chiude le modali (gestito dal componente Modal).
+  const shortcutMap: ShortcutMap = {};
+  visibleItems.forEach((item, index) => {
+    shortcutMap[`f${index + 1}`] = () => goTo(item.id);
+    shortcutMap[`alt+${index + 1}`] = () => goTo(item.id);
+  });
+  useKeyboardShortcuts(shortcutMap);
+
   return (
     <>
-<<<<<<< HEAD
-      <header className="sticky top-0 z-40 bg-[#1a1a1a]/90 backdrop-blur-md border-b border-neutral-800/80 text-neutral-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="flex items-center justify-between h-16 gap-4">
-            {/* Zone 1: Brand Wordmark & Local Wi-Fi badge */}
-            <div
-              onClick={() => setActiveView('home')}
-              className="flex items-center gap-3 cursor-pointer group shrink-0"
-            >
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-600 via-amber-500 to-amber-400 flex items-center justify-center text-neutral-950 font-black shadow-md shadow-amber-500/20 group-hover:scale-105 transition-transform duration-200">
-                <Waves className="w-5 h-5 text-neutral-950" />
-              </div>
-              <div className="leading-tight">
-                <div className="flex items-center gap-2">
-                  <span className="font-extrabold text-base tracking-tight text-white font-sans">
-                    Sea
-                  </span>
-                  <span className="text-[10px] uppercase font-semibold text-amber-400/90 tracking-wider">
-                    POS
-                  </span>
-                </div>
-                <div className="text-[11px] text-neutral-400 font-normal hidden sm:block">
-                  {profile.name}
-=======
+      {/* ══ Barra laterale (computer ≥ 1024px) ══ */}
+      <DesktopSidebar
+        items={visibleItems}
+        activeView={activeView}
+        onNavigate={goTo}
+        restaurantName={profile.name?.trim() || 'Il mio ristorante'}
+        userName={currentUser.displayName}
+        userRole={currentUser.role.replace('_', ' ')}
+        syncOnline={wifiConnected}
+        devicesCount={syncDevicesCount}
+        onOpenSync={() => setShowSyncModal(true)}
+        onLogout={logout}
+      />
+
       {/* ══ Barra superiore ══ */}
-      <header className="sticky top-0 z-40 bg-ink-900/95 backdrop-blur-md border-b border-ink-700 text-mist-100">
+      <header className="sticky top-0 z-40 lg:pl-60 bg-ink-900/95 backdrop-blur-md border-b border-ink-700 text-mist-100 safe-t">
         <div className="mx-auto max-w-6xl px-3 sm:px-5">
           <div className="flex items-center justify-between h-14 gap-2">
             {/* Marchio */}
             <button
               onClick={() => goTo('home')}
-              className="flex items-center gap-2.5 min-w-0 group"
+              className="flex items-center gap-2.5 min-w-0 group lg:hidden"
             >
               <div className="h-9 w-9 shrink-0 rounded-xl bg-gradient-to-tr from-brand-600 via-brand-500 to-brand-300 flex items-center justify-center shadow-md shadow-brand-500/25">
                 <Waves className="w-5 h-5 text-ink-950" />
@@ -149,49 +150,12 @@ export const Navbar: React.FC = () => {
                 </div>
                 <div className="text-[10px] text-mist-500 truncate max-w-[10rem]">
                   {currentUser.displayName}
->>>>>>> 08b20035d63be84df4a67f3304b216d48dfe8c29
                 </div>
               </div>
             </button>
 
-<<<<<<< HEAD
-            {/* Zone 2: Navigation Links - تصميم محسّن */}
-            <nav className="flex items-center gap-1 overflow-x-auto py-1 scrollbar-none">
-              {navItems
-                .filter((item) => item.visible)
-                .map((item) => {
-                  const isActive = activeView === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => setActiveView(item.id)}
-                      className={`relative flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap shrink-0 ${
-                        isActive
-                          ? 'bg-gradient-to-r from-amber-600/30 to-cyan-500/20 text-white shadow-lg border border-amber-500/40'
-                          : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/60'
-                      }`}
-                    >
-                      <span className={isActive ? 'text-amber-300' : 'text-neutral-400'}>
-                        {item.icon}
-                      </span>
-                      <span>{item.label}</span>
-                      {item.badge !== undefined && item.badge > 0 && (
-                        <span
-                          className={`text-[10px] font-mono px-1.5 py-0.5 rounded-md ${
-                            isActive
-                              ? 'bg-amber-500/30 text-amber-200'
-                              : 'bg-rose-500/20 text-rose-300'
-                          }`}
-                        >
-                          {item.badge}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-=======
             {/* Navigazione desktop */}
-            <nav className="hidden md:flex items-center gap-1">
+            <nav className="hidden md:flex lg:hidden items-center gap-1">
               {visibleItems.map((item) => {
                 const isActive = activeView === item.id;
                 return (
@@ -212,7 +176,7 @@ export const Navbar: React.FC = () => {
                       <span
                         className={`text-[10px] font-mono px-1.5 py-0.5 rounded-md ${
                           isActive
-                            ? 'bg-brand-500/25 text-brand-200'
+                            ? 'bg-brand-500/25 text-brand-300'
                             : item.id === 'utenti'
                             ? 'bg-ink-700 text-mist-300'
                             : 'bg-rose-600/20 text-rose-400'
@@ -224,8 +188,18 @@ export const Navbar: React.FC = () => {
                   </button>
                 );
               })}
->>>>>>> 08b20035d63be84df4a67f3304b216d48dfe8c29
             </nav>
+
+            {/* Titolo pagina (desktop: la navigazione è nella sidebar) */}
+            <div className="hidden lg:block flex-1 min-w-0">
+              <h1 className="text-base font-bold tracking-tight text-mist-100 truncate">
+                {visibleItems.find((i) => i.id === activeView)?.label ?? 'Sea POS'}
+              </h1>
+              <p className="text-[11px] text-mist-500 truncate">
+                {profile.name?.trim() || 'Il mio ristorante'} · sessione di
+                cassa
+              </p>
+            </div>
 
             {/* Strumenti */}
             <div className="flex items-center gap-1.5 shrink-0">
@@ -234,13 +208,8 @@ export const Navbar: React.FC = () => {
                 title="Sincronizzazione cloud tra i dispositivi"
                 className={`relative p-2 rounded-lg border transition-colors ${
                   wifiConnected
-<<<<<<< HEAD
-                    ? 'border-amber-500/20 bg-amber-950/30 text-amber-400 hover:bg-amber-950/50'
-                    : 'border-neutral-700 bg-neutral-900/30 text-neutral-500 hover:bg-neutral-800/50'
-=======
                     ? 'border-brand-500/25 bg-brand-500/15 text-brand-300'
                     : 'border-ink-700 bg-ink-900 text-mist-500'
->>>>>>> 08b20035d63be84df4a67f3304b216d48dfe8c29
                 }`}
               >
                 <RefreshCw className="w-4 h-4" />
@@ -251,52 +220,6 @@ export const Navbar: React.FC = () => {
                 )}
               </button>
 
-<<<<<<< HEAD
-              {/* Backup & System Data */}
-              {permissions.canManageBackup && (
-                <button
-                  onClick={() => setShowBackupModal(true)}
-                  title="Backup & Ripristino Dati"
-                  className="p-1.5 rounded-lg border border-neutral-800 bg-neutral-900/80 text-neutral-400 hover:text-neutral-200 hover:border-neutral-700 transition-colors"
-                >
-                  <Database className="w-4 h-4" />
-                </button>
-              )}
-
-              {/* Staff Profile and Actions */}
-              <div className="flex items-center gap-2 pl-2 border-l border-neutral-800">
-                <div className="flex items-center gap-2">
-                  <div
-                    className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs text-white shadow-sm ${currentUser.avatarColor}`}
-                  >
-                    {currentUser.displayName.charAt(0)}
-                  </div>
-                  <div className="hidden lg:block text-left">
-                    <div className="text-xs font-semibold text-white leading-tight">
-                      {currentUser.displayName}
-                    </div>
-                    <div className="text-[10px] text-neutral-400 capitalize">
-                      {currentUser.role.replace('_', ' ')}
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => setShowChangePasswordModal(true)}
-                  title="Modifica password personale"
-                  className="p-1.5 rounded-lg text-neutral-400 hover:text-amber-300 hover:bg-neutral-800 transition-colors"
-                >
-                  <KeyRound className="w-3.5 h-3.5" />
-                </button>
-
-                <button
-                  onClick={logout}
-                  title="Esci dal turno"
-                  className="p-1.5 rounded-lg text-neutral-400 hover:text-rose-400 hover:bg-rose-950/30 transition-colors"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                </button>
-=======
               <button
                 onClick={() => setShowWifiModal(true)}
                 title="Stato rete Wi-Fi locale"
@@ -391,7 +314,6 @@ export const Navbar: React.FC = () => {
                     </div>
                   </>
                 )}
->>>>>>> 08b20035d63be84df4a67f3304b216d48dfe8c29
               </div>
             </div>
           </div>
@@ -399,7 +321,7 @@ export const Navbar: React.FC = () => {
       </header>
 
       {/* ══ Barra di navigazione inferiore (mobile) ══ */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-ink-900/95 backdrop-blur-md border-t border-ink-700">
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-ink-900/95 backdrop-blur-md border-t border-ink-700 safe-b safe-x">
         <div className="flex items-stretch overflow-x-auto scrollbar-none">
           {visibleItems.map((item) => {
             const isActive = activeView === item.id;
@@ -430,7 +352,7 @@ export const Navbar: React.FC = () => {
       </nav>
 
       {/* Spazio per la barra inferiore */}
-      <div className="md:hidden h-16" />
+      <div className="md:hidden bottom-nav-space" />
 
       {/* Modali */}
       {showBackupModal && <BackupModal onClose={() => setShowBackupModal(false)} />}

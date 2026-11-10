@@ -1,13 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0f0f0f"/>
-      <stop offset="100%" stop-color="#1a1a1a"/>
+      <stop offset="0%" stop-color="#070c18"/>
+      <stop offset="100%" stop-color="#0d1527"/>
     </linearGradient>
     <linearGradient id="wave" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#f59e0b"/>
-      <stop offset="50%" stop-color="#fbbf24"/>
-      <stop offset="100%" stop-color="#f59e0b"/>
+      <stop offset="0%" stop-color="#06b6d4"/>
+      <stop offset="50%" stop-color="#0e7490"/>
+      <stop offset="100%" stop-color="#155e75"/>
     </linearGradient>
   </defs>
   <!-- Background -->
@@ -15,10 +15,10 @@
   <!-- Waves (Sea theme) -->
   <g transform="translate(0, 256)">
     <path d="M0,0 Q128,-60 256,0 T512,0 V120 H0 Z" fill="url(#wave)" opacity="0.9"/>
-    <path d="M0,20 Q128,-40 256,20 T512,20 V120 H0 Z" fill="#f59e0b" opacity="0.7"/>
-    <path d="M0,40 Q128,-20 256,40 T512,40 V120 H0 Z" fill="#d97706" opacity="0.5"/>
+    <path d="M0,20 Q128,-40 256,20 T512,20 V120 H0 Z" fill="#0891b2" opacity="0.7"/>
+    <path d="M0,40 Q128,-20 256,40 T512,40 V120 H0 Z" fill="#0e7490" opacity="0.5"/>
   </g>
   <!-- Sea text -->
-  <text x="256" y="200" font-family="Plus Jakarta Sans, Arial, sans-serif" font-size="72" font-weight="800" fill="#f59e0b" text-anchor="middle" letter-spacing="4">SEA</text>
-  <text x="256" y="460" font-family="Plus Jakarta Sans, Arial, sans-serif" font-size="28" font-weight="500" fill="#a3a3a3" text-anchor="middle" letter-spacing="2">RISTORANTE</text>
+  <text x="256" y="200" font-family="Plus Jakarta Sans, Arial, sans-serif" font-size="72" font-weight="800" fill="#06b6d4" text-anchor="middle" letter-spacing="4">SEA</text>
+  <text x="256" y="460" font-family="Plus Jakarta Sans, Arial, sans-serif" font-size="28" font-weight="500" fill="#94a3b8" text-anchor="middle" letter-spacing="2">RISTORANTE</text>
 </svg>

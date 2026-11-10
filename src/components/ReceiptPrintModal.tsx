@@ -62,40 +62,25 @@ export const ReceiptPrintModal: React.FC<ReceiptPrintModalProps> = ({
   };
 
   return (
-<<<<<<< HEAD
-    <div className="fixed inset-0 z-50 bg-neutral-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-neutral-900 border border-neutral-800 rounded-3xl max-w-md w-full shadow-2xl overflow-hidden flex flex-col my-auto">
-        {/* Modal Header */}
-        <div className="p-4 bg-neutral-800/60 border-b border-neutral-700/60 flex items-center justify-between">
-=======
     <div className="fixed inset-0 z-50 bg-ink-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-ink-850 border border-ink-700 rounded-3xl max-w-md w-full shadow-2xl overflow-hidden flex flex-col my-auto">
         {/* Modal Header */}
         <div className="p-4 bg-ink-800/60 border-b border-ink-700 flex items-center justify-between gap-3">
->>>>>>> 08b20035d63be84df4a67f3304b216d48dfe8c29
           <div className="flex items-center gap-2">
             <Printer className="w-5 h-5 text-amber-400" />
             <h3 className="font-bold text-mist-100 text-base">Anteprima Ricevuta Fiscale</h3>
           </div>
           <button
             onClick={onClose}
-<<<<<<< HEAD
-            className="p-1.5 rounded-xl text-neutral-400 hover:text-white hover:bg-neutral-700 transition-colors"
-=======
             aria-label="Chiudi"
             className="p-1.5 rounded-xl text-mist-500 hover:text-mist-100 hover:bg-ink-700 transition-colors"
->>>>>>> 08b20035d63be84df4a67f3304b216d48dfe8c29
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Thermal Receipt Paper Simulation */}
-<<<<<<< HEAD
-        <div className="p-6 bg-neutral-950 flex justify-center">
-=======
         <div className="p-6 bg-ink-950 flex justify-center">
->>>>>>> 08b20035d63be84df4a67f3304b216d48dfe8c29
           <div
             id="thermal-receipt"
             className="w-full max-w-xs bg-white text-ink-950 p-5 rounded-sm shadow-xl font-mono text-xs border border-dashed border-ink-600 relative selection:bg-amber-400 selection:text-ink-950"
@@ -157,13 +142,8 @@ export const ReceiptPrintModal: React.FC<ReceiptPrintModalProps> = ({
             </div>
 
             {/* Total and Payment Breakdown */}
-<<<<<<< HEAD
-            <div className="py-3 border-b border-slate-400 border-dashed space-y-1">
-              <div className="flex justify-between text-base font-black text-neutral-950">
-=======
             <div className="py-3 border-b border-ink-600 border-dashed space-y-1">
               <div className="flex justify-between text-base font-black text-ink-950">
->>>>>>> 08b20035d63be84df4a67f3304b216d48dfe8c29
                 <span>TOTALE COMPLESSIVO</span>
                 <span>{euro(receipt.totalAmount)} €</span>
               </div>
@@ -214,17 +194,10 @@ export const ReceiptPrintModal: React.FC<ReceiptPrintModalProps> = ({
               <p className="font-bold text-[10px] uppercase tracking-wider text-ink-700">
                 Grazie per la visita!
               </p>
-<<<<<<< HEAD
-              <div className="h-7 w-4/5 mx-auto bg-neutral-800 flex items-center justify-center text-[9px] text-white tracking-[0.3em] font-mono">
-                ||||||||||||||||||||||||||||
-              </div>
-              <p className="text-[9px] text-neutral-500">
-=======
               <div className="h-7 w-4/5 mx-auto bg-ink-950 flex items-center justify-center text-[9px] text-white tracking-[0.3em] font-mono">
                 ||||||||||||||||||||||||||||
               </div>
               <p className="text-[9px] text-ink-500">
->>>>>>> 08b20035d63be84df4a67f3304b216d48dfe8c29
                 Arrivederci al Ristorante Sea
               </p>
             </div>
@@ -232,39 +205,17 @@ export const ReceiptPrintModal: React.FC<ReceiptPrintModalProps> = ({
         </div>
 
         {/* Modal Actions */}
-<<<<<<< HEAD
-        <div className="p-4 bg-neutral-900 border-t border-neutral-800 flex items-center justify-between gap-3">
-          <button
-            onClick={handleCopy}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-neutral-700 bg-neutral-800 hover:bg-neutral-700 text-xs font-semibold text-neutral-300 transition-colors"
-          >
-            {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-=======
         <div className="p-4 bg-ink-850 border-t border-ink-700 flex items-center justify-between gap-3 flex-wrap">
           <Btn variant="soft" size="sm" onClick={handleCopy}>
             {copied ? <Check className="w-4 h-4 text-mint-400" /> : <Copy className="w-4 h-4" />}
->>>>>>> 08b20035d63be84df4a67f3304b216d48dfe8c29
             <span>{copied ? 'Copiato!' : 'Copia Testo'}</span>
           </Btn>
 
           <div className="flex items-center gap-2">
-<<<<<<< HEAD
-            <button
-              onClick={onClose}
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"
-            >
-              Chiudi
-            </button>
-            <button
-              onClick={handlePrint}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 text-xs font-bold transition-all shadow-md shadow-amber-500/20"
-            >
-=======
             <Btn variant="ghost" size="sm" onClick={onClose}>
               Chiudi
             </Btn>
             <Btn variant="primary" size="sm" onClick={handlePrint}>
->>>>>>> 08b20035d63be84df4a67f3304b216d48dfe8c29
               <Printer className="w-4 h-4" />
               <span>Stampa Scontrino</span>
             </Btn>

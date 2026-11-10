@@ -13,7 +13,7 @@
 
 import { RealtimeDbTransport } from '../src/sync/transports/RealtimeDbTransport';
 
-const EMULATOR_URL = 'http://127.0.0.1:9000?ns=demo-sea-pos';
+const EMULATOR_URL = 'http://127.0.0.1:9000?ns=demo-sea-pos-default-rtdb';
 const API_KEY = 'demo-key';
 const PROJECT_ID = 'demo-sea-pos';
 

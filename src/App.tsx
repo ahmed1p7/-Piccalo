@@ -17,10 +17,17 @@ import { ReportView } from './components/ReportView';
 import { GestioneUtentiView } from './components/GestioneUtentiView';
 import { ImpostazioniView } from './components/ImpostazioniView';
 import { UpdateNotification } from './components/UpdateNotification';
-import { Waves } from 'lucide-react';
+import { AlertTriangle, Waves } from 'lucide-react';
 
 const MainAppContent: React.FC = () => {
-  const { currentUser, activeView, needsSetup, bootstrapDone, skipBootstrap } = useApp();
+  const {
+    currentUser,
+    activeView,
+    needsSetup,
+    bootstrapDone,
+    skipBootstrap,
+    syncError,
+  } = useApp();
   const [showUpdateNotification, setShowUpdateNotification] = useState(true);
   const [canSkip, setCanSkip] = useState(false);
 
@@ -35,13 +42,41 @@ const MainAppContent: React.FC = () => {
   //    (utenti, tavoli, magazzino, scontrini) senza nessuna operazione.
   if (!bootstrapDone) {
     return (
-      <div className="min-h-screen bg-ink-950 text-mist-100 flex flex-col items-center justify-center gap-4">
+      <div className="min-h-screen bg-ink-950 text-mist-100 flex flex-col items-center justify-center gap-4 px-6 safe-t safe-b">
         <div className="h-14 w-14 rounded-2xl bg-brand-500/15 border border-brand-500/30 text-brand-300 flex items-center justify-center animate-pulse">
           <Waves className="w-7 h-7" />
         </div>
-        <p className="text-xs text-mist-500 tracking-wide">
-          Connessione al ristorante…
+        <p className="text-xs text-mist-500 tracking-wide text-center">
+          {canSkip
+            ? 'Connessione al ristorante…'
+            : 'Connessione al ristorante…'}
         </p>
+
+        {/* ⚠️ Se il cloud rifiuta l'accesso, spiego subito come sbloccarlo */}
+        {canSkip && syncError && (
+          <div className="w-full max-w-md rounded-2xl bg-rose-600/10 border border-rose-400/30 p-4 space-y-2">
+            <div className="flex items-start gap-2 text-xs font-bold text-rose-400">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-px" />
+              <span>Accesso al database bloccato</span>
+            </div>
+            <p className="text-[11px] text-mist-300 leading-relaxed break-words">
+              {syncError}
+            </p>
+            <p className="text-[11px] text-mist-300 leading-relaxed">
+              Apri{' '}
+              <span className="text-brand-300">
+                console.firebase.google.com → sea-restaurant → Realtime
+                Database → Rules
+              </span>{' '}
+              e pubblica{' '}
+              <code className="text-brand-300">
+                {'{ "rules": { ".read": true, ".write": true } }'}
+              </code>
+              . Poi riapri l&apos;app.
+            </p>
+          </div>
+        )}
+
         {canSkip && (
           <button
             onClick={skipBootstrap}
@@ -73,11 +108,7 @@ const MainAppContent: React.FC = () => {
   }
 
   return (
-<<<<<<< HEAD
-    <div className="min-h-screen bg-[#0f0f0f] text-neutral-200 flex flex-col font-sans selection:bg-amber-500 selection:text-neutral-950 antialiased">
-=======
     <div className="min-h-screen bg-ink-950 text-mist-100 flex flex-col font-sans selection:bg-brand-500 selection:text-ink-950 antialiased">
->>>>>>> 08b20035d63be84df4a67f3304b216d48dfe8c29
       {/* 🔄 إشعار التحديث التلقائي */}
       {showUpdateNotification && (
         <UpdateNotification onClose={() => setShowUpdateNotification(false)} />
@@ -87,7 +118,7 @@ const MainAppContent: React.FC = () => {
       <Navbar />
 
       {/* Main Content Area */}
-      <main className="flex-1 pb-16">
+      <main className="flex-1 content-bottom-space lg:pl-60">
         {activeView === 'home' && <HomeDashboard />}
         {activeView === 'cassa' && <CassaView />}
         {activeView === 'magazzino' && <MagazzinoView />}

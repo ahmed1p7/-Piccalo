@@ -10,6 +10,11 @@ Sistema gestionale per ristorante con **sincronizzazione cloud tra più telefoni
 
 - 📱 **APK Android installabile** (firmato, si aggiorna senza perdere i dati)
 - 🌐 **PWA** — si installa anche dal browser (Aggiungi alla schermata Home)
+- 🖥️ **Uso da computer** — barra laterale fissa + scorciatoie da tastiera
+  (F1–F7 per cambiare schermata), installabile come app su Windows/Mac/Linux
+- 🎨 **Charcoal Minimal** — palette unica (carbone + ambra) su tutte le schermate
+- 📐 **Safe area Android** — i pulsanti non finiscono più sotto la barra di
+  navigazione del sistema
 - ☁️ **Sync cloud multi-dispositivo** — N telefoni, N account, un unico codice
 - 🔀 **Merge intelligente** — due telefoni che lavorano in parallelo non si sovrascrivono
 - 📡 **Sync LAN (Wi-Fi)** — alternativa gratuita senza cloud
@@ -52,6 +57,42 @@ Se non ci sono ancora release, l'APK si scarica anche dagli **Actions**:
 1. Apri <https://ahmed1p7.github.io/-Piccalo/> dal telefono
 2. **Android/Chrome:** menu ⋮ → *Aggiungi a schermata Home*
 3. **iPhone/Safari:** Condividi → *Aggiungi alla Home*
+
+---
+
+## 🖥️ Usare l'app da computer
+
+L'app è la stessa: si apre nel browser del computer e si installa come
+programma a finestra propria (gratis, nessun costo di licenza).
+
+1. Apri <https://ahmed1p7.github.io/-Piccalo/> da Chrome, Edge o Safari
+2. Installa l'app:
+   - **Chrome/Edge (Windows, Linux):** icona 🖥️ nella barra degli indirizzi →
+     *Installa Sea POS*
+   - **Chrome/Edge (macOS):** menu ⋮ → *Condividi e installa…*
+   - **Safari (macOS):** File → *Aggiungi al Dock…*
+3. Si apre in una finestra separata, con icona nel menu Start / Dock /
+   Applications — si comporta come un programma normale
+
+**Cosa cambia su schermo largo (≥ 1024 px):**
+
+- **Barra laterale fissa** a sinistra con le sezioni, lo stato della
+  sincronizzazione e l'uscita dal turno (al posto della barra inferiore)
+- **Titoli di sezione** più grandi e griglie a 4 colonne per tavoli e magazzino
+- **Scorciatoie da tastiera** per il cassiere:
+
+  | Tasto | Sezione | Tasto | Sezione |
+  |---|---|---|---|
+  | `F1` | Home | `F5` | Cucina |
+  | `F2` | Tavoli | `F6` | Report |
+  | `F3` | Cassa | `F7` | Personale |
+  | `F4` | Magazzino | `Esc` | chiude la finestra |
+
+  Su portatelli dove i tasti F sono combinati con `Fn`, si può usare
+  `Alt` + numero (`Alt+1`, `Alt+2`, …).
+
+> 💡 Il computer deve essere connesso a internet come i telefoni: la
+> sincronizzazione cloud funziona identica.
 
 ---
 

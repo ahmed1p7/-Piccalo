@@ -29,9 +29,9 @@ const AVATAR_COLORS = [
   'bg-amber-600',
   'bg-rose-600',
   'bg-violet-600',
-  'bg-blue-600',
+  'bg-brand-600',
   'bg-teal-600',
-  'bg-slate-600',
+  'bg-ink-600',
 ];
 
 const PERMISSION_LIST: { key: keyof UserPermissions; label: string; desc: string }[] = [
@@ -112,7 +112,7 @@ export const GestioneUtentiView: React.FC = () => {
           canManageBackup: false,
           canViewReports: false,
         });
-        setAvatarColor('bg-orange-600');
+        setAvatarColor('bg-brand-600');
         break;
       case 'bar_cucina':
         // Hybrid: Bar + Kitchen together!
@@ -140,7 +140,7 @@ export const GestioneUtentiView: React.FC = () => {
           canManageBackup: false,
           canViewReports: true,
         });
-        setAvatarColor('bg-blue-600');
+        setAvatarColor('bg-brand-600');
         break;
       case 'personalizzato':
         break;
@@ -207,16 +207,10 @@ export const GestioneUtentiView: React.FC = () => {
   };
 
   return (
-<<<<<<< HEAD
-    <div className="max-w-7xl mx-auto px-3 sm:px-6 py-6 space-y-6 animate-fadeIn">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-neutral-900 border border-neutral-800 p-5 rounded-3xl shadow-xl">
-=======
     <div className="min-h-screen bg-ink-950 text-mist-100 animate-fadeIn">
       <div className="mx-auto max-w-6xl px-3 sm:px-5 py-5 space-y-5">
       {/* Intestazione */}
       <div className="surface p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
->>>>>>> 08b20035d63be84df4a67f3304b216d48dfe8c29
         <div className="flex items-center gap-3">
           <div className="h-12 w-12 shrink-0 rounded-2xl bg-brand-500/15 text-brand-300 border border-brand-500/25 flex items-center justify-center">
             <Users className="w-6 h-6" />
@@ -225,26 +219,14 @@ export const GestioneUtentiView: React.FC = () => {
             <h1 className="text-lg sm:text-xl font-bold tracking-tight text-mist-100">
               Personale &amp; Permessi
             </h1>
-<<<<<<< HEAD
-            <p className="text-xs text-neutral-400">
-              Crea account per camerieri, cuochi, barman e cassieri con PIN a 4 cifre e permessi personalizzati.
-=======
             <p className="mt-0.5 text-xs text-mist-500">
               {users.length} {users.length === 1 ? 'account' : 'account'} · crea i conti dei
               dipendenti e decidi cosa può fare ciascuno.
->>>>>>> 08b20035d63be84df4a67f3304b216d48dfe8c29
             </p>
           </div>
         </div>
 
-<<<<<<< HEAD
-        <button
-          onClick={handleOpenAdd}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold text-xs shadow-lg shadow-amber-500/20 transition-all active:scale-95"
-        >
-=======
         <Btn onClick={handleOpenAdd} variant="primary" size="lg" className="w-full sm:w-auto">
->>>>>>> 08b20035d63be84df4a67f3304b216d48dfe8c29
           <Plus className="w-4 h-4" />
           Nuovo dipendente
         </Btn>
@@ -267,15 +249,8 @@ export const GestioneUtentiView: React.FC = () => {
           return (
             <div
               key={user.id}
-<<<<<<< HEAD
-              className={`p-5 rounded-3xl border transition-all flex flex-col justify-between min-h-[220px] ${
-                isMe
-                  ? 'bg-neutral-900 border-amber-500/60 shadow-lg shadow-amber-500/10'
-                  : 'bg-neutral-900/80 border-neutral-800 hover:border-neutral-700'
-=======
               className={`surface p-4 flex flex-col justify-between gap-4 transition ${
                 isMe ? 'border-brand-500/50' : 'hover:border-ink-600'
->>>>>>> 08b20035d63be84df4a67f3304b216d48dfe8c29
               }`}
             >
               <div>
@@ -296,20 +271,6 @@ export const GestioneUtentiView: React.FC = () => {
                           </span>
                         )}
                       </h3>
-<<<<<<< HEAD
-                      <p className="text-xs text-neutral-400">@{user.username}</p>
-                    </div>
-                  </div>
-
-                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-neutral-800 text-neutral-300 border border-neutral-700 capitalize">
-                    {user.role.replace('_', ' ')}
-                  </span>
-                </div>
-
-                {/* PIN and Permissions chips */}
-                <div className="space-y-2 mt-4">
-                  <div className="text-xs text-neutral-400 flex items-center gap-1.5">
-=======
                       <p className="text-xs text-mist-500 truncate">@{user.username}</p>
                     </div>
                   </div>
@@ -322,7 +283,6 @@ export const GestioneUtentiView: React.FC = () => {
                 {/* PIN e permessi */}
                 <div className="mt-3.5 space-y-2.5">
                   <div className="flex items-center gap-1.5 text-[11px] text-mist-500">
->>>>>>> 08b20035d63be84df4a67f3304b216d48dfe8c29
                     <KeyRound className="w-3.5 h-3.5 text-amber-400" />
                     <span>PIN:</span>
                     <strong className="text-mist-100 font-mono tracking-widest">{user.pin}</strong>
@@ -341,17 +301,11 @@ export const GestioneUtentiView: React.FC = () => {
                 </div>
               </div>
 
-<<<<<<< HEAD
-              {/* Action Buttons */}
-              <div className="pt-4 mt-3 border-t border-neutral-800 flex items-center justify-between text-xs">
-                <button
-=======
               {/* Azioni */}
               <div className="pt-3 border-t border-ink-700 flex items-center justify-between gap-2">
                 <Btn
                   variant="ghost"
                   size="sm"
->>>>>>> 08b20035d63be84df4a67f3304b216d48dfe8c29
                   onClick={() => loginUserDirect(user)}
                   className="!px-2"
                 >
@@ -362,24 +316,15 @@ export const GestioneUtentiView: React.FC = () => {
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => setUserForPasswordChange(user)}
-<<<<<<< HEAD
-                    title="Modifica password di questo utente"
-                    className="p-1.5 rounded-lg text-neutral-400 hover:text-amber-300 hover:bg-amber-950/40 transition-colors"
-=======
                     title="Modifica password"
                     className="p-2 rounded-lg text-mist-500 hover:text-brand-300 hover:bg-ink-800 transition-colors"
->>>>>>> 08b20035d63be84df4a67f3304b216d48dfe8c29
                   >
                     <KeyRound className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => handleOpenEdit(user)}
                     title="Modifica profilo e permessi"
-<<<<<<< HEAD
-                    className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"
-=======
                     className="p-2 rounded-lg text-mist-500 hover:text-mist-100 hover:bg-ink-800 transition-colors"
->>>>>>> 08b20035d63be84df4a67f3304b216d48dfe8c29
                   >
                     <Edit2 className="w-4 h-4" />
                   </button>
@@ -390,12 +335,8 @@ export const GestioneUtentiView: React.FC = () => {
                           deleteUser(user.id);
                         }
                       }}
-<<<<<<< HEAD
-                      className="p-1.5 rounded-lg text-neutral-400 hover:text-rose-400 hover:bg-rose-950/40 transition-colors"
-=======
                       title="Elimina account"
                       className="p-2 rounded-lg text-mist-500 hover:text-rose-400 hover:bg-rose-600/10 transition-colors"
->>>>>>> 08b20035d63be84df4a67f3304b216d48dfe8c29
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -407,157 +348,6 @@ export const GestioneUtentiView: React.FC = () => {
         })}
       </div>
 
-<<<<<<< HEAD
-      {/* MODAL: ADD / EDIT USER */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-neutral-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-neutral-900 border border-neutral-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl my-auto space-y-5 max-h-[95vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-neutral-800">
-              <h3 className="font-bold text-white text-base">
-                {editingUser ? 'Modifica Account Dipendente' : 'Crea Nuovo Account Dipendente'}
-              </h3>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                className="text-neutral-400 hover:text-white"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4 text-xs sm:text-sm">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="font-semibold text-neutral-300 block mb-1">
-                    Nome Completo:
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Es. Mario Rossi"
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-semibold text-neutral-300 block mb-1">
-                    Username (Login):
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Es. mario"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="font-semibold text-neutral-300 block mb-1">
-                  PIN di Accesso a 4 Cifre *:
-                </label>
-                <input
-                  type="text"
-                  maxLength={4}
-                  required
-                  placeholder="Es. 5555"
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
-                  className="w-full bg-neutral-950 border border-neutral-700 rounded-xl px-4 py-2.5 text-white font-mono font-black text-xl tracking-widest focus:outline-none focus:border-amber-500"
-                />
-                <span className="text-[11px] text-neutral-400 mt-1 block">
-                  Usato per il login rapido dal tastierino numerico su tablet.
-                </span>
-              </div>
-
-              {/* Role Presets */}
-              <div>
-                <label className="font-semibold text-neutral-300 block mb-1.5">
-                  Ruolo Predefinito (Imposta i permessi standard):
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {[
-                    { id: 'admin', label: 'Direttore (Tutto)' },
-                    { id: 'cameriere', label: 'Cameriere (Tavoli & Conto)' },
-                    { id: 'cucina', label: 'Cucina (Magazzino Cucina)' },
-                    { id: 'cassiere', label: 'Cassiere (Cassa & Report)' },
-                    { id: 'personalizzato', label: 'Personalizzato' },
-                  ].map((r) => (
-                    <button
-                      key={r.id}
-                      type="button"
-                      onClick={() => applyRolePreset(r.id as UserRole)}
-                      className={`p-2 rounded-xl text-xs font-bold border transition-all text-center ${
-                        role === r.id
-                          ? 'bg-amber-500 text-neutral-950 border-amber-400'
-                          : 'bg-neutral-950 text-neutral-300 border-neutral-800 hover:border-neutral-700'
-                      }`}
-                    >
-                      {r.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Granular Checkboxes for Permissions */}
-              <div className="space-y-2 pt-2 border-t border-neutral-800">
-                <span className="font-semibold text-neutral-300 block">
-                  Permessi &amp; Sezioni Visibili:
-                </span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                  {[
-                    { key: 'canAccessCassa', label: 'Punto Cassa & Pagamenti' },
-                    { key: 'canAccessMagazzino', label: 'Magazzino & Scorte Generali' },
-                    { key: 'canAccessCucina', label: 'Magazzino Cucina & Dispensa' },
-                    { key: 'canAccessTavoli', label: 'Mappa Tavoli & Conti' },
-                    { key: 'canViewReports', label: 'Report & Chiusura Giornaliera' },
-                    { key: 'canManageUsers', label: 'Gestione Personale & Dipendenti' },
-                    { key: 'canManageBackup', label: 'Backup & Dati di Sistema' },
-                  ].map(({ key, label }) => {
-                    const isChecked = permissions[key as keyof UserPermissions];
-                    return (
-                      <div
-                        key={key}
-                        onClick={() => togglePermission(key as keyof UserPermissions)}
-                        className={`p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition-colors ${
-                          isChecked
-                            ? 'bg-amber-950/40 border-amber-500/50 text-white font-medium'
-                            : 'bg-neutral-950 border-neutral-800 text-neutral-400'
-                        }`}
-                      >
-                        {isChecked ? (
-                          <CheckSquare className="w-4 h-4 text-amber-400" />
-                        ) : (
-                          <Square className="w-4 h-4 text-slate-600" />
-                        )}
-                        <span>{label}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="pt-3 border-t border-neutral-800 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-neutral-400 hover:text-white"
-                >
-                  Annulla
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-neutral-950 font-bold transition-all shadow-md shadow-amber-500/20"
-                >
-                  {editingUser ? 'Salva Modifiche' : 'Crea Account'}
-                </button>
-              </div>
-            </form>
-          </div>
-=======
       {users.length === 0 && (
         <div className="surface">
           <EmptyState
@@ -571,7 +361,6 @@ export const GestioneUtentiView: React.FC = () => {
               </Btn>
             }
           />
->>>>>>> 08b20035d63be84df4a67f3304b216d48dfe8c29
         </div>
       )}
 

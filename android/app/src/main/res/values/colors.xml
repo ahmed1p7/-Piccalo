@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Charcoal Minimal: lo sfondo che appare dietro le barre di sistema -->
+    <color name="charcoal_bg">#0F0F0F</color>
+    <color name="charcoal_surface">#1A1A1A</color>
+    <color name="amber_brand">#F59E0B</color>
+</resources>

@@ -51,6 +51,10 @@ interface AppContextType {
   lowStockItems: InventoryItem[];
   wifiConnected: boolean;
   syncDevicesCount: number;
+  /** 'disconnected' | 'connecting' | 'connected' | 'error' */
+  syncStatus: 'disconnected' | 'connecting' | 'connected' | 'error';
+  /** ultimo errore di sincronizzazione (es. "Permission denied") */
+  syncError: string | null;
   toggleWifi: () => void;
   syncAllNow: () => Promise<boolean>;
   pullAllFromCloud: () => Promise<boolean>;
@@ -228,6 +232,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [selectedTableForCheckout, setSelectedTableForCheckout] =
     useState<RestaurantTable | null>(null);
   const [wifiConnected, setWifiConnected] = useState<boolean>(false);
+  const [syncStatus, setSyncStatus] = useState<
+    'disconnected' | 'connecting' | 'connected' | 'error'
+  >('disconnected');
+  const [syncError, setSyncError] = useState<string | null>(null);
   const [cloudConnected, setCloudConnected] = useState<boolean>(false);
   const [lanConnected, setLanConnected] = useState<boolean>(false);
   const [syncDevicesCount, setSyncDevicesCount] = useState<number>(0);
@@ -466,13 +474,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // حالة المزامنة + عدد الأجهزة المتصلة
   useEffect(() => {
     const removeStatusListener = firebaseSyncManager.addStatusListener(
-      (status, devicesCount) => {
+      (status, devicesCount, error) => {
         setCloudConnected(status === 'connected');
         setSyncDevicesCount(devicesCount);
+        setSyncStatus(status);
+        setSyncError(error ?? null);
       }
     );
     setCloudConnected(firebaseSyncManager.getStatus() === 'connected');
     setSyncDevicesCount(firebaseSyncManager.getDevices().length);
+    setSyncStatus(firebaseSyncManager.getStatus());
+    setSyncError(firebaseSyncManager.getLastError());
     return removeStatusListener;
   }, []);
 
@@ -1359,6 +1371,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         lowStockItems,
         wifiConnected,
         syncDevicesCount,
+        syncStatus,
+        syncError,
         toggleWifi,
         syncAllNow,
         pullAllFromCloud,
