@@ -17,6 +17,7 @@ Sistema gestionale per ristorante con **sincronizzazione cloud tra più telefoni
   navigazione del sistema
 - ☁️ **Sync cloud multi-dispositivo** — N telefoni, N account, un unico codice
 - 🔀 **Merge intelligente** — due telefoni che lavorano in parallelo non si sovrascrivono
+  (e i dati locali **non vengono mai sostituiti** da uno stato cloud più vecchio)
 - 📡 **Sync LAN (Wi-Fi)** — alternativa gratuita senza cloud
 - 💳 **Cassa** — pagamenti contanti/carta, **divisione del conto** (quote uguali o
   percentuali) e **pagamenti multipli** sullo stesso tavolo
@@ -166,6 +167,36 @@ La logica è in [`src/sync/merge.ts`](src/sync/merge.ts) ed è coperta dai test:
 ```bash
 npm test
 ```
+
+---
+
+## 🛡️ Protezione degli account (fix 1.4.0)
+
+Un bug delle versioni 1.3.x faceva **svanire gli account dei dipendenti**:
+se un dispositivo non aveva ancora uno stato di base (base vuota) e
+riceveva uno stato cloud vecchio o parziale, i dati locali venivano
+**sostituiti** invece che uniti. I dipendenti non riuscivano più a entrare.
+
+Oggi:
+
+- i dati locali **non vengono mai sovrascritti**: si fa *union* con il cloud
+- uno stato cloud **più vecchio** del nostro stato noto **non può cancellare**
+  nulla (un telefono vecchio non può più svuotare il ristorante)
+- il merge **non può lasciare il ristorante senza un account admin**
+- il login distingue fra *«Nome utente inesistente»* e *«Password non corretta»*
+
+> 🔎 Il problema è stato verificato direttamente sul database di produzione:
+> la collezione `users` conteneva solo il vecchio account predefinito
+> `Admin/5555` mentre il resto dei dati era aggiornato.
+
+### Recupero dei dati (se ti è già successo)
+
+1. Aggiorna **tutti** i dispositivi alla 1.4.0
+2. Il modo più pulito: sul telefono del titolare → *Backup & ripristino →
+   Ripristino di fabbrica* e spunta **«Cancella anche i dati nel cloud»**
+   → riparti da zero (la 1.4.0 non contiene dati d'esempio)
+3. Oppure: apri l'app su un telefono che ha ancora i tuoi account → vengono
+   riuniti e ripropagati a tutti i dispositivi
 
 ---
 
