@@ -1,35 +1,22 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import {
-  Banknote,
   Calculator,
   CheckCircle2,
   CreditCard,
-  Delete,
-  DollarSign,
   Grid,
+  Minus,
   Percent,
   Plus,
   Printer,
   Receipt as ReceiptIcon,
-  RotateCcw,
-  Split,
   Trash2,
-  User,
   Users,
-  Utensils,
-  Wallet,
 } from 'lucide-react';
-import {
-  OrderItem,
-  PaymentMethod,
-  PaymentSplitRecord,
-  Receipt,
-  RestaurantTable,
-} from '../types';
+import { OrderItem, Receipt, RestaurantTable } from '../types';
 import { ReceiptPrintModal } from './ReceiptPrintModal';
 import { PaymentModal } from './PaymentModal';
-import { Amount, Badge, Btn, Card, Field, Input, Select, euro } from './ui';
+import { Amount, Badge, Btn, Card, Field, Input, euro } from './ui';
 
 export const CassaView: React.FC = () => {
   const {
@@ -38,8 +25,6 @@ export const CassaView: React.FC = () => {
     setSelectedTableForCheckout,
     updateTableBillAmount,
     inventory,
-    closeBillAndGenerateReceipt,
-    currentUser,
   } = useApp();
 
   // Mode: manual direct amount OR itemized bill
@@ -53,18 +38,7 @@ export const CassaView: React.FC = () => {
     return amt > 0 ? amt.toFixed(2) : '';
   });
   const [coversCount, setCoversCount] = useState<number>(2);
-  const [notes, setNotes] = useState<string>('');
   const [discountPercent, setDiscountPercent] = useState<number>(0);
-
-  // Payment state
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('contanti');
-  const [cashGiven, setCashGiven] = useState<string>('');
-  const [cardPaid, setCardPaid] = useState<string>('');
-
-  // Split bill mode
-  const [isSplitMode, setIsSplitMode] = useState<boolean>(false);
-  const [splitPeopleCount, setSplitPeopleCount] = useState<number>(2);
-  const [splitRecords, setSplitRecords] = useState<PaymentSplitRecord[]>([]);
 
   // Last generated receipt for printing
   const [lastReceipt, setLastReceipt] = useState<Receipt | null>(null);
@@ -90,9 +64,6 @@ export const CassaView: React.FC = () => {
     setCoversCount(tbl.coversCount || 2);
     const amt = typeof tbl.billAmount === 'number' ? tbl.billAmount : 0;
     setManualTotalInput(amt > 0 ? amt.toFixed(2) : '');
-    setCashGiven('');
-    setCardPaid('');
-    setIsSplitMode(false);
   };
 
   // Switch to direct quick sale (no table)
@@ -101,18 +72,22 @@ export const CassaView: React.FC = () => {
     setSelectedTableForCheckout(null);
     setBillItems([]);
     setManualTotalInput('');
-    setCashGiven('');
-    setCardPaid('');
-    setIsSplitMode(false);
   };
 
-  // Calculate bill total
+  // Totale del conto:
+  //  - se l'importo manuale è valorizzato → vale quello
+  //  - altrimenti → totale del tavolo + le voci aggiunte in cassa
+  const tableBase = selectedTable ? selectedTable.billAmount || 0 : 0;
+  const itemsTotal = useMemo(
+    () => billItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
+    [billItems]
+  );
   const rawTotal = useMemo(() => {
     if (manualTotalInput !== '') {
       return Math.max(0, parseFloat(manualTotalInput) || 0);
     }
-    return billItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  }, [manualTotalInput, billItems]);
+    return tableBase + itemsTotal;
+  }, [manualTotalInput, itemsTotal, tableBase]);
 
   const discountAmount = useMemo(() => {
     return (rawTotal * discountPercent) / 100;
@@ -130,8 +105,12 @@ export const CassaView: React.FC = () => {
   }, [inventory]);
 
   const handleAddQuickProduct = (product: (typeof quickProducts)[0]) => {
+    const price = product.sellPrice || 0;
+    // se l'importo manuale è valorizzato lo aumentiamo (il totale non deve
+    // saltare: prima il totale spariva quando si aggiungeva un prodotto)
     if (manualTotalInput !== '') {
-      setManualTotalInput('');
+      const cur = parseFloat(manualTotalInput) || 0;
+      setManualTotalInput((cur + price).toFixed(2));
     }
     setBillItems((prev) => {
       const existing = prev.find((i) => i.productId === product.id);
@@ -170,147 +149,28 @@ export const CassaView: React.FC = () => {
       copy[index] = { ...target, quantity: newQty };
       return copy;
     });
+    // l'importo manuale contiene anche le voci: va adeguato
+    if (manualTotalInput !== '') {
+      const target = billItems[index];
+      if (target) {
+        const cur = parseFloat(manualTotalInput) || 0;
+        const next = Math.max(0, cur + delta * target.price);
+        setManualTotalInput(next > 0 ? next.toFixed(2) : '');
+      }
+    }
   };
 
   const handleRemoveItem = (index: number) => {
     setBillItems((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  // Initialize or update split records
-  useEffect(() => {
-    if (isSplitMode && finalTotal > 0) {
-      const quota = Number((finalTotal / splitPeopleCount).toFixed(2));
-      const newSplits: PaymentSplitRecord[] = [];
-      for (let i = 1; i <= splitPeopleCount; i++) {
-        // preserve already paid records if count changed
-        const existing = splitRecords.find((s) => s.personLabel === `Persona ${i}`);
-        if (existing) {
-          newSplits.push(existing);
-        } else {
-          newSplits.push({
-            id: `split_${i}`,
-            personLabel: `Persona ${i}`,
-            amountDue: quota,
-            amountPaid: 0,
-            method: 'contanti',
-            cashGiven: 0,
-            changeReturned: 0,
-            isPaid: false,
-          });
-        }
+    if (manualTotalInput !== '') {
+      const target = billItems[index];
+      if (target) {
+        const cur = parseFloat(manualTotalInput) || 0;
+        const next = Math.max(0, cur - target.price * target.quantity);
+        setManualTotalInput(next > 0 ? next.toFixed(2) : '');
       }
-      setSplitRecords(newSplits);
     }
-  }, [isSplitMode, splitPeopleCount, finalTotal]);
-
-  // Payment Calculation
-  const cashNum = parseFloat(cashGiven) || 0;
-  const cardNum = parseFloat(cardPaid) || 0;
-
-  let totalReceived = 0;
-  if (paymentMethod === 'contanti') {
-    totalReceived = cashNum;
-  } else if (paymentMethod === 'carta') {
-    totalReceived = cardNum > 0 ? cardNum : finalTotal;
-  } else if (paymentMethod === 'misto') {
-    totalReceived = cashNum + cardNum;
-  }
-
-  const changeAmount = totalReceived > finalTotal ? totalReceived - finalTotal : 0;
-  const missingAmount = totalReceived < finalTotal ? finalTotal - totalReceived : 0;
-  const isFullyPaid = finalTotal > 0 && totalReceived >= finalTotal;
-
-  // Preset cash shortcuts
-  const handleCashPreset = (amount: number) => {
-    setPaymentMethod('contanti');
-    setCashGiven(amount.toFixed(2));
   };
-
-  const handleExactCash = () => {
-    setPaymentMethod('contanti');
-    setCashGiven(finalTotal.toFixed(2));
-  };
-
-  // Close bill and print
-  const handleCloseBill = () => {
-    if (finalTotal <= 0) return;
-
-    let effCash = 0;
-    let effCard = 0;
-
-    if (paymentMethod === 'contanti') {
-      effCash = finalTotal;
-    } else if (paymentMethod === 'carta') {
-      effCard = finalTotal;
-    } else {
-      effCash = Math.min(cashNum, finalTotal);
-      effCard = Math.max(0, finalTotal - effCash);
-    }
-
-    const receipt = closeBillAndGenerateReceipt({
-      tableId: selectedTable?.id,
-      tableName: selectedTable?.name || 'Vendita Rapida Banco',
-      coversCount,
-      items:
-        billItems.length > 0
-          ? billItems
-          : [
-              {
-                id: `quick_item_${Date.now()}`,
-                name: 'Conto Generale / Consumazione',
-                price: finalTotal,
-                quantity: 1,
-                destination: 'cassa',
-                status: 'servito',
-                addedAt: new Date().toLocaleTimeString('it-IT', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                }),
-              },
-            ],
-      totalAmount: finalTotal,
-      paymentMethod,
-      cashAmount: effCash,
-      cardAmount: effCard,
-      changeGiven: changeAmount,
-      splitDetails: isSplitMode ? splitRecords : undefined,
-      notes,
-    });
-
-    setLastReceipt(receipt);
-    setShowSuccessToast(true);
-
-    // Reset cassa
-    handleQuickSale();
-  };
-
-  // Handle Split Individual Payment
-  const handleUpdateSplitPerson = (
-    index: number,
-    paid: number,
-    method: PaymentMethod,
-    givenCash?: number
-  ) => {
-    setSplitRecords((prev) => {
-      const copy = [...prev];
-      const person = copy[index];
-      const change = (givenCash || 0) > person.amountDue ? (givenCash || 0) - person.amountDue : 0;
-      copy[index] = {
-        ...person,
-        amountPaid: paid,
-        method,
-        cashGiven: givenCash,
-        changeReturned: change,
-        isPaid: paid >= person.amountDue,
-      };
-      return copy;
-    });
-  };
-
-  const allSplitsPaid =
-    isSplitMode &&
-    splitRecords.length > 0 &&
-    splitRecords.every((r) => r.isPaid);
 
   return (
     <div className="min-h-screen bg-ink-950 text-mist-100 animate-fadeIn">
@@ -466,6 +326,80 @@ export const CassaView: React.FC = () => {
                 </div>
               </div>
 
+              {/* Prodotti rapidi dal magazzino (prezzo di vendita) */}
+              {quickProducts.length > 0 && (
+                <div className="space-y-1.5">
+                  <span className="section-title">Prodotti Rapidi:</span>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-40 overflow-y-auto scrollbar-thin pr-1">
+                    {quickProducts.map((product) => (
+                      <button
+                        key={product.id}
+                        type="button"
+                        onClick={() => handleAddQuickProduct(product)}
+                        className="w-full rounded-xl border border-ink-700 bg-ink-850 px-2.5 py-2 text-left transition hover:border-brand-500/40 hover:bg-ink-800 active:scale-[0.98]"
+                      >
+                        <div className="text-[11px] font-bold text-mist-100 truncate">
+                          {product.name}
+                        </div>
+                        <div className="text-[11px] font-mono font-bold tnum text-brand-300">
+                          {euro(product.sellPrice || 0)} €
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Voci del conto */}
+              {billItems.length > 0 && (
+                <div className="space-y-1.5">
+                  <span className="section-title">Voci del Conto:</span>
+                  <div className="space-y-1.5 max-h-44 overflow-y-auto scrollbar-thin pr-1">
+                    {billItems.map((item, idx) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center gap-2 rounded-xl border border-ink-700 bg-ink-850 px-2.5 py-2"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="text-xs font-bold text-mist-100 truncate">
+                            {item.name}
+                          </div>
+                          <div className="text-[10px] text-mist-500 tnum">
+                            {euro(item.price)} € × {item.quantity}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateItemQuantity(idx, -1)}
+                            className="h-7 w-7 rounded-lg bg-ink-800 border border-ink-600 text-mist-300 hover:text-mist-100"
+                            aria-label="Meno uno"
+                          >
+                            <Minus className="w-3.5 h-3.5 mx-auto" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateItemQuantity(idx, 1)}
+                            className="h-7 w-7 rounded-lg bg-ink-800 border border-ink-600 text-mist-300 hover:text-mist-100"
+                            aria-label="Piu uno"
+                          >
+                            <Plus className="w-3.5 h-3.5 mx-auto" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveItem(idx)}
+                            className="h-7 w-7 rounded-lg bg-rose-600/20 border border-rose-400/30 text-rose-400 hover:bg-rose-600/40"
+                            aria-label="Rimuovi"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 mx-auto" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Discount and Covers controls */}
               <div className="grid grid-cols-2 gap-3 pt-3 border-t border-ink-700">
                 <div>
@@ -536,379 +470,26 @@ export const CassaView: React.FC = () => {
             </Card>
           </div>
 
-          {/* Right Column (7 cols): Payment Method, Split Bill, and Accurate Resto Calculation */}
+          {/* Right Column (7 cols): incasso */}
           <div className="lg:col-span-7 space-y-4">
             <Card className="p-4 sm:p-5 space-y-5">
-              {/* Split Bill Toggle & Mode */}
-              <div className="flex items-center justify-between gap-3 pb-4 border-b border-ink-700">
+              {/* ⚠️ Nota: il pagamento (contanti/carta/misto, divisione del
+                  conto, pagamenti multipli) avviene TUTTO dentro il modale
+                  "Incassa" — prima esisteva una seconda tastiera qui sotto
+                  i cui dati venivano ignorati. */}
+              <div className="rounded-2xl border border-ink-700 bg-ink-900 p-4 space-y-1.5">
                 <div className="flex items-center gap-2">
-                  <Wallet className="w-5 h-5 text-amber-400" />
-                  <h3 className="text-base font-bold text-mist-100">Modalità di Pagamento</h3>
+                  <CreditCard className="w-4 h-4 text-brand-300" />
+                  <span className="text-sm font-bold text-mist-100">
+                    Come vuoi incassare?
+                  </span>
                 </div>
-
-                {/* Split bill button */}
-                <button
-                  onClick={() => setIsSplitMode(!isSplitMode)}
-                  className={`flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold transition-all ${
-                    isSplitMode
-                      ? 'bg-amber-600 text-ink-950 border-amber-400'
-                      : 'bg-ink-800 text-mist-300 border-ink-600 hover:text-mist-100 hover:bg-ink-700'
-                  }`}
-                >
-                  <Split className="w-4 h-4" />
-                  <span>{isSplitMode ? 'Dividi Attivo ✓' : 'Dividi Conto'}</span>
-                </button>
+                <p className="text-xs text-mist-500 leading-relaxed">
+                  Tocca <strong className="text-mist-300">Incassa</strong> per
+                  scegliere il metodo: contanti (con resto), carta POS, conto
+                  diviso fra più persone o più pagamenti sullo stesso tavolo.
+                </p>
               </div>
-
-              {/* REGULAR BILL PAYMENT (Non-split mode) */}
-              {!isSplitMode && (
-                <div className="space-y-5">
-                  {/* 3 Payment Methods: Contanti, Carta, Misto */}
-                  <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                    <button
-                      onClick={() => {
-                        setPaymentMethod('contanti');
-                        setCardPaid('');
-                      }}
-                      className={`flex flex-col items-center gap-2 rounded-2xl border p-3 sm:p-4 text-center transition-all ${
-                        paymentMethod === 'contanti'
-                          ? 'border-mint-400/50 bg-mint-600/15 text-mint-400 font-bold'
-                          : 'border-ink-700 bg-ink-900 text-mist-500 hover:border-ink-600 hover:text-mist-300'
-                      }`}
-                    >
-                      <Banknote className="w-6 h-6" />
-                      <span className="text-[11px] sm:text-xs uppercase tracking-wider">
-                        Contanti
-                      </span>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setPaymentMethod('carta');
-                        setCashGiven('');
-                        setCardPaid(finalTotal.toFixed(2));
-                      }}
-                      className={`flex flex-col items-center gap-2 rounded-2xl border p-3 sm:p-4 text-center transition-all ${
-                        paymentMethod === 'carta'
-                          ? 'border-brand-500/50 bg-brand-500/15 text-brand-300 font-bold'
-                          : 'border-ink-700 bg-ink-900 text-mist-500 hover:border-ink-600 hover:text-mist-300'
-                      }`}
-                    >
-                      <CreditCard className="w-6 h-6" />
-                      <span className="text-[11px] sm:text-xs uppercase tracking-wider">
-                        Carta / POS
-                      </span>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setPaymentMethod('misto');
-                      }}
-                      className={`flex flex-col items-center gap-2 rounded-2xl border p-3 sm:p-4 text-center transition-all ${
-                        paymentMethod === 'misto'
-                          ? 'border-violet-400/50 bg-violet-400/15 text-violet-400 font-bold'
-                          : 'border-ink-700 bg-ink-900 text-mist-500 hover:border-ink-600 hover:text-mist-300'
-                      }`}
-                    >
-                      <Split className="w-6 h-6" />
-                      <span className="text-[11px] sm:text-xs uppercase tracking-wider">
-                        Misto (Cash+POS)
-                      </span>
-                    </button>
-                  </div>
-
-                  {/* Amount inputs depending on payment method */}
-                  {paymentMethod === 'contanti' && (
-                    <div className="space-y-3">
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between gap-2 text-xs">
-                          <span className="font-semibold text-mist-300">
-                            Importo Contanti Ricevuto dal Cliente (€):
-                          </span>
-                          <button
-                            onClick={handleExactCash}
-                            className="shrink-0 font-bold text-xs text-amber-400 hover:text-amber-300"
-                          >
-                            Importo Esatto ({euro(finalTotal)} €)
-                          </button>
-                        </div>
-                        <div className="relative">
-                          <Input
-                            type="number"
-                            step="0.01"
-                            placeholder="0.00"
-                            value={cashGiven}
-                            onChange={(e) => setCashGiven(e.target.value)}
-                            className="!pl-4 !pr-12 !py-3.5 !text-2xl font-mono font-bold tnum text-mist-100"
-                          />
-                          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-mist-500 font-bold text-lg">
-                            €
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Quick Cash Presets (5, 10, 20, 50, 100) */}
-                      <div className="space-y-1.5">
-                        <span className="section-title">Tagli Banconote Rapidi:</span>
-                        <div className="grid grid-cols-5 gap-2">
-                          {[5, 10, 20, 50, 100].map((val) => (
-                            <button
-                              key={val}
-                              onClick={() => handleCashPreset(val)}
-                              className="w-full rounded-lg border border-ink-600 bg-ink-800 px-1 py-2 text-sm font-bold tnum text-mist-300 transition hover:border-brand-500/40 hover:text-brand-300 active:scale-95"
-                            >
-                              {val} €
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {paymentMethod === 'carta' && (
-                    <div className="rounded-2xl border border-brand-500/30 bg-brand-500/10 p-4 space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-semibold text-brand-300">
-                          Pagamento Elettronico POS / Bancomat
-                        </span>
-                        <Amount value={finalTotal} size="md" />
-                      </div>
-                      <p className="text-xs text-mist-500">
-                        Inserisci o passa la carta sul terminale POS. Una volta approvata la
-                        transazione, premi Chiudi Conto.
-                      </p>
-                    </div>
-                  )}
-
-                  {paymentMethod === 'misto' && (
-                    <div className="space-y-3 rounded-2xl border border-violet-400/30 bg-violet-400/10 p-4">
-                      <div className="text-xs font-bold uppercase tracking-wider text-violet-400">
-                        Pagamento Misto (es. 30€ Contanti + 20€ Carta)
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <Field label="Quota Contanti (€):">
-                          <Input
-                            type="number"
-                            step="0.01"
-                            placeholder="0.00"
-                            value={cashGiven}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setCashGiven(val);
-                              const parsed = parseFloat(val) || 0;
-                              if (parsed < finalTotal) {
-                                setCardPaid((finalTotal - parsed).toFixed(2));
-                              }
-                            }}
-                            className="!text-lg font-bold tnum text-mint-400"
-                          />
-                        </Field>
-
-                        <Field label="Quota Carta POS (€):">
-                          <Input
-                            type="number"
-                            step="0.01"
-                            placeholder="0.00"
-                            value={cardPaid}
-                            onChange={(e) => setCardPaid(e.target.value)}
-                            className="!text-lg font-bold tnum text-brand-300"
-                          />
-                        </Field>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* ACCURATE RESTO / MANCANTE DISPLAY (Requested by User) */}
-                  <div className="rounded-3xl border-2 border-ink-700 bg-ink-900 p-4 sm:p-5 space-y-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-medium text-mist-500">
-                      <span>Riepilogo Calcolo Cassa:</span>
-                      <span>
-                        Ricevuto:{' '}
-                        <strong className="text-mist-100 tnum">{euro(totalReceived)} €</strong> su{' '}
-                        <strong className="text-amber-400 tnum">{euro(finalTotal)} €</strong>
-                      </span>
-                    </div>
-
-                    {/* Resto Box (Big Bright Green) */}
-                    {changeAmount > 0 && (
-                      <div className="flex items-center justify-between gap-3 rounded-2xl border-2 border-mint-400/50 bg-mint-600/15 p-4">
-                        <div className="min-w-0">
-                          <div className="text-xs font-bold uppercase tracking-wider text-mint-400">
-                            RESTO DA DARE AL CLIENTE:
-                          </div>
-                          <div className="text-xs text-mist-500">
-                            Consegna banconote / monete
-                          </div>
-                        </div>
-                        <Amount value={changeAmount} size="xl" tone="mint" />
-                      </div>
-                    )}
-
-                    {/* Mancante Box (Amber/Red) */}
-                    {missingAmount > 0 && totalReceived > 0 && (
-                      <div className="flex items-center justify-between gap-3 rounded-2xl border-2 border-rose-400/50 bg-rose-600/15 p-4">
-                        <div className="min-w-0">
-                          <div className="text-xs font-bold uppercase tracking-wider text-rose-400">
-                            MANCANTE (DA INCASSARE):
-                          </div>
-                          <div className="text-xs text-mist-500">
-                            Importo parziale non ancora saldato
-                          </div>
-                        </div>
-                        <Amount
-                          value={missingAmount}
-                          size="lg"
-                          tone="rose"
-                          className="!text-3xl"
-                        />
-                      </div>
-                    )}
-
-                    {/* Esatto / Pagato */}
-                    {totalReceived === finalTotal && finalTotal > 0 && (
-                      <div className="flex items-center justify-between gap-2 rounded-2xl border border-mint-400/40 bg-mint-600/10 p-3 text-xs font-bold text-mint-400">
-                        <span className="flex items-center gap-1.5">
-                          <CheckCircle2 className="w-4 h-4 text-mint-400" />
-                          Importo Esatto Saldato
-                        </span>
-                        <span>Resto: 0,00 €</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* SPLIT BILL VIEW (Alla Romana / Diviso per persone) */}
-              {isSplitMode && (
-                <div className="space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-ink-700 bg-ink-900 p-3">
-                    <div className="space-y-0.5">
-                      <div className="text-xs font-bold text-mist-100">Divisione del Conto</div>
-                      <div className="text-[11px] text-mist-500">
-                        Totale: <span className="tnum">{euro(finalTotal)} €</span> • Quota per
-                        persona:{' '}
-                        <strong className="text-amber-400 tnum">
-                          {euro(finalTotal / splitPeopleCount)} €
-                        </strong>
-                      </div>
-                    </div>
-
-                    {/* Number of people selector */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-mist-500">Persone:</span>
-                      <div className="flex items-center gap-1 bg-ink-800 p-1 rounded-xl">
-                        <button
-                          onClick={() => setSplitPeopleCount((c) => Math.max(2, c - 1))}
-                          className="btn-soft btn-sm !px-2"
-                        >
-                          -
-                        </button>
-                        <span className="w-8 text-center text-sm font-bold tnum text-mist-100">
-                          {splitPeopleCount}
-                        </span>
-                        <button
-                          onClick={() => setSplitPeopleCount((c) => c + 1)}
-                          className="btn-soft btn-sm !px-2"
-                        >
-                          +
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Person Payment Cards */}
-                  <div className="max-h-72 overflow-y-auto pr-1 space-y-2.5 scrollbar-thin">
-                    {splitRecords.map((person, idx) => {
-                      return (
-                        <div
-                          key={person.id}
-                          className={`rounded-2xl border p-3 transition-all ${
-                            person.isPaid
-                              ? 'border-mint-400/40 bg-mint-600/10'
-                              : 'border-ink-700 bg-ink-900'
-                          }`}
-                        >
-                          <div className="mb-2 flex items-center justify-between gap-2 text-xs">
-                            <span className="flex items-center gap-1.5 font-bold text-mist-100">
-                              <User className="w-3.5 h-3.5 text-amber-400" />
-                              {person.personLabel}
-                            </span>
-                            <span className="font-bold text-amber-400 tnum">
-                              Quota: {euro(person.amountDue)} €
-                            </span>
-                          </div>
-
-                          <div className="flex flex-wrap items-center gap-2">
-                            {/* Method selection */}
-                            <Select
-                              small
-                              value={person.method}
-                              onChange={(e) =>
-                                handleUpdateSplitPerson(
-                                  idx,
-                                  person.amountPaid,
-                                  e.target.value as PaymentMethod,
-                                  person.cashGiven
-                                )
-                              }
-                              className="!w-auto"
-                            >
-                              <option value="contanti">Contanti</option>
-                              <option value="carta">Carta POS</option>
-                            </Select>
-
-                            {/* Cash Given input */}
-                            <Input
-                              small
-                              type="number"
-                              step="0.5"
-                              placeholder="Dato (€)"
-                              value={person.cashGiven || ''}
-                              onChange={(e) => {
-                                const given = parseFloat(e.target.value) || 0;
-                                handleUpdateSplitPerson(
-                                  idx,
-                                  Math.min(given, person.amountDue),
-                                  person.method,
-                                  given
-                                );
-                              }}
-                              className="!w-24"
-                            />
-
-                            {/* Mark Paid Quick Button */}
-                            <button
-                              onClick={() =>
-                                handleUpdateSplitPerson(
-                                  idx,
-                                  person.amountDue,
-                                  person.method,
-                                  person.amountDue
-                                )
-                              }
-                              className={`flex-1 rounded-xl px-3 py-1.5 text-xs font-bold transition-colors ${
-                                person.isPaid
-                                  ? 'bg-mint-600 text-white'
-                                  : 'bg-ink-800 text-mist-300 hover:bg-ink-700 border border-ink-600'
-                              }`}
-                            >
-                              {person.isPaid ? 'Pagato ✓' : 'Salda Quota'}
-                            </button>
-                          </div>
-
-                          {/* Individual change calculation */}
-                          {person.changeReturned > 0 && (
-                            <div className="mt-1.5 text-right text-[11px] font-bold text-mint-400">
-                              Resto per {person.personLabel}:{' '}
-                              <span className="tnum">{euro(person.changeReturned)} €</span>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
 
               {/* ACTION BUTTONS: Chiudi Conto & Stampa */}
               <div className="flex flex-col sm:flex-row items-center gap-3 border-t border-ink-700 pt-3">
@@ -948,9 +529,15 @@ export const CassaView: React.FC = () => {
               : null
           }
           quickAmount={selectedTable ? undefined : finalTotal}
+          quickItems={billItems}
+          coversCount={coversCount}
+          discountPercent={discountPercent}
           onClose={() => setShowPaymentModal(false)}
-          onCompleted={() => {
+          onCompleted={(receipt) => {
             setShowPaymentModal(false);
+            // 🧾 la ricevuta va tenuta: serve per il toast di conferma e
+            //    per il pulsante "Stampa Ultimo" (prima non comparivano)
+            if (receipt) setLastReceipt(receipt);
             setShowSuccessToast(true);
             handleQuickSale();
           }}

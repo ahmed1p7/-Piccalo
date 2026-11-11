@@ -1,7 +1,7 @@
 {
   "name": "sea-pos",
   "private": true,
-  "version": "1.4.0",
+  "version": "1.5.0",
   "type": "module",
   "description": "Sea POS - Sistema gestionale per ristorante con sincronizzazione cloud multi-dispositivo (Firebase) e APK Android installabile",
   "scripts": {

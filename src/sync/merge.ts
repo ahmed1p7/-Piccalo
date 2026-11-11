@@ -245,11 +245,14 @@ export function mergeCollection(
     (remote || []).forEach((item: any) => map.set(item.id, item));
     (local || []).forEach((item: any) => map.set(item.id, item));
     const merged = Array.from(map.values());
-    // ordine stabile: più recenti in fondo
+    // ⚠️ ordine: PRIMA il più recente (come nello stato locale, dove la
+    //    ricevuta nuova viene inserita in testa). Prima il merge ordinava
+    //    dal più vecchio: dopo una sincronizzazione la dashboard mostrava
+    //    le scontrini PIÙ VECCHIE al posto delle ultime.
     merged.sort((a: any, b: any) => {
       const ta = new Date(a.timestamp || a.date || 0).getTime();
       const tb = new Date(b.timestamp || b.date || 0).getTime();
-      return ta - tb;
+      return tb - ta;
     });
     return merged;
   }

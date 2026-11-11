@@ -60,9 +60,9 @@ export const ReportView: React.FC = () => {
     return todayReceipts.length > 0 ? totalRevenue / todayReceipts.length : 0;
   }, [totalRevenue, todayReceipts.length]);
 
-  // Filtered receipts list
+  // Filtered receipts list — sempre dal più recente al più vecchio
   const filteredReceipts = useMemo(() => {
-    return receipts.filter((r) => {
+    const list = receipts.filter((r) => {
       if (!searchQuery) return true;
       const q = searchQuery.toLowerCase();
       return (
@@ -72,6 +72,9 @@ export const ReportView: React.FC = () => {
         r.paymentMethod.toLowerCase().includes(q)
       );
     });
+    return [...list].sort(
+      (a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()
+    );
   }, [receipts, searchQuery]);
 
   const handlePrintZReport = () => {

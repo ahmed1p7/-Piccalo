@@ -170,6 +170,28 @@ npm test
 
 ---
 
+## 🧾 La cassa in pratica
+
+1. Scegli il **tavolo** in alto (o **Rapido Banco** per una vendita al banco)
+   oppure scrivi l'importo a mano
+2. Aggiungi i prodotti: **Prodotti Rapidi** (dal magazzino), i pulsanti
+   **+5 / +10 / +20 / +50 €** e la voce del conto (con − / + / cestino)
+3. Imposta **sconto** e **coperti**
+4. **Incassa** → si apre la finestra di pagamento:
+   - **Contanti**: scrivi quanto hai ricevuto → calcola il **resto**
+     (pulsante **Esatto** e scorciatoie per le banconote)
+   - **Carta**: pagamento al POS
+   - **Dividi il conto**: quote uguali o percentuali, e pagamenti multipli
+     sullo stesso tavolo finché il saldo è a zero
+5. **Registra pagamento** → conferma **Conto Chiuso con Successo!** e il
+   pulsante **Stampa Ultimo** per lo scontrino
+
+> 🔧 Fixed in 1.5.0: the payment form didn't show at all in quick sales, the
+> success message never appeared, quick-sale receipts were wrong and the
+> quick-products panel was missing.
+
+---
+
 ## 🛡️ Protezione degli account (fix 1.4.0)
 
 Un bug delle versioni 1.3.x faceva **svanire gli account dei dipendenti**:

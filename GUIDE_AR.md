@@ -4,11 +4,11 @@
 
 ---
 
-## 📦 النسخة الحالية: Sea POS 1.4.0
+## 📦 النسخة الحالية: Sea POS 1.5.0
 
 | | |
 |---|---|
-| ملف APK | `Sea-POS.apk` (داخل مجلد `output`) أو مباشرة: <https://github.com/ahmed1p7/-Piccalo/releases/download/v1.4.0/Sea-POS.apk> |
+| ملف APK | `Sea-POS.apk` (داخل مجلد `output`) أو مباشرة: <https://github.com/ahmed1p7/-Piccalo/releases/download/v1.5.0/Sea-POS.apk> |
 | نسخة ثابتة | <https://github.com/ahmed1p7/-Piccalo/releases/download/latest/Sea-POS.apk> |
 | تطبيق الويب (PWA) | <https://ahmed1p7.github.io/-Piccalo/> |
 | الحد الأدنى | Android 7.0+ · حزمة `com.sea.pos` |
@@ -240,6 +240,30 @@ Cassa · Tavoli · Cucina · Bar · Magazzino · Report · Personale · Backup.
 
 ---
 
+## 🧾 شاشة الكاشا (Punto Cassa) — كيف تستعملها
+
+> 🔧 في 1.5.0 تم إصلاح عدة أخطاء في الكاشا (نموذج الدفع كان فارغاً في
+> البيع السريع، ولا تظهر رسالة نجاح بعد الدفع، ...).
+
+### الخطوات
+1. **اختر الطاولة** من الشريط العلوي (**Rapido Banco** = بيع سريع بدون طاولة)
+   أو اكتب المبلغ مباشرة في **Importo Totale Conto**
+2. **أضف ما يُباع**:
+   - **Prodotti Rapidi** = المنتجات من المخزن (سعر بيع جاهز) → نقسة واحدة
+   - **+5 / +10 / +20 / +50 €** = إضافة سريعة للمبلغ
+   - **Voci del Conto** = الأصناف المضافة (‎− / ‎+ / 🗑 لتعديلها)
+3. **اضبط** الخصم (0/5/10/15%) وعدد **Coperti** إن لزم
+4. **اضغط `Incassa`** → تظهر نافذة الدفع:
+   - **Contanti**: اكتب المبلغ المستلم → يظهر **Resto da restituire** تلقائياً
+     (زر **Esatto** = المبلغ المضبوط، والأزرار = فئات جاهزة)
+   - **Carta**: ادفع بالـ POS ثم سجّل
+   - **Dividi il conto**: قسّم على عدة أشخاص (نصف/ثلث...) وسجّل كل quota
+   - عدة **pagamenti** على نفس الطاولة حتى يصبح Saldo = 0
+5. **Registrа pagamento** → تظهر رسالة **Conto Chiuso con Successo!**
+   وزر **Stampa Ultimo** لطباعة السطر (يظهر بعد كل بيع ✅)
+
+---
+
 ## 5️⃣ إعادة ضبط المصنع (صفر بيانات) 🧹
 
 من: **المستخدم ⚙️ (أيقونة الصورة أعلى اليمين) → Backup & ripristino → Ripristino di fabbrica**
@@ -283,7 +307,7 @@ Cassa · Tavoli · Cucina · Bar · Magazzino · Report · Personale · Backup.
 
 **الخطوة 1 — حدّث كل الأجهزة على 1.4.0**
 افتح التطبيق على كل جوال → إشعار التحديث → **Installa ora**.
-(أو نزّل: <https://github.com/ahmed1p7/-Piccalo/releases/download/v1.4.0/Sea-POS.apk>)
+(أو نزّل: <https://github.com/ahmed1p7/-Piccalo/releases/download/v1.5.0/Sea-POS.apk>)
 
 **الخطوة 2 — اختر مسار الاسترجاع**
 

@@ -24,7 +24,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { PaymentMethod, PaymentSplitRecord, RestaurantTable } from '../types';
+import { OrderItem, PaymentMethod, PaymentSplitRecord, Receipt, RestaurantTable } from '../types';
 import { Amount, Badge, Btn, Field, Input, Modal, euro } from './ui';
 import {
   computeChange,
@@ -44,7 +44,13 @@ interface Props {
   table?: RestaurantTable | null;
   /** vendita rapida al banco (nessun tavolo) */
   quickAmount?: number;
-  onCompleted?: (receiptId?: string) => void;
+  /** voci del conto (vendita rapida) → finiscono sulla ricevuta */
+  quickItems?: OrderItem[];
+  /** numero di coperti (vendita rapida) */
+  coversCount?: number;
+  /** sconto applicato in % (solo per la ricevuta) */
+  discountPercent?: number;
+  onCompleted?: (receipt?: Receipt) => void;
 }
 
 export const PaymentModal: React.FC<Props> = ({
@@ -52,6 +58,9 @@ export const PaymentModal: React.FC<Props> = ({
   onClose,
   table,
   quickAmount,
+  quickItems,
+  coversCount,
+  discountPercent,
   onCompleted,
 }) => {
   const {
@@ -63,8 +72,15 @@ export const PaymentModal: React.FC<Props> = ({
   } = useApp();
 
   const isQuick = !table;
-  const total = isQuick ? round2(quickAmount || 0) : round2(table?.billAmount || 0);
-  const alreadyPaid = table ? getTablePaidAmount(table.id) : 0;
+  // ⚠️ il prop "table" è una copia: dopo un pagamento il tavolo reale cambia.
+  //    Uso sempre la versione più recente dal contesto.
+  const liveTable = table
+    ? tables.find((t) => t.id === table.id) || table
+    : null;
+  const total = isQuick
+    ? round2(quickAmount || 0)
+    : round2(liveTable?.billAmount || 0);
+  const alreadyPaid = liveTable ? getTablePaidAmount(liveTable.id) : 0;
   const due = round2(Math.max(0, total - alreadyPaid));
 
   const [mode, setMode] = useState<Mode>('singolo');
@@ -177,7 +193,7 @@ export const PaymentModal: React.FC<Props> = ({
 
   // riepilogo dei pagamenti registrati sul tavolo
   const paymentSummary = summarizePayments(
-    (table?.payments || []).map((p) => ({
+    (liveTable?.payments || []).map((p) => ({
       amount: p.amount,
       method: p.method,
       changeGiven: p.changeGiven,
@@ -210,33 +226,52 @@ export const PaymentModal: React.FC<Props> = ({
     setBusy(true);
 
     if (isQuick) {
-      // vendita rapida: nessun tavolo → si chiude subito lo scontrino
+      // 🛒 Vendita rapida al banco: nessun tavolo → si chiude subito lo
+      //    scontrino. Deve essere incassato IL CONTO COMPLETO: un importo
+      //    parziale non può generare una ricevuta (prima si poteva, e la
+      //    ricevuta risultava sbagliata).
+      if (value < total - 0.009) {
+        setError(
+          `Il conto non è coperto: mancano ${euro(round2(total - value))} €.`
+        );
+        setBusy(false);
+        return;
+      }
+
+      const items: OrderItem[] =
+        quickItems && quickItems.length > 0
+          ? quickItems
+          : [
+              {
+                id: `quick_item_${Date.now()}`,
+                name: 'Conto Generale / Consumazione',
+                price: total,
+                quantity: 1,
+                destination: 'cassa',
+                status: 'servito',
+                addedAt: new Date().toLocaleTimeString('it-IT', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                }),
+              },
+            ];
+
       const receipt = closeBillAndGenerateReceipt({
         tableName: 'Vendita Rapida Banco',
-        coversCount: 1,
-        items: [
-          {
-            id: `quick_item_${Date.now()}`,
-            name: 'Consumazione',
-            price: value,
-            quantity: 1,
-            destination: 'cassa',
-            status: 'servito',
-            addedAt: new Date().toLocaleTimeString('it-IT', {
-              hour: '2-digit',
-              minute: '2-digit',
-            }),
-          },
-        ],
-        totalAmount: value,
+        coversCount: coversCount || 1,
+        items,
+        totalAmount: total,
         paymentMethod: method,
         cashAmount: method === 'contanti' ? value : 0,
         cardAmount: method === 'carta' ? value : 0,
         changeGiven: method === 'contanti' ? round2(given - value) : 0,
-        notes: note || undefined,
+        notes:
+          discountPercent && discountPercent > 0
+            ? `Sconto ${discountPercent}% · ${note || ''}`.trim()
+            : note || undefined,
       });
       setBusy(false);
-      onCompleted?.(receipt.id);
+      onCompleted?.(receipt);
       onClose();
       return;
     }
@@ -295,8 +330,8 @@ export const PaymentModal: React.FC<Props> = ({
   // 🧾 Chiusura del conto
   // ═══════════════════════════════════════════════════════════════════
   const handleCloseBill = () => {
-    if (!table) return;
-    const freshTable = tables.find((t) => t.id === table.id) || table;
+    if (!table || !liveTable) return;
+    const freshTable = liveTable;
     const paidTotal = getTablePaidAmount(table.id);
 
     if (!isFullyPaid(total, paidTotal)) {
@@ -322,7 +357,7 @@ export const PaymentModal: React.FC<Props> = ({
       notes: note || undefined,
     });
 
-    onCompleted?.(receipt.id);
+    onCompleted?.(receipt);
     onClose();
   };
 
@@ -577,7 +612,10 @@ export const PaymentModal: React.FC<Props> = ({
         )}
 
         {/* ── Formulario pagamento ── */}
-        {((!isQuick && mode === 'singolo') || currentShare) && (
+        {/* ⚠️ Prima condizione: (!isQuick && mode === 'singolo') → nella vendita
+            rapida il modulo NON compariva affatto (modale vuoto, impossibile
+            incassare). Ora: in modalità singolo il modulo c'è sempre. */}
+        {(mode === 'singolo' || currentShare) && (
           <div className="surface-raised p-3.5 space-y-3">
             {currentShare && (
               <div className="flex items-center justify-between rounded-lg bg-brand-500/10 border border-brand-500/30 px-3 py-2">
@@ -704,11 +742,11 @@ export const PaymentModal: React.FC<Props> = ({
         )}
 
         {/* ── Storico pagamenti del tavolo ── */}
-        {table && (table.payments?.length || 0) > 0 && (
+        {liveTable && (liveTable.payments?.length || 0) > 0 && (
           <div className="surface-raised p-3.5">
             <div className="section-title mb-2">Pagamenti registrati</div>
             <div className="space-y-1.5">
-              {table.payments!.map((p) => (
+              {liveTable.payments!.map((p) => (
                 <div
                   key={p.id}
                   className="flex items-center justify-between gap-2 rounded-lg bg-ink-900 px-3 py-2"

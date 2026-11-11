@@ -426,43 +426,54 @@ export const HomeDashboard: React.FC = () => {
             </div>
           ) : (
             <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
-              {receipts.slice(0, 5).map((r) => (
-                <div
-                  key={r.id}
-                  className="p-3 rounded-xl bg-ink-900/70 border border-ink-800/80 flex items-center justify-between hover:border-ink-700 transition-colors"
-                >
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs font-bold text-white">
-                        {r.receiptNumber}
-                      </span>
-                      <span className="text-[10px] text-mist-500">
-                        {r.tableName || 'Banco'}
-                      </span>
+              {[...receipts]
+                .sort(
+                  (a, b) =>
+                    new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()
+                )
+                .slice(0, 5)
+                .map((r) => (
+                  <div
+                    key={r.id}
+                    className="p-3 rounded-xl bg-ink-900/70 border border-ink-800/80 flex items-center justify-between hover:border-ink-700 transition-colors"
+                  >
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs font-bold text-white">
+                          {r.receiptNumber}
+                        </span>
+                        <span className="text-[10px] text-mist-500">
+                          {r.tableName || 'Banco'}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-mist-500 flex items-center gap-2 mt-0.5">
+                        <span>
+                          {new Date(r.date).toLocaleTimeString('it-IT', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </span>
+                        <span>•</span>
+                        <span className="capitalize">{r.paymentMethod}</span>
+                        <span>•</span>
+                        <span>{r.cashierName}</span>
+                      </div>
                     </div>
-                    <div className="text-[11px] text-mist-500 flex items-center gap-2 mt-0.5">
-                      <span>{new Date(r.date).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}</span>
-                      <span>•</span>
-                      <span className="capitalize">{r.paymentMethod}</span>
-                      <span>•</span>
-                      <span>{r.cashierName}</span>
-                    </div>
-                  </div>
 
-                  <div className="flex items-center gap-2.5">
-                    <span className="font-mono text-sm font-bold text-mint-400">
-                      {r.totalAmount.toFixed(2)} €
-                    </span>
-                    <button
-                      onClick={() => setReceiptToPrint(r)}
-                      title="Stampa / Visualizza scontrino"
-                      className="p-1.5 rounded-lg text-mist-500 hover:text-white hover:bg-ink-800 transition-colors"
-                    >
-                      <Printer className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center gap-2.5">
+                      <span className="font-mono text-sm font-bold text-mint-400">
+                        {r.totalAmount.toFixed(2)} €
+                      </span>
+                      <button
+                        onClick={() => setReceiptToPrint(r)}
+                        title="Stampa / Visualizza scontrino"
+                        className="p-1.5 rounded-lg text-mist-500 hover:text-white hover:bg-ink-800 transition-colors"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
             </div>
           )}
         </div>
