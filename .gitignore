@@ -50,3 +50,6 @@ Thumbs.db
 # ═══ Server data (sync) ═══
 server-data/
 sync-data/
+
+# chiave Firebase di backup (mai committare)
+.env.bak
