@@ -107,9 +107,17 @@ export function mergeEntityList<T extends { id: string }>(
     counterFields?: string[];
     /** merge custom per singolo elemento */
     mergeItem?: (base: T | undefined, local: T | undefined, remote: T | undefined) => T | null;
+    /**
+     * ⚠️ Se false, il remoto NON può cancellare elementi presenti in locale.
+     * Serve quando il remoto è più vecchio del nostro stato: un dispositivo
+     * vecchio (o uno stato parziale) non deve poter cancellare gli account
+     * del ristorante. Default: true.
+     */
+    allowRemoteDeletions?: boolean;
   }
 ): T[] {
   const counterFields = options?.counterFields || [];
+  const allowRemoteDeletions = options?.allowRemoteDeletions !== false;
   const b = indexById(base || []);
   const l = indexById(local || []);
   const r = indexById(remote || []);
@@ -127,7 +135,7 @@ export function mergeEntityList<T extends { id: string }>(
     // dispositivi lo ha rimosso → la cancellazione vince (così un utente
     // eliminato su un telefono sparisce anche sugli altri).
     if (baseItem && !localItem) return; // rimosso da questo dispositivo
-    if (baseItem && !remoteItem) return; // rimosso dall'altro dispositivo
+    if (allowRemoteDeletions && baseItem && !remoteItem) return; // rimosso dall'altro dispositivo
 
     if (!localItem && !remoteItem) return;
 
@@ -213,13 +221,19 @@ export function mergeNestedList<T extends { id: string }>(
  * Merge di una collezione completa.
  * `base` può essere undefined (primo sync) → in quel caso si usa
  * un merge "2-way" che privilegia il union per id.
+ *
+ * ⚠️ `options.allowRemoteDeletions = false` → il remoto non può cancellare
+ * elementi che abbiamo in locale (usato quando il remoto è più vecchio).
  */
 export function mergeCollection(
   name: SyncCollection,
   base: any,
   local: any,
-  remote: any
+  remote: any,
+  options?: { allowRemoteDeletions?: boolean }
 ): any {
+  const allowRemoteDeletions = options?.allowRemoteDeletions !== false;
+
   // Profilo ristorante → oggetto piano
   if (name === 'profile') {
     return mergeFlatObject(base, local, remote);
@@ -242,12 +256,16 @@ export function mergeCollection(
 
   // Magazzino → contatore quantità sommato
   if (name === 'inventory') {
-    return mergeEntityList(base, local, remote, { counterFields: ['currentQuantity'] });
+    return mergeEntityList(base, local, remote, {
+      counterFields: ['currentQuantity'],
+      allowRemoteDeletions,
+    });
   }
 
   // Tavoli → merge listale + merge dei singoli ordini
   if (name === 'tables') {
     return mergeEntityList(base, local, remote, {
+      allowRemoteDeletions,
       mergeItem: (baseItem, localItem, remoteItem) => {
         const b: any = baseItem;
         const l: any = localItem;
@@ -282,7 +300,7 @@ export function mergeCollection(
   }
 
   // Utenti → merge generico per id
-  return mergeEntityList(base, local, remote);
+  return mergeEntityList(base, local, remote, { allowRemoteDeletions });
 }
 
 /**

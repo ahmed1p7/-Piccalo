@@ -46,6 +46,46 @@ const BASE_STORAGE_KEY = 'sea_pos_sync_base_v1';
 const DIRTY_STORAGE_KEY = 'sea_pos_sync_dirty_v1';
 const DEVICE_TIMEOUT_MS = 1000 * 60 * 60 * 24 * 14; // 14 giorni
 
+/**
+ * Una collezione è "vuota" se non contiene elementi utili.
+ * Serve a distinguere un dispositivo davvero nuovo (nessun dato) da un
+ * dispositivo che ha dati reali ma non ha ancora una base di sincronizzazione.
+ */
+function isEmptyCollection(data: any): boolean {
+  if (data === undefined || data === null) return true;
+  if (Array.isArray(data)) return data.length === 0;
+  if (typeof data === 'object') return Object.keys(data).length === 0;
+  return false;
+}
+
+/**
+ * 🛡️ Protezione dell'account amministratore.
+ *
+ * Un merge non deve mai lasciare il ristorante SENZA nessun admin:
+ * se il risultato non ha utenti admin ma noi ne avevamo uno, si tiene
+ * il nostro admin (e i suoi permessi) invece di accettare il remoto.
+ */
+function protectAdminUsers(
+  collection: SyncCollection,
+  merged: any,
+  local: any
+): any {
+  if (collection !== 'users') return merged;
+  if (!Array.isArray(merged) || !Array.isArray(local)) return merged;
+
+  const hasAdmin = (list: any[]) =>
+    list.some((u: any) => u && u.role === 'admin');
+  const admins = local.filter((u: any) => u && u.role === 'admin');
+
+  if (admins.length === 0) return merged;
+  if (hasAdmin(merged)) return merged;
+
+  console.warn(
+    '🔥 Sync: il merge avrebbe rimosso tutti gli account admin → mantenuti i dati locali'
+  );
+  return [...merged, ...admins];
+}
+
 class FirebaseSyncManager {
   private transport: SyncTransport | null = null;
   private status: SyncStatus = 'disconnected';
@@ -61,6 +101,13 @@ class FirebaseSyncManager {
   private local: Partial<Record<SyncCollection, any>> = {};
   /** collezioni modificate localmente e non ancora confermate dal cloud */
   private dirty = new Set<SyncCollection>();
+  /**
+   * ⏱️ Timestamp (updatedAt) del cloud con cui la base è stata salvata.
+   * Serve a capire se lo stato che arriva dal cloud è PIÙ VECCHIO del nostro:
+   * in quel caso non deve poter cancellare i nostri dati (un telefono vecchio
+   * o uno stato parziale altrimenti cancella gli account del ristorante).
+   */
+  private baseUpdatedAt: Partial<Record<SyncCollection, number>> = {};
 
   private devices: DeviceInfo[] = [];
   private firstSnapshotDone = false;
@@ -85,6 +132,9 @@ class FirebaseSyncManager {
       if (raw) {
         const parsed = JSON.parse(raw);
         if (parsed?.collections) this.base = parsed.collections;
+        if (parsed?.updatedAt) {
+          this.baseUpdatedAt = parsed.updatedAtByCollection || {};
+        }
       }
       const dirtyRaw = localStorage.getItem(DIRTY_STORAGE_KEY);
       if (dirtyRaw) {
@@ -100,7 +150,11 @@ class FirebaseSyncManager {
     try {
       localStorage.setItem(
         BASE_STORAGE_KEY,
-        JSON.stringify({ collections: this.base, updatedAt: Date.now() })
+        JSON.stringify({
+          collections: this.base,
+          updatedAt: Date.now(),
+          updatedAtByCollection: this.baseUpdatedAt,
+        })
       );
     } catch {
       /* ignore */
@@ -470,6 +524,45 @@ class FirebaseSyncManager {
         const remoteData = normalizeCollectionData(collection, payload.data);
         const baseData = this.base[collection];
         const localData = this.local[collection];
+        const remoteUpdatedAt = payload.updatedAt || 0;
+
+        // ⚠️ Il remoto è più vecchio del nostro stato noto → non può
+        //    cancellare nulla (telefono vecchio / stato parziale).
+        const remoteIsOlder =
+          !!this.baseUpdatedAt[collection] &&
+          remoteUpdatedAt > 0 &&
+          remoteUpdatedAt < (this.baseUpdatedAt[collection] as number);
+
+        // ── Dati locali NON vuoti + base assente → si fa il merge (unione),
+        //    NON si sostituisce. Prima (v1.3.x) il remoto sovrascriveva
+        //    tutto e gli account creati dall'amministratore sparivano.
+        const localHasData =
+          localData !== undefined && !isEmptyCollection(localData);
+        const baseMissing = baseData === undefined;
+
+        if (
+          baseMissing &&
+          localHasData &&
+          !isDeepEqual(localData, remoteData)
+        ) {
+          const merged = mergeCollection(
+            collection,
+            baseData,
+            localData,
+            remoteData,
+            { allowRemoteDeletions: !remoteIsOlder }
+          );
+          const safe = protectAdminUsers(collection, merged, localData);
+          this.base[collection] = safe;
+          this.local[collection] = safe;
+          this.baseUpdatedAt[collection] = remoteUpdatedAt;
+          void this._pushCollection(collection, safe);
+          if (!isDeepEqual(safe, localData)) {
+            this._emitRemoteChange(collection, safe);
+          }
+          this.dirty.delete(collection);
+          continue;
+        }
 
         // Questo device aveva già sincronizzato e ha modifiche locali
         // non ancora inviate → si tiene il merge (niente dati persi).
@@ -478,20 +571,29 @@ class FirebaseSyncManager {
           localData !== undefined &&
           !isDeepEqual(localData, baseData)
         ) {
-          const merged = mergeCollection(collection, baseData, localData, remoteData);
-          this.base[collection] = merged;
-          this.local[collection] = merged;
-          void this._pushCollection(collection, merged);
-          if (!isDeepEqual(merged, localData)) {
-            this._emitRemoteChange(collection, merged);
+          const merged = mergeCollection(
+            collection,
+            baseData,
+            localData,
+            remoteData,
+            { allowRemoteDeletions: !remoteIsOlder }
+          );
+          const safe = protectAdminUsers(collection, merged, localData);
+          this.base[collection] = safe;
+          this.local[collection] = safe;
+          this.baseUpdatedAt[collection] = remoteUpdatedAt;
+          void this._pushCollection(collection, safe);
+          if (!isDeepEqual(safe, localData)) {
+            this._emitRemoteChange(collection, safe);
           }
           this.dirty.delete(collection);
           continue;
         }
 
-        // Device nuovo → adotta i dati già presenti nel cloud
+        // Device nuovo (senza dati locali) → adotta i dati già nel cloud
         this.base[collection] = remoteData;
         this.local[collection] = remoteData;
+        this.baseUpdatedAt[collection] = remoteUpdatedAt;
         this._emitRemoteChange(collection, remoteData);
         this.dirty.delete(collection);
       }
@@ -509,31 +611,52 @@ class FirebaseSyncManager {
       const baseData = this.base[collection];
       const localData =
         this.local[collection] !== undefined ? this.local[collection] : remoteData;
+      const remoteUpdatedAt = payload.updatedAt || 0;
+
+      // ⚠️ remoto più vecchio del nostro stato → non può cancellare nulla
+      const remoteIsOlder =
+        !!this.baseUpdatedAt[collection] &&
+        remoteUpdatedAt > 0 &&
+        remoteUpdatedAt < (this.baseUpdatedAt[collection] as number);
+
+      const localHasData =
+        localData !== undefined && !isEmptyCollection(localData);
 
       // nessuna modifica locale → adotta il remoto
-      if (baseData === undefined || isDeepEqual(localData, baseData)) {
+      // (ma se non abbiamo base e i dati locali NON sono vuoti → merge,
+      //  altrimenti gli account locali verrebbero sostituiti)
+      if (
+        (baseData === undefined && !localHasData) ||
+        isDeepEqual(localData, baseData)
+      ) {
         if (!isDeepEqual(localData, remoteData)) {
           this.base[collection] = remoteData;
           this.local[collection] = remoteData;
+          this.baseUpdatedAt[collection] = remoteUpdatedAt;
           this._emitRemoteChange(collection, remoteData);
         }
         continue;
       }
 
       // c'è una modifica locale → merge
-      const merged = mergeCollection(collection, baseData, localData, remoteData);
+      const merged = mergeCollection(collection, baseData, localData, remoteData, {
+        allowRemoteDeletions: !remoteIsOlder,
+      });
+      const safe = protectAdminUsers(collection, merged, localData);
 
-      if (!isDeepEqual(merged, remoteData)) {
+      if (!isDeepEqual(safe, remoteData)) {
         // il cloud deve essere aggiornato con il risultato del merge
-        this.base[collection] = merged;
-        void this._pushCollection(collection, merged);
+        this.base[collection] = safe;
+        this.baseUpdatedAt[collection] = remoteUpdatedAt;
+        void this._pushCollection(collection, safe);
       } else {
-        this.base[collection] = merged;
+        this.base[collection] = safe;
+        this.baseUpdatedAt[collection] = remoteUpdatedAt;
       }
 
-      if (!isDeepEqual(merged, localData)) {
-        this.local[collection] = merged;
-        this._emitRemoteChange(collection, merged);
+      if (!isDeepEqual(safe, localData)) {
+        this.local[collection] = safe;
+        this._emitRemoteChange(collection, safe);
       }
     }
   }

@@ -595,6 +595,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, message: 'Inserisci la password / PIN.' };
     }
 
+    // 🔍 Prima cerchiamo il nome utente: così distinguiamo "account inesistente"
+    //    da "password sbagliata" (messaggio molto più utile per il dipendente).
+    const userByName = users.find((u) => u.username.toLowerCase() === trimmedUser);
+
+    if (!userByName) {
+      return {
+        success: false,
+        message:
+          "Nome utente inesistente. Chiedi all'amministratore di creare l'account.",
+      };
+    }
+
     const targetUser = users.find(
       (u) => u.username.toLowerCase() === trimmedUser && u.pin === trimmedPin
     );
@@ -611,7 +623,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: true };
     }
 
-    return { success: false, message: 'Nome utente o password non corretti.' };
+    return { success: false, message: 'Password non corretta.' };
   };
 
   const changePassword = (

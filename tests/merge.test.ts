@@ -221,6 +221,77 @@ console.log('\n── Normalizzazione collezioni dal cloud ──');
   );
 }
 
+
+console.log('\n── Protezione account (regressione: "account non esistente") ──');
+{
+  const admin = {
+    id: 'user_1',
+    username: 'titolare',
+    displayName: 'Titolare',
+    pin: '1234',
+    role: 'admin',
+    permissions: { canManageUsers: true },
+  };
+  const mario = {
+    id: 'user_2',
+    username: 'mario',
+    displayName: 'Mario Rossi',
+    pin: '1111',
+    role: 'cameriere',
+    permissions: { canManageUsers: false },
+  };
+  const vecchio = {
+    id: 'user_admin',
+    username: 'Admin',
+    displayName: 'Admin (Proprietario)',
+    pin: '5555',
+    role: 'admin',
+    permissions: { canManageUsers: true },
+  };
+
+  // Caso reale: base assente, locale con gli account veri, remoto con uno
+  // stato vecchio e parziale → il merge deve fare unione, non sostituire.
+  const merged = mergeCollection('users', undefined, [admin, mario], [vecchio]);
+  const usernames = merged.map((u: any) => u.username);
+  check(
+    'base assente: gli account locali NON vengono sostituiti',
+    usernames.includes('mario') && usernames.includes('titolare'),
+    usernames
+  );
+  check(
+    "base assente: l'account vecchio viene unito, non rimpiazzante",
+    usernames.includes('Admin') && merged.length === 3,
+    usernames
+  );
+
+  // Con allowRemoteDeletions=false il remoto non cancella nulla
+  const merged2 = mergeCollection(
+    'users',
+    [admin, mario],
+    [admin, mario],
+    [admin],
+    { allowRemoteDeletions: false }
+  );
+  check(
+    'remoto più vecchio: non cancella gli utenti locali',
+    merged2.length === 2,
+    merged2.map((u: any) => u.username)
+  );
+
+  // Con allowRemoteDeletions=true (caso normale) la cancellazione remota vale
+  const merged3 = mergeCollection(
+    'users',
+    [admin, mario],
+    [admin, mario],
+    [admin]
+  );
+  check(
+    'remoto aggiornato: la cancellazione remota viene applicata',
+    merged3.length === 1,
+    merged3.map((u: any) => u.username)
+  );
+}
+
 console.log(
   `\n═══ Risultato: ${passed} test passati, ${failed} falliti ═══\n`
 );
