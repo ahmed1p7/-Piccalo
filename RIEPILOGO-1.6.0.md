@@ -79,6 +79,16 @@ Test: `tests/tests_split_bill.py` → **16/16** ✅ (resto 100 − 60 = 40 € v
 
 ---
 
+## 🔐 Nota di sicurezza
+Nella cloud attuale l'**unico amministratore** è ancora l'account demo
+`Admin / 5555` (password pubblica). Dopo l'aggiornamento:
+1. entra con Admin/5555 → «Personale» → promuovi il tuo account a Amministratore
+2. «Impostazioni → Cambia password» → cambia la password di Admin
+3. «Personale» → elimina l'account demo
+La 1.6.0 mostra un avviso rosso in Impostazioni finché non è fatto.
+
+---
+
 ## 📲 Aggiornamento
 1. Aggiorna **tutti** i dispositivi a 1.6.0
 2. Impostazioni → 🛡️ Protezione dei dati → **Invia tutto al cloud**
