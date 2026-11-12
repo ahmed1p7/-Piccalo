@@ -24,9 +24,12 @@
     <script type="module" src="/src/main.tsx"></script>
     <script>
       // 🔧 PWA: تسجيل Service Worker
+      // ⚠️ Percorso RELATIVO: su GitHub Pages l'app vive in /-Piccalo/,
+      //    con '/sw.js' (assoluto) il browser cercava /sw.js nella root
+      //    e riceveva 404 → il PWA non era installabile offline.
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
+          navigator.serviceWorker.register('./sw.js')
             .then((reg) => console.log('✅ SW registered:', reg.scope))
             .catch((err) => console.log('❌ SW failed:', err));
         });
