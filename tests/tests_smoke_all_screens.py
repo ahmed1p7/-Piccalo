@@ -35,10 +35,12 @@ def click_nav(page, label):
     found = page.evaluate(
         """(label) => {
             const navs = [...document.querySelectorAll('nav')];
-            const nav = navs[navs.length - 1];
-            if (!nav) return null;
-            const b = [...nav.querySelectorAll('button')]
-                .find(x => x.innerText.includes(label) && x.offsetParent !== null);
+            let b = null;
+            for (const nav of navs.reverse()) {
+                b = [...nav.querySelectorAll('button')]
+                    .find(x => x.innerText.includes(label) && x.offsetParent !== null);
+                if (b) break;
+            }
             if (!b) return null;
             const txt = b.innerText.trim().split('\\n').join('/');
             b.click();
@@ -48,6 +50,19 @@ def click_nav(page, label):
     )
     page.wait_for_timeout(1100)
     return found
+
+
+def wipe_emulator():
+    """Svuota l'emulatore Realtime Database (dati di test precedenti)."""
+    try:
+        req = urllib.request.Request(
+            "http://127.0.0.1:9000/sea_pos.json?ns=demo-sea-pos-default-rtdb",
+            data=b"null", method="PUT",
+            headers={"Content-Type": "application/json"},
+        )
+        urllib.request.urlopen(req, timeout=10).read()
+    except Exception as e:
+        print(f"  (avviso: emulatore non raggiungibile: {e})")
 
 
 def main():
@@ -99,7 +114,7 @@ def main():
         # ── ogni schermata ──
         for label, marker in [
             ("Home", "Pannello di controllo"),
-            ("Tavoli", "Tavolo 1"),
+            ("Tavoli", "TAVOLI"),
             ("Cassa", "Punto Cassa"),
             ("Magazzino", "Magazzino"),
             ("Cucina", "Cucina"),

@@ -192,6 +192,32 @@ npm test
 
 ---
 
+## 🛡️ Protezione dei dati (v1.6.0)
+
+Ogni ristorante ha **il proprio spazio nel cloud**
+(`sea_pos/v2/restaurants/<id>`): i dati di un ristorante non si mescolano
+più con quelli di un altro né con i vecchi dati dimostrativi.
+
+- Il cloud **non può mai sostituire** i dati reali del dispositivo
+- Un campo vuoto **non cancella** un valore già impostato
+- Gli account demo (Admin/5555) vengono **rimossi** (mai l'ultimo admin)
+- **Copia di sicurezza locale** ad ogni modifica + ripristino con un click
+- Impostazioni → 🛡️ Protezione dei dati → «Invia tutto al cloud» per
+  riparare il cloud da un dispositivo che ha i dati giusti
+
+---
+
+## 🧾 Dividere il conto (v1.6.0)
+
+1. **Totale da dividere**: scrivi l'importo da spartire → l'app lo distribuisce
+2. **Stato**: ogni persona diventa verde «✓ Pagato» quando salda
+   (sotto vedi «Restano da incassare»)
+3. **Metodo per persona**: Contanti o Carta su ogni quota
+4. **Paga per conto di più persone**: spunta le persone, registra un solo
+   pagamento,scrivi quanto hai ricevuto → l'app calcola il **resto** esatto
+
+---
+
 ## 🛡️ Protezione degli account (fix 1.4.0)
 
 Un bug delle versioni 1.3.x faceva **svanire gli account dei dipendenti**:

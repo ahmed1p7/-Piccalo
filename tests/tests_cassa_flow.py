@@ -60,8 +60,29 @@ def click_text(page, text, nth=0):
     page.wait_for_timeout(700)
 
 
+def wipe_emulator():
+    """Svuota l'emulatore Realtime Database (dati di test precedenti)."""
+    try:
+        req = urllib.request.Request(
+            "http://127.0.0.1:9000/sea_pos.json?ns=demo-sea-pos-default-rtdb",
+            data=b"null", method="PUT",
+            headers={"Content-Type": "application/json"},
+        )
+        urllib.request.urlopen(req, timeout=10).read()
+    except Exception as e:
+        print(f"  (avviso: emulatore non raggiungibile: {e})")
+
+
+
+def restaurant_path():
+    """Percorso cloud del ristorante (v2, con fallback al percorso legacy)."""
+    idx = get("/sea_pos/v2/index") or {}
+    for rid in idx.keys():
+        return f"/sea_pos/v2/restaurants/{rid}/collections"
+    return "/sea_pos/shared_state/collections"
+
 def main():
-    put("/sea_pos/shared_state/collections", {})
+    wipe_emulator()
     print("🧹 cloud svuotato\n")
 
     with sync_playwright() as p:
@@ -71,7 +92,7 @@ def main():
         errors = []
         page.on("pageerror", lambda e: errors.append(str(e)))
         logs = []
-        page.on("console", lambda m: logs.append(f"{m.type}: {m.text}") if m.type == "error" else None)
+        page.on("console", lambda m: logs.append(f"{m.type}: {m.text[:200]}"))
 
         # ── setup ──
         page.goto(BASE, wait_until="networkidle")
@@ -141,7 +162,7 @@ def main():
         # ── 3) lo scontrino è stato salvato? (aspetta la push al cloud) ──
         rdata = []
         for _ in range(20):
-            receipts = get("/sea_pos/shared_state/collections/receipts") or {}
+            receipts = get(f"{restaurant_path()}/receipts") or {}
             rdata = receipts.get("data") or []
             if rdata:
                 break
@@ -161,7 +182,7 @@ def main():
 
         # ── 6) vendita rapida con PRODOTTO (le voci finiscono sulla ricevuta) ──
         #     il prodotto è nel magazzino (sincronizzato dal cloud)
-        put("/sea_pos/shared_state/collections/inventory", {
+        put(f"{restaurant_path()}/inventory", {
             "data": [{
                 "id": "prod_caffe", "name": "Caffe", "type": "prodotto",
                 "category": "bevande", "currentQuantity": 50, "minThreshold": 5,
@@ -197,21 +218,19 @@ def main():
         page.evaluate("""() => { const b=[...document.querySelectorAll('button')].find(x=>x.innerText.includes('Incassa')&&x.offsetParent&&!x.disabled); b&&b.click(); }""")
         page.wait_for_timeout(1200)
         page.evaluate("""() => {
-            const modal = [...document.querySelectorAll('div')].filter(d => (d.className||'').includes('fixed') && (d.className||'').includes('inset-0')).pop();
-            const b = [...modal.querySelectorAll('button')].find(x => /carta/i.test(x.innerText));
+            const b = [...document.querySelectorAll('button')].find(x => /^carta$/i.test(x.innerText.trim()) && x.offsetParent);
             if (b) b.click();
         }""")
         page.wait_for_timeout(500)
         page.evaluate("""() => {
-            const modal = [...document.querySelectorAll('div')].filter(d => (d.className||'').includes('fixed') && (d.className||'').includes('inset-0')).pop();
-            const b = [...modal.querySelectorAll('button')].find(x => /registra pagamento/i.test(x.innerText) && !x.disabled);
+            const b = [...document.querySelectorAll('button')].find(x => /registra pagamento/i.test(x.innerText) && x.offsetParent && !x.disabled);
             if (b) b.click();
         }""")
         page.wait_for_timeout(3500)
 
         rdata2 = []
         for _ in range(20):
-            receipts = get("/sea_pos/shared_state/collections/receipts") or {}
+            receipts = get(f"{restaurant_path()}/receipts") or {}
             rdata2 = receipts.get("data") or []
             if len(rdata2) >= 2:
                 break
@@ -230,14 +249,14 @@ def main():
         page.wait_for_timeout(1500)
         # crea un tavolo con importo 40
         page.evaluate("""() => {
-            const b = [...document.querySelectorAll('button')].find(x => /Aggiungi Nuovo Tavolo/i.test(x.innerText) && x.offsetParent);
+            const b = [...document.querySelectorAll('button')].find(x => /Nuovo Tavolo/i.test(x.innerText) && x.offsetParent);
             if (b) b.click();
         }""")
         page.wait_for_timeout(1000)
         page.fill("input[placeholder='Es. Tavolo 9, Giardino 1, Terrazza...']", "Tavolo Test")
-        page.fill("input[placeholder='0.00 € (modificabile sempre)']", "40")
+        page.fill("input[placeholder='0.00']", "40")
         page.evaluate("""() => {
-            const b = [...document.querySelectorAll('button')].find(x => /Crea Tavolo/i.test(x.innerText) && x.offsetParent);
+            const b = [...document.querySelectorAll('button')].find(x => /Crea tavolo/i.test(x.innerText) && x.offsetParent);
             if (b) b.click();
         }""")
         page.wait_for_timeout(2000)
@@ -260,17 +279,15 @@ def main():
         page.evaluate("""() => { const b=[...document.querySelectorAll('button')].find(x=>x.innerText.includes('Incassa')&&x.offsetParent&&!x.disabled); b&&b.click(); }""")
         page.wait_for_timeout(1200)
         page.evaluate("""() => {
-            const modal = [...document.querySelectorAll('div')].filter(d => (d.className||'').includes('fixed') && (d.className||'').includes('inset-0')).pop();
-            const b = [...modal.querySelectorAll('button')].find(x => /registra pagamento/i.test(x.innerText) && !x.disabled);
+            const b = [...document.querySelectorAll('button')].find(x => /registra pagamento/i.test(x.innerText) && x.offsetParent && !x.disabled);
             if (b) b.click();
         }""")
         page.wait_for_timeout(2500)
         body = page.inner_text("body")
+        print("   MODAL-TAIL:", body[-420:].replace(chr(10), " | "))
         check("dopo il pagamento del tavolo compare 'Chiudi conto'", "Chiudi conto" in body)
         closed = page.evaluate("""() => {
-            const modal = [...document.querySelectorAll('div')].filter(d => (d.className||'').includes('fixed') && (d.className||'').includes('inset-0')).pop();
-            if (!modal) return null;
-            const b = [...modal.querySelectorAll('button')].find(x => /chiudi conto/i.test(x.innerText) && !x.disabled);
+            const b = [...document.querySelectorAll('button')].find(x => /chiudi conto/i.test(x.innerText) && x.offsetParent && !x.disabled);
             if (b) { b.click(); return b.innerText.trim(); }
             return null;
         }""")
@@ -282,14 +299,14 @@ def main():
         page.evaluate("""() => { const b=[...document.querySelectorAll('button')].find(x=>x.innerText.trim()==='Tavoli'&&x.offsetParent); b&&b.click(); }""")
         page.wait_for_timeout(1500)
         page.evaluate("""() => {
-            const b = [...document.querySelectorAll('button')].find(x => /Aggiungi Nuovo Tavolo/i.test(x.innerText) && x.offsetParent);
+            const b = [...document.querySelectorAll('button')].find(x => /Nuovo Tavolo/i.test(x.innerText) && x.offsetParent);
             if (b) b.click();
         }""")
         page.wait_for_timeout(900)
         page.fill("input[placeholder='Es. Tavolo 9, Giardino 1, Terrazza...']", "Tavolo Split")
-        page.fill("input[placeholder='0.00 € (modificabile sempre)']", "60")
+        page.fill("input[placeholder='0.00']", "60")
         page.evaluate("""() => {
-            const b = [...document.querySelectorAll('button')].find(x => /Crea Tavolo/i.test(x.innerText) && x.offsetParent);
+            const b = [...document.querySelectorAll('button')].find(x => /Crea tavolo/i.test(x.innerText) && x.offsetParent);
             if (b) b.click();
         }""")
         page.wait_for_timeout(1800)
@@ -306,9 +323,7 @@ def main():
 
         # scegli "Dividi il conto"
         split_clicked = page.evaluate("""() => {
-            const modal = [...document.querySelectorAll('div')].filter(d => (d.className||'').includes('fixed') && (d.className||'').includes('inset-0')).pop();
-            if (!modal) return false;
-            const b = [...modal.querySelectorAll('button')].find(x => /Dividi il conto/i.test(x.innerText));
+            const b = [...document.querySelectorAll('button')].find(x => /Dividi il conto/i.test(x.innerText) && x.offsetParent);
             if (b) { b.click(); return true; }
             return false;
         }""")
@@ -322,21 +337,18 @@ def main():
             # dopo il primo pagamento il bottone sparisce (diventa ✓):
             #     clicca sempre il PRIMO "Paga" disponibile
             page.evaluate("""() => {
-                const modal = [...document.querySelectorAll('div')].filter(d => (d.className||'').includes('fixed') && (d.className||'').includes('inset-0')).pop();
-                const quota = [...modal.querySelectorAll('button')].filter(x => x.innerText.trim() === 'Paga');
+                const quota = [...document.querySelectorAll('button')].filter(x => x.innerText.trim() === 'Paga' && x.offsetParent);
                 if (quota[0]) quota[0].click();
             }""")
             page.wait_for_timeout(700)
             if meth == "carta":
                 page.evaluate("""() => {
-                    const modal = [...document.querySelectorAll('div')].filter(d => (d.className||'').includes('fixed') && (d.className||'').includes('inset-0')).pop();
-                    const b = [...modal.querySelectorAll('button')].find(x => /Carta POS/i.test(x.innerText));
+                    const b = [...document.querySelectorAll('button')].find(x => /Carta POS/i.test(x.innerText) && x.offsetParent);
                     if (b) b.click();
                 }""")
                 page.wait_for_timeout(500)
             page.evaluate("""() => {
-                const modal = [...document.querySelectorAll('div')].filter(d => (d.className||'').includes('fixed') && (d.className||'').includes('inset-0')).pop();
-                const b = [...modal.querySelectorAll('button')].find(x => /registra pagamento/i.test(x.innerText) && !x.disabled);
+                const b = [...document.querySelectorAll('button')].find(x => /registra pagamento/i.test(x.innerText) && x.offsetParent && !x.disabled);
                 if (b) b.click();
             }""")
             page.wait_for_timeout(1800)
@@ -344,9 +356,7 @@ def main():
         body = page.inner_text("body")
         check("le quote saldate sono segnate", "pagato" in body.lower())
         closed = page.evaluate("""() => {
-            const modal = [...document.querySelectorAll('div')].filter(d => (d.className||'').includes('fixed') && (d.className||'').includes('inset-0')).pop();
-            if (!modal) return null;
-            const b = [...modal.querySelectorAll('button')].find(x => /chiudi conto/i.test(x.innerText) && !x.disabled);
+            const b = [...document.querySelectorAll('button')].find(x => /chiudi conto/i.test(x.innerText) && x.offsetParent && !x.disabled);
             if (b) { b.click(); return b.innerText.trim(); }
             return null;
         }""")
@@ -356,7 +366,7 @@ def main():
         # la ricevuta deve avere i dettagli delle quote
         rdata3 = []
         for _ in range(20):
-            receipts = get("/sea_pos/shared_state/collections/receipts") or {}
+            receipts = get(f"{restaurant_path()}/receipts") or {}
             rdata3 = receipts.get("data") or []
             if len(rdata3) >= 3:
                 break

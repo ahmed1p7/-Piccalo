@@ -29,6 +29,14 @@ import {
   type SyncTransport,
 } from './transports/RealtimeDbTransport';
 import { FirestoreTransport } from './transports/FirestoreTransport';
+import {
+  hasLegacyDemoItems,
+  isLegacyDemoCollection,
+  stripLegacyDemoItems,
+  stripLegacyDemoUsersSafely,
+} from './legacyData';
+import type { RestaurantIndexEntry } from './transports/RealtimeDbTransport';
+import { ridFromName, randomRid } from '../utils/identity';
 
 export type SyncStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
 
@@ -111,6 +119,16 @@ class FirebaseSyncManager {
 
   private devices: DeviceInfo[] = [];
   private firstSnapshotDone = false;
+  /**
+   * 🏷️ Identificatore del ristorante (spazio cloud dedicato).
+   * Ogni ristorante ha il proprio spazio: i dati non si mescolano più
+   * con quelli di un altro ristorante né con il vecchio seed demo.
+   */
+  private scope: string | null = null;
+  /** 📇 ristoranti trovati nel cloud (scelta manuale se sono più di uno) */
+  private restaurantChoices: RestaurantIndexEntry[] = [];
+  /** ⚠️ avviso non bloccante mostrato all'utente (es. dati demo nel cloud) */
+  private warning: string | null = null;
   private readyCallbacks = new Set<() => void>();
   private heartbeatTimer: any = null;
   private pendingWrites = 0;
@@ -204,6 +222,124 @@ class FirebaseSyncManager {
     return this.devices;
   }
 
+  // ═══════════════════════════════════════════════════════════════════
+  // 🏷️ Spazio cloud del ristorante
+  // ═══════════════════════════════════════════════════════════════════
+
+  /** spazio (rid) attualmente in uso */
+  getScope(): string | null {
+    return this.scope;
+  }
+
+  /** imposta lo spazio del ristorante (si ricollega al cloud) */
+  setScope(scope: string | null) {
+    this.scope = scope || null;
+    const transport = this.transport as any;
+    if (transport && typeof transport.setScope === 'function') {
+      transport.setScope(this.scope);
+      // la sottoscrizione va rifatta sul nuovo percorso
+      this._subscribe();
+    }
+  }
+
+  /** 📇 ristoranti trovati nel cloud */
+  getRestaurantChoices(): RestaurantIndexEntry[] {
+    return this.restaurantChoices;
+  }
+
+  /**
+   * 🏷️ Determina (e fissa) lo spazio cloud del ristorante.
+   *
+   * Ordine di priorità:
+   *  1. lo scope già impostato
+   *  2. l'unico ristorante presente nell'indice del cloud
+   *     (→ installazione automatica: il nuovo telefono si aggancia
+   *       da solo, senza codice da incollare)
+   *  3. un `rid` stabile derivato dal nome del ristorante
+   *     (→ due telefoni dello stesso ristorante convergono da soli)
+   *  4. un `rid` casuale (nome ancora sconosciuto)
+   */
+  async ensureScope(restaurantName: string): Promise<string | null> {
+    if (this.scope) return this.scope;
+
+    const transport = this.transport as any;
+
+    // 2) indice del cloud
+    if (transport && typeof transport.readIndex === 'function') {
+      const index = (await transport.readIndex()) || [];
+      this.restaurantChoices = index;
+      if (index.length === 1) {
+        // ⚠️ setScope (non solo transport.setScope): va rifatta la
+        //    sottoscrizione, altrimenti l'app resta in ascolto
+        //    dell'indice e non riceve/trasmette i dati del ristorante.
+        this.setScope(index[0].rid);
+        console.log('🔥 Sync: ristorante trovato nel cloud:', this.scope);
+        return this.scope;
+      }
+      if (index.length > 1) {
+        // più ristoranti → l'app chiederà all'utente (nessuno scope
+        // forzato: non si scrive nel ristorante sbagliato)
+        return null;
+      }
+    }
+
+    // 3) rid stabile dal nome  /  4) casuale
+    const stable = ridFromName(restaurantName);
+    this.setScope(stable || randomRid());
+    console.log('🔥 Sync: nuovo spazio ristorante:', this.scope);
+    return this.scope;
+  }
+
+  /** ⚠️ ultimo avviso (dati demo nel cloud, ecc.) */
+  getWarning(): string | null {
+    return this.warning;
+  }
+
+  /** 📇 pubblica (o aggiorna) la voce del ristorante nell'indice */
+  async publishIndexEntry(entry: { name: string; city?: string }) {
+    const transport = this.transport as any;
+    if (!transport || typeof transport.writeIndexEntry !== 'function') return;
+    if (!this.scope) return;
+    try {
+      await transport.writeIndexEntry({
+        rid: this.scope,
+        name: entry.name || 'Ristorante',
+        city: entry.city || '',
+        updatedAt: Date.now(),
+        devices: this.devices.length,
+      });
+    } catch (err: any) {
+      console.warn('🔥 Sync: indice non aggiornato:', err?.message);
+    }
+  }
+
+  /**
+   * 🧹 Rimuove i dati DEMO (vecchio seed 1.1.x) presenti nel cloud.
+   * Restituisce quante entità sono state rimosse.
+   */
+  async cleanLegacyDemoFromCloud(): Promise<number> {
+    const transport = this.transport as any;
+    if (!transport) return 0;
+    let removed = 0;
+    for (const collection of SYNC_COLLECTIONS) {
+      const local = this.local[collection];
+      const cleaned = stripLegacyDemoItems(collection, local);
+      if (cleaned.removed > 0) {
+        removed += cleaned.removed;
+        this.local[collection] = cleaned.data;
+        await this._pushCollection(collection, cleaned.data);
+      }
+    }
+    return removed;
+  }
+
+  /** ⚠️ true se il cloud (o lo stato locale) contiene ancora dati demo */
+  hasLegacyDemoData(): boolean {
+    return SYNC_COLLECTIONS.some((collection) =>
+      hasLegacyDemoItems(collection, this.local[collection])
+    );
+  }
+
   getPendingWrites(): number {
     return this.pendingWrites;
   }
@@ -211,7 +347,7 @@ class FirebaseSyncManager {
   // ═══════════════════════════════════════════════════════════════════
   // 🔗 Connessione
   // ═══════════════════════════════════════════════════════════════════
-  async connect(): Promise<boolean> {
+  async connect(scope?: string | null): Promise<boolean> {
     if (this.status === 'connected' || this.status === 'connecting') {
       return this.status === 'connected';
     }
@@ -226,10 +362,12 @@ class FirebaseSyncManager {
     this._setStatus('connecting');
     this.loadBase();
 
+    if (scope) this.scope = scope;
+
     // ── scelta del trasporto ──
     // Realtime Database se c'è un databaseURL, altrimenti Firestore.
     const transport: SyncTransport = config.databaseURL
-      ? new RealtimeDbTransport(config as any)
+      ? new RealtimeDbTransport(config as any, this.scope)
       : new FirestoreTransport(config as any);
 
     this.transportName = transport.name;
@@ -241,10 +379,40 @@ class FirebaseSyncManager {
       return false;
     }
 
-    transport.subscribe(
-      (state) => this._handleState(state),
-      (error) => this._setStatus('error', error?.message ?? null)
-    );
+    // ── 🔎 Scoperta del ristorante ──────────────────────────────────
+    // Se non sappiamo ancora in QUALE spazio scrivere (nuova installazione
+    // o installazione vecchia senza `rid`), leggiamo l'indice dei
+    // ristoranti presenti nel cloud:
+    //   • 1 solo ristorante → lo adottiamo automaticamente
+    //   • più ristoranti   → l'app chiederà all'utente quale scegliere
+    //   • nessuno          → siamo il primo: verrà creato con la
+    //                        configurazione iniziale
+    if (!this.scope) {
+      const index = (await transport.readIndex?.()) || [];
+      this.restaurantChoices = index;
+      if (index.length === 1) {
+        this.scope = index[0].rid;
+        transport.setScope?.(this.scope);
+        console.log('🔥 Sync: ristorante adottato dal cloud:', this.scope);
+      }
+    }
+
+    if (this.scope) {
+      this._subscribe();
+    } else {
+      // ⚠️ nessuno spazio ancora: si ascolta SOLO l'indice dei ristoranti.
+      //    Non si scrive nulla finché l'app non sa in quale ristorante
+      //    si trova (altrimenti i dati finirebbero in uno spazio sbagliato).
+      transport.subscribeIndex?.((entries) => {
+        this.restaurantChoices = entries;
+        if (!this.scope && entries.length === 1) {
+          this.scope = entries[0].rid;
+          transport.setScope?.(this.scope);
+          this._subscribe();
+          void this._publishDevice();
+        }
+      });
+    }
 
     await this._publishDevice();
     this._startHeartbeat();
@@ -261,6 +429,16 @@ class FirebaseSyncManager {
 
     this._setStatus('connected');
     return true;
+  }
+
+  /** 🔔 sottoscrive al percorso del ristorante corrente */
+  private _subscribe() {
+    const transport = this.transport;
+    if (!transport) return;
+    transport.subscribe(
+      (state) => this._handleState(state),
+      (error) => this._setStatus('error', error?.message ?? null)
+    );
   }
 
   /**
@@ -514,6 +692,7 @@ class FirebaseSyncManager {
       if (!hasRemoteData) {
         // il cloud è vuoto → questo dispositivo è il primo: pubblica i suoi dati
         void this._seedFromLocal();
+        void this.flush();
         return;
       }
 
@@ -521,10 +700,17 @@ class FirebaseSyncManager {
         const payload = remoteCollections[collection];
         if (!payload) continue;
 
-        const remoteData = normalizeCollectionData(collection, payload.data);
+        const remoteRaw = normalizeCollectionData(collection, payload.data);
         const baseData = this.base[collection];
         const localData = this.local[collection];
         const remoteUpdatedAt = payload.updatedAt || 0;
+
+        // 🧟 Gli account DEMO (PIN pubblici) non vengono mai importati
+        //    dal cloud — ma l'ultimo admin non viene mai cancellato.
+        const remoteData =
+          collection === 'users'
+            ? stripLegacyDemoUsersSafely(remoteRaw).users
+            : remoteRaw;
 
         // ⚠️ Il remoto è più vecchio del nostro stato noto → non può
         //    cancellare nulla (telefono vecchio / stato parziale).
@@ -540,11 +726,24 @@ class FirebaseSyncManager {
           localData !== undefined && !isEmptyCollection(localData);
         const baseMissing = baseData === undefined;
 
-        if (
-          baseMissing &&
-          localHasData &&
-          !isDeepEqual(localData, remoteData)
-        ) {
+        // 🛡️ REGOLA 1 — Il cloud contiene SOLO il vecchio seed demo:
+        //    non può MAI sostituire i dati reali di questo dispositivo.
+        //    (è la causa del bug "a ogni aggiornamento ricompaiono i
+        //     dati di un altro ristorante")
+        const remoteIsDemo = isLegacyDemoCollection(collection, remoteData);
+        const localIsDemo = isLegacyDemoCollection(collection, localData);
+        if (remoteIsDemo && localHasData && !localIsDemo) {
+          this._warn(
+            'Il cloud conteneva vecchi dati demo: sono stati ignorati, i tuoi dati restano al sicuro.'
+          );
+          this.base[collection] = localData;
+          this.baseUpdatedAt[collection] = remoteUpdatedAt;
+          this.dirty.delete(collection);
+          void this._pushCollection(collection, localData);
+          continue;
+        }
+
+        if (baseMissing && localHasData && !isDeepEqual(localData, remoteData)) {
           const merged = mergeCollection(
             collection,
             baseData,
@@ -590,6 +789,21 @@ class FirebaseSyncManager {
           continue;
         }
 
+        // 🛡️ REGOLA 2 — Il remoto è più vecchio del nostro stato e noi
+        //    abbiamo dati: NON lo adottiamo (sarebbe una regressione).
+        if (remoteIsOlder && localHasData) {
+          this.base[collection] = localData;
+          continue;
+        }
+
+        // 🛡️ REGOLA 3 — Il cloud è solo demo e noi non abbiamo dati:
+        //    lo adottiamo (è l'unica copia) ma avvisiamo l'utente.
+        if (remoteIsDemo && !localHasData) {
+          this._warn(
+            'Nel cloud ci sono solo vecchi dati demo: verrai invitato a fare un ripristino pulito.'
+          );
+        }
+
         // Device nuovo (senza dati locali) → adotta i dati già nel cloud
         this.base[collection] = remoteData;
         this.local[collection] = remoteData;
@@ -599,6 +813,13 @@ class FirebaseSyncManager {
       }
 
       this.saveBase();
+
+      // ⚠️ Le modifiche locali fatte PRIMA del primo snapshot (es. la
+      //    creazione dell'account durante il setup) erano solo "sporche":
+      //    senza questo invio resterebbero nel telefono e non arriverebbero
+      //    mai agli altri dispositivi.
+      void this.flush();
+
       return;
     }
 
@@ -607,11 +828,17 @@ class FirebaseSyncManager {
       const payload = remoteCollections[collection];
       if (!payload) continue;
 
-      const remoteData = normalizeCollectionData(collection, payload.data);
+      const remoteRaw = normalizeCollectionData(collection, payload.data);
       const baseData = this.base[collection];
       const localData =
-        this.local[collection] !== undefined ? this.local[collection] : remoteData;
+        this.local[collection] !== undefined ? this.local[collection] : remoteRaw;
       const remoteUpdatedAt = payload.updatedAt || 0;
+
+      // 🧟 mai importare gli account demo dal cloud
+      const remoteData =
+        collection === 'users'
+          ? stripLegacyDemoUsersSafely(remoteRaw).users
+          : remoteRaw;
 
       // ⚠️ remoto più vecchio del nostro stato → non può cancellare nulla
       const remoteIsOlder =
@@ -622,6 +849,18 @@ class FirebaseSyncManager {
       const localHasData =
         localData !== undefined && !isEmptyCollection(localData);
 
+      // 🛡️ REGOLA 1 — il cloud è solo demo: non sovrascrive i dati reali
+      const remoteIsDemo = isLegacyDemoCollection(collection, remoteData);
+      const localIsDemo = isLegacyDemoCollection(collection, localData);
+      if (remoteIsDemo && localHasData && !localIsDemo) {
+        this._warn(
+          'Il cloud conteneva vecchi dati demo: sono stati ignorati, i tuoi dati restano al sicuro.'
+        );
+        this.baseUpdatedAt[collection] = remoteUpdatedAt;
+        void this._pushCollection(collection, localData);
+        continue;
+      }
+
       // nessuna modifica locale → adotta il remoto
       // (ma se non abbiamo base e i dati locali NON sono vuoti → merge,
       //  altrimenti gli account locali verrebbero sostituiti)
@@ -629,6 +868,11 @@ class FirebaseSyncManager {
         (baseData === undefined && !localHasData) ||
         isDeepEqual(localData, baseData)
       ) {
+        // 🛡️ REGOLA 2 — il remoto è più vecchio → non adottarlo
+        if (remoteIsOlder && localHasData) {
+          this.base[collection] = localData;
+          continue;
+        }
         if (!isDeepEqual(localData, remoteData)) {
           this.base[collection] = remoteData;
           this.local[collection] = remoteData;
@@ -659,6 +903,14 @@ class FirebaseSyncManager {
         this._emitRemoteChange(collection, safe);
       }
     }
+  }
+
+  /** ⚠️ registra un avviso per l'utente (mostrato nelle impostazioni) */
+  private _warn(message: string) {
+    if (this.warning === message) return;
+    this.warning = message;
+    console.warn('🔥 Sync:', message);
+    this._notifyStatus();
   }
 
   /**

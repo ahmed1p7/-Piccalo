@@ -164,4 +164,13 @@ export interface RestaurantProfile {
   wifiSsid: string;
   wifiPassword?: string;
   tableCount: number;
+  /**
+   * 🏷️ Identificatore univoco del ristorante.
+   *
+   * Ogni ristorante ha il SUO spazio nel cloud (sea_pos/v2/restaurants/<rid>).
+   * Prima della v1.6.0 il percorso era globale: i dati di un ristorante
+   * si mescolavano con quelli di un altro (e con il seed demo) → perdita
+   * dati agli aggiornamenti.
+   */
+  rid?: string;
 }

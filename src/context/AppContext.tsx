@@ -27,6 +27,14 @@ import {
   normalizeCollectionData,
   type SyncCollection,
 } from '../sync/merge';
+import {
+  readWithBackup,
+  writeSnapshot,
+  snapshotSavedAt,
+  readSnapshot,
+} from '../utils/localBackup';
+import { stripLegacyDemoUsersSafely } from '../sync/legacyData';
+import { isValidRid } from '../utils/identity';
 
 export type ActiveView =
   | 'home'
@@ -127,6 +135,24 @@ interface AppContextType {
   needsSetup: boolean;
   /** true quando l'app ha finito l'avvio (cloud pronto o timeout) */
   bootstrapDone: boolean;
+  /** 🏷️ spazio cloud del ristorante (identità) */
+  restaurantId: string | null;
+  /** ⚠️ avviso del sync mostrato all'utente */
+  syncWarning: string | null;
+  /** 🕒 data dell'ultima copia di sicurezza locale */
+  lastBackupAt: string | null;
+  /** 📇 ristoranti trovati nel cloud (scelta manuale) */
+  availableRestaurants: { rid: string; name: string; city?: string; updatedAt: number }[];
+  /** 📇 sceglie con quale ristorante collegarsi */
+  selectRestaurant: (rid: string) => Promise<boolean>;
+  /** 💾 salva subito una copia di sicurezza locale */
+  backupSnapshot: () => void;
+  /** 🛟 ripristina i dati dalla copia di sicurezza locale */
+  restoreFromBackup: () => { success: boolean; message?: string };
+  /** ☁️ invia tutto lo stato locale al cloud (ripara il cloud) */
+  pushAllToCloud: () => Promise<boolean>;
+  /** 🧹 rimuove i vecchi dati DEMO dal cloud */
+  cleanCloudDemo: () => Promise<number>;
   /** salta l'attesa del cloud (tastiera "Continua senza sincronizzazione") */
   skipBootstrap: () => void;
   resetTodayTransactions: () => { deletedReceipts: number; resetTables: number };
@@ -148,17 +174,15 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Load initial state from LocalStorage or fallbacks
   const [users, setUsers] = useState<UserAccount[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.USERS);
-      if (saved) {
-        const parsed: UserAccount[] = JSON.parse(saved);
-        // 🔧 تمت إزالة كود إجبار admin PIN على 5555 - المستخدم يختار PINه
-        return parsed;
-      }
-      return INITIAL_USERS;
-    } catch {
-      return INITIAL_USERS;
-    }
+    // 🛟 Se la chiave locale è vuota o corrotta si ripristina dalla
+    //    copia di sicurezza (mai perdere i dati per un problema di storage)
+    const { value } = readWithBackup<UserAccount[]>(
+      STORAGE_KEYS.USERS,
+      INITIAL_USERS
+    );
+    if (!Array.isArray(value)) return INITIAL_USERS;
+    // 🔧 حساب أوّلي (Admin/5555) قديم: يُزال إن وُجد 관리�� حقيقي
+    return stripLegacyDemoUsersSafely(value).users as UserAccount[];
   });
 
   // 🔒 NESSUN accesso automatico: all'avvio dell'app ogni utente deve
@@ -176,57 +200,61 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const bootstrapTimer = useRef<any>(null);
 
   const [inventory, setInventory] = useState<InventoryItem[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.INVENTORY);
-      return saved ? JSON.parse(saved) : INITIAL_INVENTORY;
-    } catch {
-      return INITIAL_INVENTORY;
-    }
+    const { value } = readWithBackup<InventoryItem[]>(
+      STORAGE_KEYS.INVENTORY,
+      INITIAL_INVENTORY
+    );
+    return Array.isArray(value) ? value : INITIAL_INVENTORY;
   });
 
   const [inventoryLogs, setInventoryLogs] = useState<InventoryLog[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.LOGS);
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
+    const { value } = readWithBackup<InventoryLog[]>(STORAGE_KEYS.LOGS, []);
+    return Array.isArray(value) ? value : [];
   });
 
   const [tables, setTables] = useState<RestaurantTable[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.TABLES);
-      if (saved) {
-        const parsed: RestaurantTable[] = JSON.parse(saved);
-        return parsed.map((tbl) => ({
+    const { value } = readWithBackup<RestaurantTable[]>(
+      STORAGE_KEYS.TABLES,
+      INITIAL_TABLES
+    );
+    if (Array.isArray(value)) {
+      const parsed: RestaurantTable[] = value;
+      return parsed.map((tbl) => ({
           ...tbl,
           billAmount: typeof tbl.billAmount === 'number' ? tbl.billAmount : 0,
           currentOrderItems: tbl.currentOrderItems || [],
         }));
-      }
-      return INITIAL_TABLES;
-    } catch {
-      return INITIAL_TABLES;
     }
+    return INITIAL_TABLES;
   });
 
   const [receipts, setReceipts] = useState<Receipt[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.RECEIPTS);
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
+    const { value } = readWithBackup<Receipt[]>(STORAGE_KEYS.RECEIPTS, []);
+    return Array.isArray(value) ? value : [];
   });
 
   const [profile, setProfile] = useState<RestaurantProfile>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.PROFILE);
-      return saved ? JSON.parse(saved) : INITIAL_PROFILE;
-    } catch {
-      return INITIAL_PROFILE;
-    }
+    const { value } = readWithBackup<RestaurantProfile>(
+      STORAGE_KEYS.PROFILE,
+      INITIAL_PROFILE
+    );
+    return value && typeof value === 'object' ? value : INITIAL_PROFILE;
   });
+
+  // 🏷️ Spazio cloud del ristorante (identità)
+  const [restaurantId, setRestaurantId] = useState<string | null>(
+    () => profile.rid ?? null
+  );
+  // ⚠️ avviso del sync (es. "il cloud conteneva vecchi dati demo")
+  const [syncWarning, setSyncWarning] = useState<string | null>(null);
+  // 🕒 data dell'ultima copia di sicurezza locale
+  const [lastBackupAt, setLastBackupAt] = useState<string | null>(
+    () => snapshotSavedAt()
+  );
+  // 📇 ristoranti trovati nel cloud (scelta manuale se sono più di uno)
+  const [availableRestaurants, setAvailableRestaurants] = useState<
+    { rid: string; name: string; city?: string; updatedAt: number }[]
+  >([]);
 
   const [activeView, setActiveView] = useState<ActiveView>('home');
   const [selectedTableForCheckout, setSelectedTableForCheckout] =
@@ -258,6 +286,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // nessun cloud configurato (solo LAN) → si parte subito
       setBootstrapDone(true);
       return;
+    }
+
+    // 🏷️ Recupera lo spazio cloud del ristorante PRIMA di connettersi:
+    //    senza questo, dopo un riavvio (o un aggiornamento dell'app) il
+    //    telefono non saprebbe in quale cartella scrivere e i dati
+    //    resterebbero "orfani" → perdita di dati.
+    try {
+      const savedProfile = JSON.parse(
+        localStorage.getItem(STORAGE_KEYS.PROFILE) || '{}'
+      );
+      if (savedProfile?.rid) {
+        firebaseSyncManager.setScope(savedProfile.rid);
+      }
+    } catch {
+      /* ignore */
     }
 
     // ⏳ massimo 5 secondi: se il cloud non risponde si parte comunque
@@ -505,26 +548,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Sync state to LocalStorage
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
+    writeSnapshot({ [STORAGE_KEYS.USERS]: users });
   }, [users]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.INVENTORY, JSON.stringify(inventory));
+    writeSnapshot({ [STORAGE_KEYS.INVENTORY]: inventory });
   }, [inventory]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.LOGS, JSON.stringify(inventoryLogs));
+    writeSnapshot({ [STORAGE_KEYS.LOGS]: inventoryLogs });
   }, [inventoryLogs]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.TABLES, JSON.stringify(tables));
+    writeSnapshot({ [STORAGE_KEYS.TABLES]: tables });
   }, [tables]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.RECEIPTS, JSON.stringify(receipts));
+    writeSnapshot({ [STORAGE_KEYS.RECEIPTS]: receipts });
   }, [receipts]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(profile));
+    writeSnapshot({ [STORAGE_KEYS.PROFILE]: profile });
   }, [profile]);
 
   // 🔒 La sessione NON viene ripristinata al riavvio: si esce sempre
@@ -532,6 +581,85 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   //    (se l'utente lo sceglie), mai la password.
   useEffect(() => {
     localStorage.removeItem(STORAGE_KEYS.CURRENT_USER_ID);
+  }, []);
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 🏷️ Identità del ristorante → spazio cloud dedicato
+  //
+  // 1) se il profilo ha già un `rid` → si usa quello
+  // 2) altrimenti si cerca nel cloud (un solo ristorante → aggancio
+  //    automatico) e, se non c'è, se ne crea uno stabile legato al
+  //    nome del ristorante (i vari telefoni convergono da soli)
+  // ═══════════════════════════════════════════════════════════════════
+  useEffect(() => {
+    if (!bootstrapDone) return;
+
+    const localHasData =
+      users.length > 0 ||
+      tables.length > 0 ||
+      inventory.length > 0 ||
+      receipts.length > 0;
+
+    let cancelled = false;
+
+    const resolveIdentity = async () => {
+      // (a) scope già deciso dal manager (scoperta automatica)
+      const known = firebaseSyncManager.getScope();
+      if (known) {
+        if (!cancelled) {
+          setRestaurantId(known);
+          setProfile((prev) => (prev.rid === known ? prev : { ...prev, rid: known }));
+        }
+        return;
+      }
+
+      // (b) nessuno scope: decidiamo noi
+      //     - dispositivo nuovo (nessun dato) → aspetta la configurazione
+      if (!localHasData) {
+        const choices = firebaseSyncManager.getRestaurantChoices();
+        if (choices.length > 1 && !cancelled) setAvailableRestaurants(choices);
+        return;
+      }
+
+      //     - installazione esistente → spazio stabile (migrazione)
+      const rid = await firebaseSyncManager.ensureScope(profile.name);
+      if (cancelled || !rid) {
+        const choices = firebaseSyncManager.getRestaurantChoices();
+        if (choices.length > 1 && !cancelled) setAvailableRestaurants(choices);
+        return;
+      }
+      setRestaurantId(rid);
+      setProfile((prev) => ({ ...prev, rid }));
+      // ripubblica lo stato locale nel nuovo spazio (migrazione sicura)
+      await firebaseSyncManager.pushAll();
+      await firebaseSyncManager.publishIndexEntry({
+        name: profile.name || 'Ristorante',
+        city: profile.address || '',
+      });
+    };
+
+    void resolveIdentity();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bootstrapDone]);
+
+  // ☁️ Appena lo spazio cloud è noto → pubblica i dati locali.
+  //    (senza questo, un ristorante creato dal setup non arriverebbe
+  //     mai agli altri telefoni)
+  useEffect(() => {
+    if (!restaurantId || !bootstrapDone) return;
+    void firebaseSyncManager.pushAll();
+  }, [restaurantId, bootstrapDone]);
+
+  // ⚠️ l'avviso del sync viene mostrato nelle impostazioni
+  useEffect(() => {
+    const remove = firebaseSyncManager.addStatusListener(() => {
+      setSyncWarning(firebaseSyncManager.getWarning());
+    });
+    setSyncWarning(firebaseSyncManager.getWarning());
+    return remove;
   }, []);
 
   // Se gli utenti arrivano dalla sincronizzazione (o il PIN cambia),
@@ -1208,15 +1336,100 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setUsers([admin]);
 
+    // 🏷️ spazio cloud del ristorante (stabile, legato al nome)
+    const rid = firebaseSyncManager.getScope() || undefined;
+
     // Il profilo ristorante parte dai dati inseriti (niente valori fittizi)
     setProfile((prev) => ({
       ...prev,
       name: params.restaurantName.trim() || username,
+      ...(rid ? { rid } : {}),
     }));
+    if (rid) setRestaurantId(rid);
+    void firebaseSyncManager.ensureScope(params.restaurantName.trim() || username).then(
+      async (newRid) => {
+        if (!newRid) return;
+        setRestaurantId(newRid);
+        setProfile((prev) => (prev.rid ? prev : { ...prev, rid: newRid }));
+        await firebaseSyncManager.publishIndexEntry({
+          name: params.restaurantName.trim() || username,
+        });
+      }
+    );
 
     setNeedsSetup(false);
     setCurrentUser(admin);
     return { success: true };
+  };
+
+  // ═══════════════════════════════════════════════════════════════════
+  // 🛟 PROTEZIONE DEI DATI
+  // ═══════════════════════════════════════════════════════════════════
+
+  /** 📇 collega il dispositivo al ristorante scelto */
+  const selectRestaurant = async (rid: string): Promise<boolean> => {
+    if (!isValidRid(rid)) return false;
+    setRestaurantId(rid);
+    setProfile((prev) => ({ ...prev, rid }));
+    firebaseSyncManager.setScope(rid);
+    await firebaseSyncManager.reconnect();
+    await firebaseSyncManager.pushAll();
+    await firebaseSyncManager.publishIndexEntry({
+      name: profile.name || 'Ristorante',
+      city: profile.address || '',
+    });
+    return true;
+  };
+
+  /** 💾 copia di sicurezza immediata */
+  const backupSnapshot = () => {
+    writeSnapshot({
+      [STORAGE_KEYS.USERS]: users,
+      [STORAGE_KEYS.INVENTORY]: inventory,
+      [STORAGE_KEYS.LOGS]: inventoryLogs,
+      [STORAGE_KEYS.TABLES]: tables,
+      [STORAGE_KEYS.RECEIPTS]: receipts,
+      [STORAGE_KEYS.PROFILE]: profile,
+    });
+    setLastBackupAt(new Date().toISOString());
+  };
+
+  /** 🛟 ripristina lo stato dalla copia di sicurezza */
+  const restoreFromBackup = (): { success: boolean; message?: string } => {
+    const snapshot = readSnapshot();
+    if (!snapshot) {
+      return { success: false, message: 'Nessuna copia di sicurezza disponibile.' };
+    }
+    const d = snapshot.data || {};
+    try {
+      if (Array.isArray(d[STORAGE_KEYS.USERS])) setUsers(d[STORAGE_KEYS.USERS]);
+      if (Array.isArray(d[STORAGE_KEYS.INVENTORY])) setInventory(d[STORAGE_KEYS.INVENTORY]);
+      if (Array.isArray(d[STORAGE_KEYS.LOGS])) setInventoryLogs(d[STORAGE_KEYS.LOGS]);
+      if (Array.isArray(d[STORAGE_KEYS.TABLES])) setTables(d[STORAGE_KEYS.TABLES]);
+      if (Array.isArray(d[STORAGE_KEYS.RECEIPTS])) setReceipts(d[STORAGE_KEYS.RECEIPTS]);
+      if (d[STORAGE_KEYS.PROFILE]) setProfile(d[STORAGE_KEYS.PROFILE]);
+      return {
+        success: true,
+        message: `Dati ripristinati dalla copia del ${new Date(
+          snapshot.savedAt
+        ).toLocaleString('it-IT')}`,
+      };
+    } catch (e: any) {
+      return { success: false, message: 'Ripristino non riuscito: ' + (e?.message || '') };
+    }
+  };
+
+  /** ☁️ invia tutto al cloud (ripara un cloud corrotto) */
+  const pushAllToCloud = async (): Promise<boolean> => {
+    if (firebaseSyncManager.getStatus() !== 'connected') return false;
+    await firebaseSyncManager.pushAll();
+    return true;
+  };
+
+  /** 🧹 rimuove i vecchi dati demo dal cloud */
+  const cleanCloudDemo = async (): Promise<number> => {
+    if (firebaseSyncManager.getStatus() !== 'connected') return 0;
+    return firebaseSyncManager.cleanLegacyDemoFromCloud();
   };
 
   // User management
@@ -1423,6 +1636,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         completeSetup,
         needsSetup,
         bootstrapDone,
+        restaurantId,
+        syncWarning,
+        lastBackupAt,
+        availableRestaurants,
+        selectRestaurant,
+        backupSnapshot,
+        restoreFromBackup,
+        pushAllToCloud,
+        cleanCloudDemo,
         skipBootstrap,
         updateProfile,
       }}

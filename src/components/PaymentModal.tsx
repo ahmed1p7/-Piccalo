@@ -32,6 +32,9 @@ import {
   round2,
   splitByRatio,
   splitEqual,
+  allocatePayment,
+  groupAllocationsByMethod,
+  selectedCashTotal,
   summarizePayments,
 } from '../utils/cassa';
 
@@ -90,6 +93,10 @@ export const PaymentModal: React.FC<Props> = ({
   const [shares, setShares] = useState<PaymentSplitRecord[]>([]);
   // importo su cui è stata fatta la divisione (non cambia quando si incassa)
   const [splitBase, setSplitBase] = useState(0);
+  // 📝 totale da dividere (modificabile a mano → l'app ridistribuisce)
+  const [splitTotalInput, setSplitTotalInput] = useState('');
+  // ☑️ persone selezionate (per pagare "per conto di" più persone)
+  const [selectedShares, setSelectedShares] = useState<number[]>([]);
   const wasOpen = useRef(false);
 
   const [method, setMethod] = useState<'contanti' | 'carta'>('contanti');
@@ -112,6 +119,8 @@ export const PaymentModal: React.FC<Props> = ({
       setRatios([]);
       setShares([]);
       setSplitBase(due);
+      setSplitTotalInput(due > 0 ? due.toFixed(2) : '');
+      setSelectedShares([]);
       setMethod('contanti');
       setAmount(due > 0 ? due.toFixed(2) : '');
       setCashGiven('');
@@ -147,6 +156,14 @@ export const PaymentModal: React.FC<Props> = ({
     });
   }, [peopleCount, open]);
 
+  // 📝 l'importo scritto dall'utente è il nuovo totale da dividere
+  useEffect(() => {
+    if (!open || mode !== 'diviso') return;
+    const v = Number(splitTotalInput.replace(',', '.'));
+    if (!Number.isFinite(v) || v < 0) return;
+    if (round2(v) !== round2(splitBase)) setSplitBase(round2(v));
+  }, [splitTotalInput]);
+
   // ── importi delle quote ──
   useEffect(() => {
     if (!open) return;
@@ -177,7 +194,21 @@ export const PaymentModal: React.FC<Props> = ({
   }, [splitKind, ratios, splitBase, open]);
 
   const currentShare = activeShare !== null ? shares[activeShare] : null;
-  const targetAmount = currentShare ? round2(currentShare.amountDue - currentShare.amountPaid) : due;
+
+  // 🧾 Somma delle quote selezionate (pagamento "per conto di" più persone)
+  const selectedSum = selectedShares.reduce(
+    (acc, i) => acc + round2((shares[i]?.amountDue || 0) - (shares[i]?.amountPaid || 0)),
+    0
+  );
+  const selectedCount = selectedShares.filter((i) => !shares[i]?.isPaid).length;
+  /** totale in contante delle quote selezionate (per il resto) */
+  const selectedCash = selectedCashTotal(shares, selectedShares);
+
+  const targetAmount = currentShare
+    ? round2(currentShare.amountDue - currentShare.amountPaid)
+    : selectedShares.length > 0
+    ? round2(selectedSum)
+    : due;
 
   useEffect(() => {
     setAmount(targetAmount > 0 ? targetAmount.toFixed(2) : '');
@@ -276,50 +307,106 @@ export const PaymentModal: React.FC<Props> = ({
       return;
     }
 
-    // tavolo → registra il pagamento sul tavolo (può essere parziale)
-    const res = addTablePayment({
-      tableId: table!.id,
-      amount: value,
-      method,
-      cashGiven: method === 'contanti' ? given : undefined,
-      note: note || undefined,
-      splitLabel: currentShare?.personLabel,
-    });
+    // ── tavolo → registra il pagamento sul tavolo (può essere parziale) ──
+    //
+    // 👥 SUDDIVISIONE DEL PAGAMENTO:
+    //   • una quota singola  → un pagamento
+    //   • più quote selezionate ("paga per conto di") → il pagamento viene
+    //     distribuito sulle quote e, se i metodi sono diversi, si registrano
+    //     più pagamenti (uno per metodo) con il resto calcolato sul contante.
+    // 👥 È una divisione del conto? (una quota attiva o più persone scelte)
+    const isSplitTarget = !!currentShare || selectedShares.length > 0;
+    const targetIndexes = currentShare
+      ? [activeShare as number]
+      : selectedShares.filter((i) => !shares[i]?.isPaid);
 
-    setBusy(false);
+    // distribuisce l'importo sulle quote (in ordine, fino al dovuto)
+    const allocations = isSplitTarget
+      ? allocatePayment(shares, targetIndexes, value)
+      : [];
 
-    if (!res.success) {
-      setError(res.message || 'Pagamento non riuscito.');
+    if (isSplitTarget && !allocations.length) {
+      setError('Nessuna quota da incassare.');
+      setBusy(false);
       return;
     }
 
-    const change = computeChange(
-      method === 'contanti' ? Number(cashGiven.replace(',', '.') || value) : 0,
-      value
-    );
+    // raggruppa per metodo di pagamento
+    // (nel pagamento unico c'è un solo gruppo, con il metodo scelto)
+    const groups = isSplitTarget
+      ? groupAllocationsByMethod(allocations)
+      : [{ method, amount: value, indexes: [] as number[] }];
+
+    // 💵 Il contante ricevuto copre l'importo richiesto: il resto (se c'è)
+    //    viene dato indietro e registrato sul pagamento in contanti.
+    const cashGroup = groups.find((g) => g.method === 'contanti');
+    const cashTotal = cashGroup ? cashGroup.amount : 0;
+    const change = method === 'contanti' ? computeChange(given, value) : 0;
+    // il contante registrato = la quota contante + il resto restituito
+    const cashRecorded = isSplitTarget
+      ? round2(cashTotal + change)
+      : given;
+
+    let lastMessage = '';
+    for (const g of groups) {
+      const res = addTablePayment({
+        tableId: table!.id,
+        amount: g.amount,
+        method: g.method,
+        cashGiven: g.method === 'contanti' ? cashRecorded || undefined : undefined,
+        note:
+          note ||
+          (g.indexes.length > 1
+            ? `Per conto di ${g.indexes
+                .map((i) => shares[i]?.personLabel)
+                .filter(Boolean)
+                .join(', ')}`
+            : undefined),
+        splitLabel:
+          g.indexes.length === 1
+            ? shares[g.indexes[0]]?.personLabel
+            : g.indexes.map((i) => shares[i]?.personLabel).filter(Boolean).join(' + '),
+      });
+
+      if (!res.success) {
+        setError(res.message || 'Pagamento non riuscito.');
+        setBusy(false);
+        return;
+      }
+      lastMessage = `Pagamento di ${euro(g.amount)} € (${g.method}) registrato.`;
+    }
+
+    setBusy(false);
+
     setInfo(
       change > 0
-        ? `Pagamento registrato. Resto: ${euro(change)} €`
-        : 'Pagamento registrato.'
+        ? `${lastMessage} Resto da restituire: ${euro(change)} €`
+        : lastMessage || 'Pagamento registrato.'
     );
 
-    // aggiorna la quota interessata
-    if (currentShare) {
+    // aggiorna le quote interessate
+    if (allocations.length) {
       setShares((prev) =>
-        prev.map((s, i) =>
-          i === activeShare
-            ? {
-                ...s,
-                amountPaid: round2(s.amountPaid + value),
-                method,
-                cashGiven: method === 'contanti' ? given : undefined,
-                changeReturned: round2(s.changeReturned + change),
-                isPaid: s.amountPaid + value >= s.amountDue - 0.009,
-              }
-            : s
-        )
+        prev.map((sh, i) => {
+          const alloc = allocations.find((a) => a.index === i);
+          if (!alloc) return sh;
+          const paid = round2(sh.amountPaid + alloc.amount);
+          const allocChange = alloc.method === 'contanti' ? change : 0;
+          return {
+            ...sh,
+            amountPaid: paid,
+            method: alloc.method,
+            cashGiven:
+              alloc.method === 'contanti'
+                ? round2((sh.cashGiven || 0) + cashRecorded)
+                : undefined,
+            changeReturned: round2(sh.changeReturned + allocChange),
+            isPaid: paid >= sh.amountDue - 0.009,
+          };
+        })
       );
       setActiveShare(null);
+      setSelectedShares([]);
     }
 
     setNote('');
@@ -477,6 +564,28 @@ export const PaymentModal: React.FC<Props> = ({
         {/* ── Sezione divisione ── */}
         {mode === 'diviso' && !isQuick && (
           <div className="surface-raised p-3.5 space-y-3">
+            {/* 📝 Totale da dividere: l'utente scrive l'importo e l'app
+                lo distribuisce automaticamente sulle persone. */}
+            <Field
+              label="Totale da dividere"
+              hint="Scrivi l'importo da spartire: viene diviso in automatico."
+            >
+              <div className="relative">
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  value={splitTotalInput}
+                  onChange={(e) => setSplitTotalInput(e.target.value)}
+                  className="!pr-10 tnum"
+                  placeholder={due > 0 ? due.toFixed(2) : '0.00'}
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-mist-500">
+                  €
+                </span>
+              </div>
+            </Field>
+
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <Users className="w-4 h-4 text-mist-500" />
@@ -522,87 +631,191 @@ export const PaymentModal: React.FC<Props> = ({
               {shares.map((s, i) => {
                 const done = s.isPaid;
                 const active = activeShare === i;
+                const checked = selectedShares.includes(i);
+                const shareMethod = s.method === 'carta' ? 'carta' : 'contanti';
                 return (
                   <div
                     key={s.id}
-                    className={`flex items-center gap-2.5 rounded-xl border px-3 py-2.5 transition ${
-                      active
+                    className={`rounded-xl border px-3 py-2.5 transition ${
+                      done
+                        ? 'border-mint-400/40 bg-mint-600/15'
+                        : active
                         ? 'border-brand-500/50 bg-brand-500/10'
-                        : done
-                        ? 'border-mint-400/30 bg-mint-600/10'
+                        : checked
+                        ? 'border-violet-400/40 bg-violet-400/10'
                         : 'border-ink-700 bg-ink-900'
                     }`}
                   >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-mist-100">
-                          {s.personLabel}
-                        </span>
-                        {done && <Badge tone="mint">pagato</Badge>}
-                        {!done && s.amountPaid > 0 && (
-                          <Badge tone="amber">parziale</Badge>
-                        )}
-                      </div>
-                      <div className="mt-0.5 flex items-center gap-2">
-                        <Amount value={s.amountDue} size="sm" />
-                        {splitKind === 'quote' && (
-                          <span className="text-[10px] text-mist-500">
-                            {s.ratio ?? 0}%
-                          </span>
-                        )}
-                        {s.amountPaid > 0 && !done && (
-                          <span className="text-[10px] text-mint-400">
-                            pagati {euro(s.amountPaid)} €
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                    <div className="flex items-center gap-2.5">
+                      {/* ☑️ selezione multipla (pagare per conto di più persone) */}
+                      {!done && (
+                        <button
+                          type="button"
+                          aria-label={`Seleziona ${s.personLabel}`}
+                          onClick={() =>
+                            setSelectedShares((prev) =>
+                              prev.includes(i)
+                                ? prev.filter((x) => x !== i)
+                                : [...prev, i]
+                            )
+                          }
+                          className={`h-5 w-5 shrink-0 rounded-md border flex items-center justify-center transition ${
+                            checked
+                              ? 'bg-violet-400 border-violet-400 text-ink-950'
+                              : 'border-ink-600 bg-ink-850 text-transparent hover:border-violet-400/60'
+                          }`}
+                        >
+                          <Check className="w-3.5 h-3.5" strokeWidth={3} />
+                        </button>
+                      )}
 
-                    {splitKind === 'quote' && !done && (
-                      <Input
-                        small
-                        type="number"
-                        min={0}
-                        value={
-                          ratios.length === shares.length ? ratios[i] : i === 0 ? 100 : 0
-                        }
-                        onChange={(e) => {
-                          const v = Number(e.target.value);
-                          const next =
-                            ratios.length === shares.length ? [...ratios] : Array.from(
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-bold text-mist-100">
+                            {s.personLabel}
+                          </span>
+                          {done && <Badge tone="mint">✓ Pagato</Badge>}
+                          {!done && s.amountPaid > 0 && (
+                            <Badge tone="amber">parziale</Badge>
+                          )}
+                          {checked && !done && (
+                            <Badge tone="neutral">selezionato</Badge>
+                          )}
+                        </div>
+                        <div className="mt-0.5 flex items-center gap-2 flex-wrap">
+                          <Amount value={s.amountDue} size="sm" />
+                          {splitKind === 'quote' && (
+                            <span className="text-[10px] text-mist-500">
+                              {s.ratio ?? 0}%
+                            </span>
+                          )}
+                          {s.amountPaid > 0 && !done && (
+                            <span className="text-[10px] text-mint-400">
+                              pagati {euro(s.amountPaid)} €
+                            </span>
+                          )}
+                          {!done && s.amountPaid === 0 && (
+                            <span className="text-[10px] text-mist-500">
+                              deve {euro(s.amountDue)} €
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {splitKind === 'quote' && !done && (
+                        <Input
+                          small
+                          type="number"
+                          min={0}
+                          value={
+                            ratios.length === shares.length ? ratios[i] : i === 0 ? 100 : 0
+                          }
+                          onChange={(e) => {
+                            const v = Number(e.target.value);
+                            const next =
+                              ratios.length === shares.length ? [...ratios] : Array.from(
                                 { length: shares.length },
                                 (_, k) => (k === 0 ? 100 : 0)
                               );
-                          next[i] = Number.isFinite(v) ? v : 0;
-                          setRatios(next);
-                        }}
-                        className="!w-16 !px-2 text-center"
-                      />
-                    )}
+                            next[i] = Number.isFinite(v) ? v : 0;
+                            setRatios(next);
+                          }}
+                          className="!w-16 !px-2 text-center"
+                        />
+                      )}
 
-                    {done ? (
-                      <Check className="w-4 h-4 text-mint-400" />
-                    ) : (
-                      <button
-                        onClick={() => {
-                          setActiveShare(active ? null : i);
-                          setError('');
-                        }}
-                        className={`btn-sm rounded-lg px-3 py-1.5 text-[11px] font-bold transition ${
-                          active
-                            ? 'bg-brand-500 text-ink-950'
-                            : 'bg-ink-800 text-mist-300 border border-ink-600 hover:border-brand-500/40 hover:text-brand-300'
-                        }`}
-                      >
-                        {active ? 'Annulla' : 'Paga'}
-                      </button>
+                      {done ? (
+                        <Check className="w-4 h-4 text-mint-400 shrink-0" />
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setActiveShare(active ? null : i);
+                            setSelectedShares([]);
+                            setError('');
+                          }}
+                          className={`btn-sm rounded-lg px-3 py-1.5 text-[11px] font-bold transition shrink-0 ${
+                            active
+                              ? 'bg-brand-500 text-ink-950'
+                              : 'bg-ink-800 text-mist-300 border border-ink-600 hover:border-brand-500/40 hover:text-brand-300'
+                          }`}
+                        >
+                          {active ? 'Annulla' : 'Paga'}
+                        </button>
+                      )}
+                    </div>
+
+                    {/* 💳 metodo di pagamento della persona */}
+                    {!done && (
+                      <div className="mt-2 flex items-center gap-1.5 border-t border-ink-700/70 pt-2">
+                        <span className="text-[10px] uppercase tracking-wide text-mist-500 mr-1">
+                          Paga con
+                        </span>
+                        {(['contanti', 'carta'] as const).map((m) => (
+                          <button
+                            key={m}
+                            type="button"
+                            onClick={() =>
+                              setShares((prev) =>
+                                prev.map((pp, k) =>
+                                  k === i ? { ...pp, method: m } : pp
+                                )
+                              )
+                            }
+                            className={`rounded-lg px-2.5 py-1 text-[10px] font-bold uppercase transition ${
+                              shareMethod === m
+                                ? 'bg-brand-500/20 text-brand-300 border border-brand-500/40'
+                                : 'bg-ink-850 text-mist-500 border border-ink-700 hover:text-mist-300'
+                            }`}
+                          >
+                            {m === 'contanti' ? 'Contanti' : 'Carta'}
+                          </button>
+                        ))}
+                      </div>
                     )}
                   </div>
                 );
               })}
             </div>
 
-            <div className="flex items-center justify-between text-[11px] text-mist-500">
+            {/* 🧾 Riepilogo + pagamento per conto di più persone */}
+            <div className="rounded-xl border border-ink-700 bg-ink-900 px-3 py-2.5 space-y-2">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-mist-400">Quote saldate</span>
+                <span className="font-bold text-mist-200">
+                  {paidShares}/{shares.length}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-mist-400">Restano da incassare</span>
+                <span
+                  className={`font-bold tnum ${
+                    remaining > 0.009 ? 'text-brand-300' : 'text-mint-400'
+                  }`}
+                >
+                  {euro(remaining)} €
+                </span>
+              </div>
+
+              {selectedCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveShare(null);
+                    setError('');
+                    setInfo(
+                      `Puoi incassare per conto di ${selectedCount} ${
+                        selectedCount === 1 ? 'persona' : 'persone'
+                      }: totale ${euro(round2(selectedSum))} €.`
+                    );
+                  }}
+                  className="w-full rounded-lg bg-violet-400/15 border border-violet-400/40 px-3 py-2 text-[11px] font-bold text-violet-400 transition hover:bg-violet-400/25"
+                >
+                  Paga per conto di {selectedCount}{' '}
+                  {selectedCount === 1 ? 'persona' : 'persone'} ·{' '}
+                  {euro(round2(selectedSum))} €
+                </button>
+              )}
+            </div>            <div className="flex items-center justify-between text-[11px] text-mist-500">
               <span>
                 {paidShares}/{shares.length} quote saldate
               </span>
@@ -615,7 +828,7 @@ export const PaymentModal: React.FC<Props> = ({
         {/* ⚠️ Prima condizione: (!isQuick && mode === 'singolo') → nella vendita
             rapida il modulo NON compariva affatto (modale vuoto, impossibile
             incassare). Ora: in modalità singolo il modulo c'è sempre. */}
-        {(mode === 'singolo' || currentShare) && (
+        {(mode === 'singolo' || currentShare || selectedShares.length > 0) && (
           <div className="surface-raised p-3.5 space-y-3">
             {currentShare && (
               <div className="flex items-center justify-between rounded-lg bg-brand-500/10 border border-brand-500/30 px-3 py-2">
@@ -626,6 +839,27 @@ export const PaymentModal: React.FC<Props> = ({
               </div>
             )}
 
+            {!currentShare && selectedShares.length > 0 && (
+              <div className="flex items-center justify-between rounded-lg bg-violet-400/10 border border-violet-400/30 px-3 py-2">
+                <span className="text-xs font-bold text-violet-400">
+                  Pagamento per conto di {selectedCount}{' '}
+                  {selectedCount === 1 ? 'persona' : 'persone'}
+                </span>
+                <Amount value={targetAmount} size="sm" />
+              </div>
+            )}
+
+            {selectedShares.length > 0 && (
+              <p className="text-[11px] leading-relaxed text-mist-400">
+                💳 Il metodo è quello impostato su ogni persona
+                {selectedCash > 0
+                  ? ` · contante per ${euro(selectedCash)} €`
+                  : ' · tutto con carta'}
+                .
+              </p>
+            )}
+
+            {selectedShares.length === 0 && (
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => setMethod('contanti')}
@@ -650,6 +884,7 @@ export const PaymentModal: React.FC<Props> = ({
                 Carta
               </button>
             </div>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               <Field label="Importo da incassare">
@@ -663,7 +898,7 @@ export const PaymentModal: React.FC<Props> = ({
                 />
               </Field>
 
-              {method === 'contanti' && (
+              {(method === 'contanti' || selectedCash > 0) && (
                 <Field label="Contante ricevuto">
                   <Input
                     type="number"
@@ -678,7 +913,7 @@ export const PaymentModal: React.FC<Props> = ({
               )}
             </div>
 
-            {method === 'contanti' && cashPresets.length > 0 && (
+            {(method === 'contanti' || selectedCash > 0) && cashPresets.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {cashPresets.map((v) => (
                   <button
@@ -698,11 +933,20 @@ export const PaymentModal: React.FC<Props> = ({
               </div>
             )}
 
-            {method === 'contanti' && Number(cashGiven) > targetAmount && (
-              <div className="rounded-lg bg-amber-600/15 border border-amber-400/30 px-3 py-2 text-xs font-bold text-amber-400">
-                Resto da restituire: {euro(round2(Number(cashGiven) - targetAmount))} €
-              </div>
-            )}
+            {(method === 'contanti' || selectedCash > 0) &&
+              Number(cashGiven) >
+                (selectedShares.length > 0 ? selectedCash : targetAmount) && (
+                <div className="rounded-lg bg-amber-600/15 border border-amber-400/30 px-3 py-2 text-xs font-bold text-amber-400">
+                  Resto da restituire:{' '}
+                  {euro(
+                    round2(
+                      Number(cashGiven) -
+                        (selectedShares.length > 0 ? selectedCash : targetAmount)
+                    )
+                  )}{' '}
+                  €
+                </div>
+              )}
 
             <Field label="Nota (opzionale)">
               <Input
@@ -730,7 +974,13 @@ export const PaymentModal: React.FC<Props> = ({
               onClick={handleRegisterPayment}
               disabled={busy || targetAmount <= 0}
             >
-              {currentShare ? `Registra pagamento ${currentShare.personLabel}` : 'Registra pagamento'}
+              {currentShare
+                ? `Registra pagamento ${currentShare.personLabel}`
+                : selectedShares.length > 0
+                ? `Registra pagamento per ${selectedCount} ${
+                    selectedCount === 1 ? 'persona' : 'persone'
+                  }`
+                : 'Registra pagamento'}
               <ArrowRight className="w-4 h-4" />
             </Btn>
 

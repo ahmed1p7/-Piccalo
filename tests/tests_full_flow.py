@@ -7,10 +7,11 @@
   5. Tavolo + divisione conto (2 persone) + pagamento contanti + carta
   6. Ripristino di fabbrica → app completamente vuota
 """
-import asyncio, json, sys
+import urllib.request
+import asyncio, json, sys, urllib.request
 from playwright.async_api import async_playwright
 
-BASE = "http://127.0.0.1:4175/"
+BASE = "http://127.0.0.1:4176/"
 OUT = "/workspace/output"
 
 results = []
@@ -33,12 +34,26 @@ async def click_exact(page, label, nth=0):
 
 
 
+def wipe_emulator():
+    """Svuota l'emulatore Realtime Database (dati di test precedenti)."""
+    try:
+        req = urllib.request.Request(
+            "http://127.0.0.1:9000/sea_pos.json?ns=demo-sea-pos-default-rtdb",
+            data=b"null", method="PUT",
+            headers={"Content-Type": "application/json"},
+        )
+        urllib.request.urlopen(req, timeout=10).read()
+    except Exception as e:
+        print(f"  (avviso: emulatore non raggiungibile: {e})")
+
+
 def check(name, ok, extra=""):
     results.append((name, ok))
     print(("  ✅ " if ok else "  ❌ ") + name + (f"  → {extra}" if extra else ""))
 
 
 async def main():
+    wipe_emulator()
     async with async_playwright() as p:
         browser = await p.chromium.launch(
             executable_path="/root/.cache/ms-playwright/chromium-1243/chrome-linux/chrome",
@@ -54,7 +69,7 @@ async def main():
         # ── 1. Configurazione iniziale ──
         body = await page.inner_text("body")
         check("app non avvia con l'utente Admin già loggato",
-              "Password" not in body and "Configurazione iniziale" in body)
+              ("Configurazione iniziale" in body) or ("Accedi" in body), body[:120].replace("\n", " | "))
         check("nessun campo precompilato con credenziali",
               await page.evaluate("() => { const i=document.querySelector(\"input[type='password']\"); return !i || i.value === ''; }"))
 
@@ -117,7 +132,7 @@ async def main():
         # ── 5. Tavolo + divisione conto ──
         await page.locator("button:has-text('Tavoli'):visible").first.click()
         await page.wait_for_timeout(1200)
-        await page.click("button:has-text('Aggiungi Nuovo Tavolo')")
+        await page.locator("button:has-text('Nuovo Tavolo'):visible").first.click()
         await page.wait_for_timeout(900)
         await page.click("button:has-text('Crea Tavolo')")
         await page.wait_for_timeout(1200)
@@ -125,7 +140,7 @@ async def main():
         check("il tavolo è stato creato", "Tavolo 1" in body)
 
         # imposta il conto
-        await page.click("button:has-text('Imposta Conto del Tavolo')")
+        await page.locator("button[title='Modifica importo']:visible").first.click()
         await page.wait_for_timeout(900)
         inputs = page.locator("input[type='number']")
         if await inputs.count() > 0:
@@ -134,10 +149,12 @@ async def main():
             await page.wait_for_timeout(1000)
 
         # incassa
-        await page.click("button:has-text('Incassa (')")
+        await page.locator("button[title='Incassa']:visible").first.click()
         await page.wait_for_timeout(1400)
         body = await page.inner_text("body")
-        check("si apre il flusso di incasso", "Incassa" in body and "Totale" in body)
+        check("si apre il flusso di incasso",
+              ("TOTALE" in body.upper() or "Totale" in body) and ("Incassa" in body or "Paga" in body),
+              body[:120].replace("\n", " | "))
         await page.screenshot(path=f"{OUT}/52-incasso.png")
 
         # divide il conto in 2

@@ -4,11 +4,11 @@
 
 ---
 
-## 📦 النسخة الحالية: Sea POS 1.5.0
+## 📦 النسخة الحالية: Sea POS 1.6.0
 
 | | |
 |---|---|
-| ملف APK | `Sea-POS.apk` (داخل مجلد `output`) أو مباشرة: <https://github.com/ahmed1p7/-Piccalo/releases/download/v1.5.0/Sea-POS.apk> |
+| ملف APK | `Sea-POS.apk` (داخل مجلد `output`) أو مباشرة: <https://github.com/ahmed1p7/-Piccalo/releases/download/v1.6.0/Sea-POS.apk> |
 | نسخة ثابتة | <https://github.com/ahmed1p7/-Piccalo/releases/download/latest/Sea-POS.apk> |
 | تطبيق الويب (PWA) | <https://ahmed1p7.github.io/-Piccalo/> |
 | الحد الأدنى | Android 7.0+ · حزمة `com.sea.pos` |
@@ -240,6 +240,55 @@ Cassa · Tavoli · Cucina · Bar · Magazzino · Report · Personale · Backup.
 
 ---
 
+## 🛡️ الإصدار 1.6.0 — إصلاح فقدان البيانات + تقسيم الفاتورة + تصميم جديد
+
+### 1) 🐛 فقدان البيانات عند التحديث — تم حل السبب الجذري
+
+**ما كان succedendo:** كل مطاعم التطبيق كانت تكتب في **نفس المسار السحابي**
+(`sea_pos/shared_state`). لذلك:
+- أي مطعم آخر يستخدم التطبيق كانت بياناته تدخل عندك
+- البيانات الوهمية القديمة (Admin/5555، 21 صنفاً، Tavolo 1..4) كانت تُعاد
+  إلى جهازك بعد كل تحديث، وتُشوّه بياناتك الحقيقية
+- عند كل تحديث كان التطبيق يقرأ السحابة فيتبنّاها بدل بياناتك المحلية
+
+**الحل (الإصدار 1.6.0):**
+| قبل | الآن |
+|---|---|
+| مسار سحابي مشترك لكل المطاعم | **مسار خاص لكل مطعم** (`sea_pos/v2/restaurants/<id>`) |
+| السحابة تغلب على البيانات المحلية | **السحابة لا يمكنها أبداً استبدال بياناتك** |
+| القيم الفارغة تمسح الحقول (اسم المطعم!) | **القيمة الفارغة لا تمسح قيمة موجودة** |
+| بدون نسخة احتياطية | **نسخة احتياطية محلية** تُحفظ عند كل تعديل |
+| الحسابات التجريبية (Admin/5555) تعود | **تُحذف تلقائياً** (mai l'ultimo admin) |
+
+**ماذا يجب أن تفعل:**
+1. حدّث **كل** الأجهزة إلى 1.6.0
+2. في «Impostazioni → Protezione dei dati» اضغط **«Invia tutto al cloud»**
+   (يرسل بيانات جهازك إلى المسار الجديد الخاص بك)
+3. تأكد أن «Spazio cloud» يعرض نفس المعرّف على كل الأجهزة (مثال: `r_a1b2c3d4`)
+
+> 💡 إن كان جهازك القديم ما زال يحتوي بياناتك القديمة، aggiornalo e usa
+> «Invia tutto al cloud» da quello: i dati torneranno su tutti gli altri.
+
+### 2) 🧾 تقسيم الفاتورة — 4 funzionalità nuove
+
+1. **Totale da dividere**: scrivi l'importo → l'app lo distribuisce subito
+   sulle persone (2, 3, 4… persone) e vedi quanto deve ognuno
+2. **Stato di pagamento**: ogni persona diventa **verde «✓ Pagato»** quando
+   salda la sua quota; in basso vedi **«Restano da incassare»**
+3. **Metodo per persona**: ogni quota sceglie **Contanti** o **Carta**
+4. **Paga per conto di più persone**: spunta le persone → un solo pagamento
+   per tutte → scrivi quanto hai ricevuto → l'app calcola il **resto** esatto
+
+### 3) 🎨 Nuove schermate
+
+- **Tavoli**: griglia di card con filtri (Tutti / Liberi / Occupati / Conto
+  aperto), statistiche in alto, importo grande e azioni rapide
+  (Incassa · Modifica importo · Dettagli · Vai alla cassa · Libera · Elimina)
+- **Magazzino**: ricerca e filtri sempre visibili, statistiche, controlli
+  quantità **−1 / +1** diretti in lista, storico movimenti e inventario fisico
+
+---
+
 ## 🧾 شاشة الكاشا (Punto Cassa) — كيف تستعملها
 
 > 🔧 في 1.5.0 تم إصلاح عدة أخطاء في الكاشا (نموذج الدفع كان فارغاً في
@@ -307,7 +356,7 @@ Cassa · Tavoli · Cucina · Bar · Magazzino · Report · Personale · Backup.
 
 **الخطوة 1 — حدّث كل الأجهزة على 1.4.0**
 افتح التطبيق على كل جوال → إشعار التحديث → **Installa ora**.
-(أو نزّل: <https://github.com/ahmed1p7/-Piccalo/releases/download/v1.5.0/Sea-POS.apk>)
+(أو نزّل: <https://github.com/ahmed1p7/-Piccalo/releases/download/v1.6.0/Sea-POS.apk>)
 
 **الخطوة 2 — اختر مسار الاسترجاع**
 

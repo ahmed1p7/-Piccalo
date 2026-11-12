@@ -57,14 +57,43 @@ export function isDeepEqual(a: any, b: any): boolean {
 }
 
 /**
+ * Un valore è "vuoto" se non porta informazione:
+ * stringa vuota, null, undefined, NaN, array vuoto, oggetto senza chiavi.
+ *
+ * ⚠️ Serve a una regola fondamentale: un valore VUOTO non deve mai
+ * cancellare un valore pieno. Senza questa regola un dispositivo con
+ * il profilo vuoto (per esempio appena installato) cancellava il
+ * nome/indirizzo del ristorante di un altro dispositivo (bug: "il
+ * profilo del ristorante si svuota dopo la sincronizzazione").
+ */
+export function isEmptyValue(value: any): boolean {
+  if (value === undefined || value === null) return true;
+  if (typeof value === 'string') return value.trim().length === 0;
+  if (typeof value === 'number') return Number.isNaN(value);
+  if (Array.isArray(value)) return value.length === 0;
+  if (typeof value === 'object') return Object.keys(value).length === 0;
+  return false;
+}
+
+/**
  * Merge di un singolo valore.
  * - local === remote        → local
  * - local === base          → remote ha cambiato → remote
  * - remote === base         → local ha cambiato  → local
  * - conflitto               → local (vince chi sta lavorando)
+ *
+ * 🛡️ REGOLA ANTI-PERDITA: se uno dei due lati ha un valore VUOTO e
+ * l'altro ha un valore pieno, vince il valore pieno (mai la vuoto).
  */
 export function mergeValue(base: any, local: any, remote: any): any {
   if (isDeepEqual(local, remote)) return local;
+
+  // 🛡️ il vuoto non cancella il pieno (in nessuna delle due direzioni)
+  const localEmpty = isEmptyValue(local);
+  const remoteEmpty = isEmptyValue(remote);
+  if (localEmpty && !remoteEmpty) return remote;
+  if (!localEmpty && remoteEmpty) return local;
+
   if (isDeepEqual(local, base)) return remote;
   if (isDeepEqual(remote, base)) return local;
   return local;

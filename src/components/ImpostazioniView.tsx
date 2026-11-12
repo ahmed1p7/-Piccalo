@@ -11,9 +11,14 @@ import {
   Building2,
   Cloud,
   Database,
+  HardDriveDownload,
   KeyRound,
   Save,
+  ShieldCheck,
+  Sparkles,
   Store,
+  Trash2,
+  UploadCloud,
   Users,
   Wifi,
 } from 'lucide-react';
@@ -24,7 +29,23 @@ import { SyncModal } from './SyncModal';
 import { Btn, Field, Input, Modal, SectionTitle } from './ui';
 
 export const ImpostazioniView: React.FC = () => {
-  const { profile, updateProfile, currentUser, setActiveView, users } = useApp();
+  const {
+    profile,
+    updateProfile,
+    currentUser,
+    setActiveView,
+    users,
+    restaurantId,
+    syncWarning,
+    lastBackupAt,
+    backupSnapshot,
+    restoreFromBackup,
+    pushAllToCloud,
+    cleanCloudDemo,
+  } = useApp();
+
+  const [protectMsg, setProtectMsg] = useState<string | null>(null);
+  const [protectBusy, setProtectBusy] = useState(false);
 
   const [name, setName] = useState(profile.name || '');
   const [subTitle, setSubTitle] = useState(profile.subTitle || '');
@@ -150,6 +171,121 @@ export const ImpostazioniView: React.FC = () => {
             <Save className="w-4 h-4" />
             Salva i dati
           </Btn>
+        </div>
+
+
+        {/* 🛡️ Protezione dati */}
+        <div className="surface p-4 sm:p-5 space-y-3">
+          <SectionTitle
+            action={
+              <span className="text-[10px] font-bold uppercase tracking-wider text-mint-400">
+                Attiva
+              </span>
+            }
+          >
+            🛡️ Protezione dei dati
+          </SectionTitle>
+
+          <p className="text-xs leading-relaxed text-mist-400">
+            Ogni ristorante ha il <strong className="text-mist-200">proprio spazio
+            nel cloud</strong>: i dati non si mescolano mai con quelli di un altro
+            ristorante. In più l&apos;app tiene una copia di sicurezza locale
+            ad ogni modifica.
+          </p>
+
+          <div className="surface-raised p-3.5 space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[11px] text-mist-500">Spazio cloud</span>
+              <code className="text-[11px] font-mono text-brand-300 bg-brand-500/10 border border-brand-500/20 rounded px-2 py-0.5">
+                {restaurantId || 'non ancora assegnato'}
+              </code>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[11px] text-mist-500">Ultima copia locale</span>
+              <span className="text-[11px] text-mist-200">
+                {lastBackupAt
+                  ? new Date(lastBackupAt).toLocaleString('it-IT')
+                  : '—'}
+              </span>
+            </div>
+          </div>
+
+          {syncWarning && (
+            <div className="rounded-xl border border-amber-600/40 bg-amber-600/10 p-3 text-[11px] leading-relaxed text-amber-400">
+              ⚠️ {syncWarning}
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <Btn
+              variant="soft"
+              size="sm"
+              disabled={protectBusy}
+              onClick={() => {
+                backupSnapshot();
+                setProtectMsg('✓ Copia di sicurezza salvata su questo dispositivo.');
+              }}
+            >
+              <HardDriveDownload className="w-4 h-4" />
+              Salva copia locale
+            </Btn>
+            <Btn
+              variant="soft"
+              size="sm"
+              disabled={protectBusy}
+              onClick={() => {
+                const res = restoreFromBackup();
+                setProtectMsg(
+                  res.success
+                    ? '✓ ' + res.message
+                    : '⚠️ ' + (res.message || 'Ripristino non riuscito.')
+                );
+              }}
+            >
+              <Sparkles className="w-4 h-4" />
+              Ripristina dalla copia
+            </Btn>
+            <Btn
+              variant="soft"
+              size="sm"
+              disabled={protectBusy}
+              onClick={async () => {
+                setProtectBusy(true);
+                const ok = await pushAllToCloud();
+                setProtectBusy(false);
+                setProtectMsg(
+                  ok
+                    ? '✓ Tutti i dati di questo dispositivo sono stati inviati al cloud.'
+                    : '⚠️ Cloud non raggiungibile: riprova quando c\'è rete.'
+                );
+              }}
+            >
+              <UploadCloud className="w-4 h-4" />
+              Invia tutto al cloud
+            </Btn>
+            <Btn
+              variant="soft"
+              size="sm"
+              disabled={protectBusy}
+              onClick={async () => {
+                setProtectBusy(true);
+                const removed = await cleanCloudDemo();
+                setProtectBusy(false);
+                setProtectMsg(
+                  removed > 0
+                    ? `✓ Rimossi ${removed} vecchi elementi demo dal cloud.`
+                    : '✓ Nessun dato demo trovato nel cloud.'
+                );
+              }}
+            >
+              <Trash2 className="w-4 h-4" />
+              Pulisci dati demo
+            </Btn>
+          </div>
+
+          {protectMsg && (
+            <p className="text-[11px] leading-relaxed text-mist-300">{protectMsg}</p>
+          )}
         </div>
 
         {/* Account e strumenti */}

@@ -8,12 +8,29 @@
  */
 
 import React, { useState } from 'react';
-import { AlertTriangle, ArrowRight, KeyRound, Store, User, Waves } from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowRight,
+  Building2,
+  KeyRound,
+  Store,
+  User,
+  Waves,
+} from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Btn, Field, Input } from './ui';
 
 export const SetupScreen: React.FC = () => {
-  const { completeSetup, syncStatus, syncError } = useApp();
+  const {
+    completeSetup,
+    syncStatus,
+    syncError,
+    availableRestaurants,
+    selectRestaurant,
+  } = useApp();
+
+  const [picking, setPicking] = useState(false);
+  const [joining, setJoining] = useState<string | null>(null);
 
   const [restaurantName, setRestaurantName] = useState('');
   const [username, setUsername] = useState('');
@@ -100,6 +117,56 @@ export const SetupScreen: React.FC = () => {
                 </code>
                 , poi riapri l'app.
               </p>
+            </div>
+          )}
+
+
+          {/* 📇 Se nel cloud ci sono più ristoranti → l'utente sceglie
+              con quale collegarsi (nessun codice da incollare). */}
+          {availableRestaurants.length > 1 && !picking && !joining && (
+            <div className="mb-4 rounded-2xl bg-ink-900 border border-brand-500/25 p-4 space-y-3 animate-slideUp">
+              <div className="flex items-start gap-2 text-xs font-bold text-brand-300">
+                <Building2 className="w-4 h-4 shrink-0 mt-px" />
+                <span>Nel cloud ci sono più ristoranti</span>
+              </div>
+              <p className="text-[11px] text-mist-400 leading-relaxed">
+                Scegli con quale vuoi lavorare: i dati di ogni ristorante
+                stanno in uno spazio separato e non si mescolano mai.
+              </p>
+              <div className="space-y-2">
+                {availableRestaurants.map((r) => (
+                  <button
+                    key={r.rid}
+                    type="button"
+                    onClick={async () => {
+                      setJoining(r.rid);
+                      await selectRestaurant(r.rid);
+                      setJoining(null);
+                    }}
+                    className="w-full text-left surface-raised p-3.5 flex items-center gap-3 hover:border-brand-500/40 transition-colors"
+                  >
+                    <div className="h-9 w-9 shrink-0 rounded-xl bg-brand-500/15 text-brand-300 border border-brand-500/25 flex items-center justify-center">
+                      <Store className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-bold text-mist-100 truncate">
+                        {r.name || 'Ristorante'}
+                      </div>
+                      {r.city && (
+                        <div className="text-[11px] text-mist-500 truncate">{r.city}</div>
+                      )}
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-brand-400 shrink-0" />
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setPicking(true)}
+                className="text-[11px] text-mist-400 underline underline-offset-2"
+              >
+                Crea invece un ristorante nuovo
+              </button>
             </div>
           )}
 

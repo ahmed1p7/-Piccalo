@@ -85,3 +85,91 @@ export function summarizePayments(
 export function isFullyPaid(total: number, paid: number): boolean {
   return round2(Number(paid) || 0) + 0.009 >= round2(Number(total) || 0);
 }
+
+/**
+ * 👥 Distribuisce un importo sulle quote selezionate.
+ *
+ * Usato quando una persona paga per conto di altre (o quando una quota
+ * viene saldata parzialmente): l'importo viene distribuito in ordine,
+ * fino a coprire il dovuto di ciascuna.
+ */
+export interface SplitShareLike {
+  amountDue: number;
+  amountPaid: number;
+  isPaid?: boolean;
+  method?: string;
+}
+
+export interface SplitAllocation {
+  index: number;
+  amount: number;
+  method: 'contanti' | 'carta';
+}
+
+export function allocatePayment(
+  shares: SplitShareLike[],
+  indexes: number[],
+  amount: number
+): SplitAllocation[] {
+  const out: SplitAllocation[] = [];
+  let left = round2(amount);
+  for (const idx of indexes) {
+    if (left <= 0.009) break;
+    const share = shares[idx];
+    if (!share || share.isPaid) continue;
+    const owed = round2(share.amountDue - share.amountPaid);
+    const take = round2(Math.min(owed, left));
+    if (take > 0) {
+      out.push({
+        index: idx,
+        amount: take,
+        method: share.method === 'carta' ? 'carta' : 'contanti',
+      });
+      left = round2(left - take);
+    }
+  }
+  return out;
+}
+
+/**
+ * 💳 Raggruppa le quote da incassare per metodo di pagamento.
+ * Se un gruppo paga per conto di più persone, si registra UN solo
+ * pagamento (il totale del gruppo) con l'etichetta delle persone.
+ */
+export function groupAllocationsByMethod(
+  allocations: SplitAllocation[]
+): { method: 'contanti' | 'carta'; amount: number; indexes: number[] }[] {
+  const groups: { method: 'contanti' | 'carta'; amount: number; indexes: number[] }[] = [];
+  for (const alloc of allocations) {
+    const g = groups.find((x) => x.method === alloc.method);
+    if (g) {
+      g.amount = round2(g.amount + alloc.amount);
+      g.indexes.push(alloc.index);
+    } else {
+      groups.push({
+        method: alloc.method,
+        amount: alloc.amount,
+        indexes: [alloc.index],
+      });
+    }
+  }
+  return groups;
+}
+
+/**
+ * 💵 Totale in contante delle quote selezionate (serve per calcolare
+ * il resto quando qualcuno paga per conto di altri).
+ */
+export function selectedCashTotal(
+  shares: SplitShareLike[],
+  indexes: number[]
+): number {
+  return round2(
+    indexes.reduce((acc, i) => {
+      const share = shares[i];
+      if (!share || share.isPaid) return acc;
+      const owed = round2(share.amountDue - share.amountPaid);
+      return share.method === 'carta' ? acc : round2(acc + owed);
+    }, 0)
+  );
+}

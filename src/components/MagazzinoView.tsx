@@ -1,14 +1,18 @@
 /**
- * 📦 Magazzino — materie prime, prodotti finiti, movimenti e inventario fisico.
+ * 📦 Magazzino — scorte, soglie, movimenti e inventario fisico.
  *
- * Il markup segue il design system (Card / Btn / Field / Badge / Stat / Amount).
- * Logica, stati e handler restano identici a prima.
+ * Schermata ridisegnata per essere velocissima durante il servizio:
+ * toolbar persistente (ricerca + filtri sempre visibili), riepilogo
+ * compatto, elenco articoli con correzioni +/- in linea e registro
+ * movimenti leggibile.
+ *
+ * Design system: esclusivamente token del tema "Charcoal Minimal"
+ * (ink / mist / brand / semantici). Interfaccia interamente in italiano.
  */
 
 import React, { useMemo, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import {
-  AlertCircle,
   AlertTriangle,
   ArrowDownRight,
   ArrowUpRight,
@@ -16,15 +20,19 @@ import {
   Calendar,
   Check,
   CheckCircle2,
+  ClipboardCheck,
   Clock,
-  Edit2,
-  Filter,
+  Euro,
   History,
   Layers,
+  Minus,
   Package,
+  Pencil,
   Plus,
-  RefreshCw,
+  Scale,
   Search,
+  SlidersHorizontal,
+  Tag,
   Trash2,
   X,
 } from 'lucide-react';
@@ -50,6 +58,58 @@ import {
   Textarea,
 } from './ui';
 
+/* ═══════════════════════════════════════════════════════════════════
+   Tipi e costanti di sezione
+   ═══════════════════════════════════════════════════════════════════ */
+
+type View = 'articoli' | 'movimenti' | 'inventario';
+type TypeFilter = 'tutti' | ItemType;
+type AlertFilter = 'tutti' | 'sotto_soglia' | 'esauriti';
+type ChangeFilter = 'tutti' | InventoryLog['changeType'];
+type StatusTone = 'mint' | 'amber' | 'rose';
+
+const CATEGORIES: { value: ItemCategory; label: string; short: string }[] = [
+  { value: 'cibo', label: 'Alimentare / Cibo', short: 'Cibo' },
+  { value: 'bevande', label: 'Bevande & Vini', short: 'Bevande' },
+  { value: 'pulizia', label: 'Pulizia & Igiene', short: 'Pulizia' },
+  { value: 'packaging', label: 'Packaging & Asporto', short: 'Packaging' },
+  { value: 'altro', label: 'Altro', short: 'Altro' },
+];
+
+const CATEGORY_LABEL: Record<ItemCategory, string> = {
+  cibo: 'Alimentare / Cibo',
+  bevande: 'Bevande & Vini',
+  pulizia: 'Pulizia & Igiene',
+  packaging: 'Packaging & Asporto',
+  altro: 'Altro',
+};
+
+const UNITS: { value: string; label: string }[] = [
+  { value: 'kg', label: 'kg (Chilogrammi)' },
+  { value: 'lt', label: 'lt (Litri)' },
+  { value: 'pz', label: 'pz (Pezzi / Porzioni)' },
+  { value: 'bt', label: 'bt (Bottiglie)' },
+  { value: 'conf', label: 'conf (Confezioni)' },
+];
+
+const CHANGE_TYPES: { value: ChangeFilter; label: string }[] = [
+  { value: 'tutti', label: 'Tutti' },
+  { value: 'carico', label: 'Carichi' },
+  { value: 'scarico', label: 'Scarichi' },
+  { value: 'rettifica', label: 'Rettifiche' },
+  { value: 'vendita', label: 'Vendite' },
+];
+
+/* ═══════════════════════════════════════════════════════════════════
+   Helper di formattazione
+   ═══════════════════════════════════════════════════════════════════ */
+
+/** Quantità compatta (niente zeri inutili, separatore decimale italiano). */
+const formatQty = (value: number | undefined): string => {
+  const n = Number(value) || 0;
+  return new Intl.NumberFormat('it-IT', { maximumFractionDigits: 2 }).format(n);
+};
+
 /** Data/ora in formato italiano, con fallback sul valore grezzo. */
 const formatDateTime = (value: string): string => {
   const d = new Date(value);
@@ -63,6 +123,54 @@ const formatDateTime = (value: string): string => {
       });
 };
 
+/** Data breve in formato italiano (per le scadenze). */
+const formatDate = (value?: string): string => {
+  if (!value) return '';
+  const d = new Date(value);
+  return Number.isNaN(d.getTime())
+    ? value
+    : d.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+};
+
+/* ═══════════════════════════════════════════════════════════════════
+   Badge tipizzati
+   ═══════════════════════════════════════════════════════════════════ */
+
+/** Badge del tipo di movimento (carico / scarico / rettifica / vendita). */
+const ChangeBadge: React.FC<{ type: InventoryLog['changeType'] }> = ({ type }) => {
+  const map: Record<InventoryLog['changeType'], { label: string; className: string }> = {
+    carico: { label: 'Carico', className: 'bg-mint-600/15 text-mint-400 border-mint-400/25' },
+    scarico: { label: 'Scarico', className: 'bg-rose-600/15 text-rose-400 border-rose-400/25' },
+    rettifica: { label: 'Rettifica', className: 'bg-violet-400/15 text-violet-400 border-violet-400/25' },
+    vendita: { label: 'Vendita', className: 'bg-ink-700/60 text-mist-300 border-ink-600' },
+  };
+  const meta = map[type] ?? map.rettifica;
+  return <span className={`badge border ${meta.className}`}>{meta.label}</span>;
+};
+
+/** Chip filtrante compatto (usato per categorie e tipologie). */
+const FilterChip: React.FC<{
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}> = ({ active, onClick, children }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide transition-colors ${
+      active
+        ? 'bg-brand-500/15 text-brand-300 border-brand-500/35'
+        : 'bg-ink-900 text-mist-400 border-ink-700 hover:text-mist-100 hover:border-ink-600'
+    }`}
+  >
+    {children}
+  </button>
+);
+
+/* ═══════════════════════════════════════════════════════════════════
+   🧭 Magazzino
+   ═══════════════════════════════════════════════════════════════════ */
+
 export const MagazzinoView: React.FC = () => {
   const {
     inventory,
@@ -75,26 +183,32 @@ export const MagazzinoView: React.FC = () => {
     currentUser,
   } = useApp();
 
-  // Active sub-tab: 'materiali' | 'prodotti' | 'movimenti' | 'inventario_fisico'
-  const [activeTab, setActiveTab] = useState<'materiali' | 'prodotti' | 'movimenti' | 'inventario_fisico'>('materiali');
+  // ── Vista attiva ──
+  const [view, setView] = useState<View>('articoli');
 
-  // Filters
+  // ── Filtri ──
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('tutti');
-  const [filterLowStockOnly, setFilterLowStockOnly] = useState(false);
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('tutti');
+  const [selectedCategory, setSelectedCategory] = useState<ItemCategory | 'tutti'>('tutti');
+  const [alertFilter, setAlertFilter] = useState<AlertFilter>('tutti');
 
-  // Modal States
+  // ── Movimenti ──
+  const [changeFilter, setChangeFilter] = useState<ChangeFilter>('tutti');
+  const [logLimit, setLogLimit] = useState(50);
+
+  // ── Modali ──
   const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [quickAdjustModalItem, setQuickAdjustModalItem] = useState<InventoryItem | null>(null);
-  const [adjustDelta, setAdjustDelta] = useState<number>(1);
-  const [adjustReason, setAdjustReason] = useState<string>('Carico merci fornitore');
+  const [adjustDelta, setAdjustDelta] = useState<number>(0);
+  const [adjustReason, setAdjustReason] = useState<string>('Carico da fornitore');
 
-  // Physical Inventory Count State
+  // ── Inventario fisico ──
   const [physicalCounts, setPhysicalCounts] = useState<Record<string, number>>({});
   const [physicalNotes, setPhysicalNotes] = useState<string>('Controllo settimanale di magazzino');
+  const [inventorySaved, setInventorySaved] = useState(false);
 
-  // Form State for Add / Edit
+  // ── Modulo di aggiunta / modifica ──
   const [formData, setFormData] = useState({
     name: '',
     type: 'materiale' as ItemType,
@@ -109,63 +223,90 @@ export const MagazzinoView: React.FC = () => {
     sellPrice: 0,
   });
 
-  // Filtered items based on active subtab, search, category, low stock
-  const filteredItems = useMemo(() => {
-    return inventory.filter((item) => {
-      // Type match (materiali vs prodotti)
-      if (activeTab === 'materiali' && item.type !== 'materiale') return false;
-      if (activeTab === 'prodotti' && item.type !== 'prodotto') return false;
+  /* ───────────────────────────────────────────────────────────────
+     Dati derivati
+     ─────────────────────────────────────────────────────────────── */
 
-      // Search match
+  /** Stato scorta: esaurito → sotto soglia → disponibile. */
+  const getStockStatus = (item: InventoryItem): { status: StockStatus; label: string; tone: StatusTone } => {
+    if (item.currentQuantity <= 0) {
+      return { status: 'esaurito', label: 'Esaurito', tone: 'rose' };
+    }
+    if (item.currentQuantity <= item.minThreshold) {
+      return { status: 'quasi_finito', label: 'Sotto soglia', tone: 'amber' };
+    }
+    return { status: 'ok', label: 'Disponibile', tone: 'mint' };
+  };
+
+  /** Articoli filtrati per vista, ricerca, categoria, tipologia e allerta. */
+  const filteredItems = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    return inventory.filter((item) => {
+      if (typeFilter !== 'tutti' && item.type !== typeFilter) return false;
+
       if (
-        searchTerm &&
-        !item.name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-        !item.supplier.toLowerCase().includes(searchTerm.toLowerCase())
+        q &&
+        !item.name.toLowerCase().includes(q) &&
+        !item.supplier.toLowerCase().includes(q)
       ) {
         return false;
       }
 
-      // Category match
-      if (selectedCategory !== 'tutti' && item.category !== selectedCategory) {
-        return false;
-      }
+      if (selectedCategory !== 'tutti' && item.category !== selectedCategory) return false;
 
-      // Low stock filter
-      if (filterLowStockOnly && item.currentQuantity > item.minThreshold) {
-        return false;
-      }
+      if (alertFilter === 'sotto_soglia' && item.currentQuantity > item.minThreshold) return false;
+      if (alertFilter === 'esauriti' && item.currentQuantity > 0) return false;
 
       return true;
     });
-  }, [inventory, activeTab, searchTerm, selectedCategory, filterLowStockOnly]);
+  }, [inventory, typeFilter, searchTerm, selectedCategory, alertFilter]);
 
-  // Overall Low Stock Count
-  const lowStockCount = useMemo(() => {
-    return inventory.filter((i) => i.currentQuantity <= i.minThreshold).length;
-  }, [inventory]);
+  /** Articoli sotto soglia (inclusi gli esauriti). */
+  const lowStockCount = useMemo(
+    () => inventory.filter((i) => i.currentQuantity <= i.minThreshold).length,
+    [inventory]
+  );
 
-  // Valore complessivo del magazzino (valutato a costo di acquisto)
-  const stockValue = useMemo(() => {
-    return inventory.reduce((sum, i) => sum + i.currentQuantity * (i.costPrice || 0), 0);
-  }, [inventory]);
+  /** Articoli completamente esauriti. */
+  const outOfStockCount = useMemo(
+    () => inventory.filter((i) => i.currentQuantity <= 0).length,
+    [inventory]
+  );
 
-  // Helper for item stock status
-  const getStockStatus = (item: InventoryItem): { status: StockStatus; badge: string; tone: 'mint' | 'amber' | 'rose' } => {
-    if (item.currentQuantity <= 0) {
-      return { status: 'esaurito', badge: 'Esaurito', tone: 'rose' };
-    }
-    if (item.currentQuantity <= item.minThreshold) {
-      return { status: 'quasi_finito', badge: 'Quasi Finito', tone: 'amber' };
-    }
-    return { status: 'ok', badge: 'Disponibile', tone: 'mint' };
-  };
+  /** Valore complessivo del magazzino (valutato a costo di acquisto). */
+  const stockValue = useMemo(
+    () => inventory.reduce((sum, i) => sum + i.currentQuantity * (i.costPrice || 0), 0),
+    [inventory]
+  );
 
-  const handleOpenAddModal = (defaultType?: ItemType) => {
+  /** Movimenti filtrati per tipologia. */
+  const filteredLogs = useMemo(() => {
+    const list = [...inventoryLogs].sort((a, b) =>
+      String(b.timestamp).localeCompare(String(a.timestamp))
+    );
+    return changeFilter === 'tutti' ? list : list.filter((log) => log.changeType === changeFilter);
+  }, [inventoryLogs, changeFilter]);
+
+  /** Differenze rilevate durante l'inventario fisico. */
+  const physicalDiffCount = useMemo(
+    () =>
+      Object.keys(physicalCounts).filter((id) => {
+        const item = inventory.find((i) => i.id === id);
+        return !!item && item.currentQuantity !== physicalCounts[id];
+      }).length,
+    [physicalCounts, inventory]
+  );
+
+  /* ───────────────────────────────────────────────────────────────
+     Handler
+     ─────────────────────────────────────────────────────────────── */
+
+  const handleOpenAddModal = () => {
     setEditingItem(null);
     setFormData({
       name: '',
-      type: defaultType || (activeTab === 'prodotti' ? 'prodotto' : 'materiale'),
-      category: 'cibo',
+      type: typeFilter === 'prodotto' ? 'prodotto' : 'materiale',
+      category: selectedCategory === 'tutti' ? 'cibo' : selectedCategory,
       currentQuantity: 10,
       minThreshold: 5,
       unit: 'kg',
@@ -200,385 +341,567 @@ export const MagazzinoView: React.FC = () => {
     e.preventDefault();
     if (!formData.name.trim()) return;
 
+    const payload = {
+      name: formData.name,
+      type: formData.type,
+      category: formData.category,
+      currentQuantity: Number(formData.currentQuantity),
+      minThreshold: Number(formData.minThreshold),
+      unit: formData.unit,
+      supplier: formData.supplier,
+      expirationDate: formData.expirationDate || undefined,
+      notes: formData.notes,
+      costPrice: Number(formData.costPrice),
+      sellPrice: formData.type === 'prodotto' ? Number(formData.sellPrice) : undefined,
+    };
+
     if (editingItem) {
-      updateInventoryItem(editingItem.id, {
-        name: formData.name,
-        type: formData.type,
-        category: formData.category,
-        currentQuantity: Number(formData.currentQuantity),
-        minThreshold: Number(formData.minThreshold),
-        unit: formData.unit,
-        supplier: formData.supplier,
-        expirationDate: formData.expirationDate || undefined,
-        notes: formData.notes,
-        costPrice: Number(formData.costPrice),
-        sellPrice: formData.type === 'prodotto' ? Number(formData.sellPrice) : undefined,
-      });
+      updateInventoryItem(editingItem.id, payload);
     } else {
-      addInventoryItem({
-        name: formData.name,
-        type: formData.type,
-        category: formData.category,
-        currentQuantity: Number(formData.currentQuantity),
-        minThreshold: Number(formData.minThreshold),
-        unit: formData.unit,
-        supplier: formData.supplier,
-        expirationDate: formData.expirationDate || undefined,
-        notes: formData.notes,
-        costPrice: Number(formData.costPrice),
-        sellPrice: formData.type === 'prodotto' ? Number(formData.sellPrice) : undefined,
-      });
+      addInventoryItem(payload);
     }
     setIsAddEditModalOpen(false);
   };
 
-  const handleOpenQuickAdjust = (item: InventoryItem, delta: number) => {
+  /** Correzione rapida in linea: +/- 1 unità, con causale automatica. */
+  const applyQuickAdjust = (item: InventoryItem, delta: number) => {
+    adjustQuantity(
+      item.id,
+      delta,
+      delta > 0 ? 'Carico rapido durante il servizio' : 'Consumo rapido durante il servizio'
+    );
+  };
+
+  /** Rettifica manuale: delta e causale libere. */
+  const handleOpenManualAdjust = (item: InventoryItem) => {
     setQuickAdjustModalItem(item);
-    setAdjustDelta(delta);
-    setAdjustReason(delta > 0 ? 'Carico da fornitore' : 'Consumo giornaliero preparazione');
+    setAdjustDelta(0);
+    setAdjustReason('Carico da fornitore');
   };
 
   const handleConfirmQuickAdjust = () => {
-    if (quickAdjustModalItem) {
-      adjustQuantity(quickAdjustModalItem.id, adjustDelta, adjustReason);
+    if (quickAdjustModalItem && adjustDelta !== 0) {
+      adjustQuantity(quickAdjustModalItem.id, adjustDelta, adjustReason.trim() || 'Movimento manuale');
       setQuickAdjustModalItem(null);
+    }
+  };
+
+  const handleDeleteItem = (item: InventoryItem) => {
+    if (confirm(`Sei sicuro di voler eliminare "${item.name}"?`)) {
+      deleteInventoryItem(item.id);
     }
   };
 
   const handleApplyPhysicalInventory = () => {
     performPhysicalInventoryCount(physicalCounts, physicalNotes);
-    alert('Inventario fisico aggiornato con successo! Le rettifiche sono state registrate nello storico.');
-    setActiveTab('materiali');
+    setInventorySaved(true);
+    setPhysicalCounts({});
+    setView('articoli');
   };
+
+  const resetFilters = () => {
+    setSearchTerm('');
+    setTypeFilter('tutti');
+    setSelectedCategory('tutti');
+    setAlertFilter('tutti');
+  };
+
+  /* ───────────────────────────────────────────────────────────────
+     Rendering
+     ─────────────────────────────────────────────────────────────── */
+
+  const hasActiveFilters =
+    searchTerm.trim() !== '' ||
+    typeFilter !== 'tutti' ||
+    selectedCategory !== 'tutti' ||
+    alertFilter !== 'tutti';
 
   return (
     <div className="min-h-screen bg-ink-950 text-mist-100 animate-fadeIn">
-      <div className="mx-auto max-w-7xl px-3 sm:px-5 py-5 sm:py-6 space-y-4 sm:space-y-5">
-        {/* ── Intestazione ── */}
-        <Card className="p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="mx-auto max-w-7xl px-3 sm:px-5 py-4 sm:py-5 space-y-4 pb-24">
+        {/* ══ Intestazione ══ */}
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="h-12 w-12 shrink-0 rounded-2xl bg-brand-500/15 text-brand-300 border border-brand-500/25 flex items-center justify-center">
+            <div className="h-11 w-11 sm:h-12 sm:w-12 shrink-0 rounded-2xl bg-brand-500/15 text-brand-300 border border-brand-500/25 flex items-center justify-center">
               <Package className="w-6 h-6" />
             </div>
             <div className="min-w-0">
               <h1 className="text-lg sm:text-xl font-bold tracking-tight text-mist-100">
                 Gestione Magazzino &amp; Scorte
               </h1>
-              <p className="mt-0.5 text-xs text-mist-500">
-                Controllo materie prime alimentari, bevande, prodotti finiti e soglie
-                d&apos;allerta.
+              <p className="mt-0.5 text-[11px] sm:text-xs text-mist-500 truncate">
+                {currentUser?.displayName
+                  ? `Operatore: ${currentUser.displayName}`
+                  : 'Materie prime, prodotti finiti e soglie d’allerta'}
               </p>
             </div>
           </div>
 
-          <Btn
-            variant="primary"
-            onClick={() => handleOpenAddModal()}
-            className="w-full sm:w-auto"
-          >
+          <Btn variant="primary" onClick={handleOpenAddModal} className="w-full sm:w-auto shrink-0">
             <Plus className="w-4 h-4" />
             Nuovo Articolo
           </Btn>
-        </Card>
+        </header>
 
-        {/* ── Riepilogo ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <Stat
-            label="Articoli in magazzino"
-            value={inventory.length}
-            tone="brand"
-            icon={<Boxes className="w-4 h-4" />}
-            sub="Materiali e prodotti registrati"
-          />
-          <Stat
-            label="Sotto soglia"
-            value={lowStockCount}
-            tone={lowStockCount > 0 ? 'rose' : 'mint'}
-            icon={<AlertTriangle className="w-4 h-4" />}
-            sub="Da riordinare con il fornitore"
-          />
-          <Stat
-            label="Valore magazzino"
-            value={
-              stockValue > 0 ? (
-                <Amount value={stockValue} size="lg" tone="mint" className="!text-xl sm:!text-2xl" />
-              ) : (
-                '—'
-              )
-            }
-            tone="mint"
-            icon={<Layers className="w-4 h-4" />}
-            sub="Valutato a costo di acquisto"
-          />
-        </div>
-
-        {/* ── Sub-tab: Materiali | Prodotti | Movimenti | Inventario fisico ── */}
-        <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-1">
-          <Btn
-            variant={activeTab === 'materiali' ? 'primary' : 'soft'}
-            size="sm"
-            onClick={() => setActiveTab('materiali')}
-            className="shrink-0 whitespace-nowrap"
+        {/* ══ Selettore di vista ══ */}
+        <nav className="flex items-center gap-1 overflow-x-auto scrollbar-none bg-ink-900 border border-ink-700 rounded-2xl p-1">
+          <button
+            type="button"
+            onClick={() => setView('articoli')}
+            className={`flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold whitespace-nowrap transition-colors ${
+              view === 'articoli'
+                ? 'bg-brand-500/15 text-brand-300 border border-brand-500/30'
+                : 'text-mist-400 border border-transparent hover:text-mist-100 hover:bg-ink-800'
+            }`}
           >
             <Boxes className="w-4 h-4" />
-            1. Materiali (Materie Prime)
-          </Btn>
-
-          <Btn
-            variant={activeTab === 'prodotti' ? 'primary' : 'soft'}
-            size="sm"
-            onClick={() => setActiveTab('prodotti')}
-            className="shrink-0 whitespace-nowrap"
-          >
-            <Package className="w-4 h-4" />
-            2. Prodotti (Finiti &amp; Bevande)
-          </Btn>
-
-          <Btn
-            variant={activeTab === 'movimenti' ? 'primary' : 'soft'}
-            size="sm"
-            onClick={() => setActiveTab('movimenti')}
-            className="shrink-0 whitespace-nowrap"
+            Articoli
+            <span className="tnum text-[10px] text-mist-500">{inventory.length}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setView('movimenti')}
+            className={`flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold whitespace-nowrap transition-colors ${
+              view === 'movimenti'
+                ? 'bg-brand-500/15 text-brand-300 border border-brand-500/30'
+                : 'text-mist-400 border border-transparent hover:text-mist-100 hover:bg-ink-800'
+            }`}
           >
             <History className="w-4 h-4" />
-            Registro Carichi &amp; Consumi
-          </Btn>
-
-          <Btn
-            variant={activeTab === 'inventario_fisico' ? 'primary' : 'soft'}
-            size="sm"
-            onClick={() => setActiveTab('inventario_fisico')}
-            className="shrink-0 whitespace-nowrap"
+            Movimenti
+            <span className="tnum text-[10px] text-mist-500">{inventoryLogs.length}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setView('inventario')}
+            className={`flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-bold whitespace-nowrap transition-colors ${
+              view === 'inventario'
+                ? 'bg-brand-500/15 text-brand-300 border border-brand-500/30'
+                : 'text-mist-400 border border-transparent hover:text-mist-100 hover:bg-ink-800'
+            }`}
           >
-            <RefreshCw className="w-4 h-4" />
-            Inventario Fisico (Verifica)
-          </Btn>
-        </div>
+            <ClipboardCheck className="w-4 h-4" />
+            Inventario fisico
+          </button>
+        </nav>
 
-        {/* ── Ricerca e filtri (tab Materiali / Prodotti) ── */}
-        {(activeTab === 'materiali' || activeTab === 'prodotti') && (
-          <Card className="p-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-            <div className="flex flex-1 items-center gap-2 min-w-0">
-              <div className="relative flex-1 min-w-0">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-mist-500 pointer-events-none" />
-                <Input
-                  type="text"
-                  placeholder="Cerca per nome o fornitore..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="!pl-9"
+        {/* Conferma dell'ultima operazione di quadratura */}
+        {inventorySaved && (
+          <div className="flex items-center gap-2 rounded-xl bg-mint-600/15 border border-mint-400/30 px-3.5 py-2.5 text-xs font-bold text-mint-400">
+            <Check className="w-4 h-4" />
+            Inventario fisico aggiornato: rettifiche registrate nello storico.
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════
+            VISTA: ARTICOLI
+            ══════════════════════════════════════════════════════ */}
+        {view === 'articoli' && (
+          <>
+            {/* ── Riepilogo ── */}
+            <div className="flex gap-3 overflow-x-auto scrollbar-none pb-1 sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-4">
+              <div className="min-w-[11rem] flex-1">
+                <Stat
+                  label="Articoli"
+                  value={inventory.length}
+                  tone="brand"
+                  icon={<Boxes className="w-4 h-4" />}
+                  sub="Materiali e prodotti registrati"
                 />
-                {searchTerm && (
-                  <button
-                    onClick={() => setSearchTerm('')}
-                    aria-label="Azzera ricerca"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-mist-500 hover:text-mist-100 transition-colors"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
               </div>
-
-              <div className="flex items-center gap-1.5">
-                <Filter className="w-4 h-4 text-mist-500 hidden sm:block" />
-                <Select
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="!w-auto min-w-[9.5rem]"
-                >
-                  <option value="tutti">Tutte le Categorie</option>
-                  <option value="cibo">Alimentare / Cibo</option>
-                  <option value="bevande">Bevande &amp; Vini</option>
-                  <option value="pulizia">Pulizia &amp; Igiene</option>
-                  <option value="packaging">Packaging &amp; Asporto</option>
-                  <option value="altro">Altro</option>
-                </Select>
+              <div
+                className={`min-w-[11rem] flex-1 rounded-2xl ${
+                  alertFilter === 'sotto_soglia' ? 'ring-2 ring-amber-400/60' : ''
+                }`}
+              >
+                <Stat
+                  label="Sotto soglia"
+                  value={lowStockCount}
+                  tone={lowStockCount > 0 ? 'amber' : 'mint'}
+                  icon={<AlertTriangle className="w-4 h-4" />}
+                  sub="Da riordinare con il fornitore"
+                  onClick={() =>
+                    setAlertFilter((prev) => (prev === 'sotto_soglia' ? 'tutti' : 'sotto_soglia'))
+                  }
+                />
+              </div>
+              <div
+                className={`min-w-[11rem] flex-1 rounded-2xl ${
+                  alertFilter === 'esauriti' ? 'ring-2 ring-rose-400/60' : ''
+                }`}
+              >
+                <Stat
+                  label="Esauriti"
+                  value={outOfStockCount}
+                  tone={outOfStockCount > 0 ? 'rose' : 'mint'}
+                  icon={<Package className="w-4 h-4" />}
+                  sub="Quantità a zero"
+                  onClick={() =>
+                    setAlertFilter((prev) => (prev === 'esauriti' ? 'tutti' : 'esauriti'))
+                  }
+                />
+              </div>
+              <div className="min-w-[11rem] flex-1">
+                <Stat
+                  label="Valore magazzino"
+                  value={
+                    stockValue > 0 ? (
+                      <Amount
+                        value={stockValue}
+                        size="lg"
+                        tone="mint"
+                        className="!text-xl sm:!text-2xl"
+                      />
+                    ) : (
+                      '—'
+                    )
+                  }
+                  tone="mint"
+                  icon={<Layers className="w-4 h-4" />}
+                  sub="Valutato a costo di acquisto"
+                />
               </div>
             </div>
 
-            <Btn
-              variant={filterLowStockOnly ? 'primary' : 'soft'}
-              size="sm"
-              onClick={() => setFilterLowStockOnly(!filterLowStockOnly)}
-              className="whitespace-nowrap shrink-0"
+            {/* ── Toolbar persistente ── */}
+            <div
+              className="sticky z-30 -mx-3 sm:-mx-5 px-3 sm:px-5 py-3 bg-ink-950/95 backdrop-blur-md border-b border-ink-800"
+              style={{ top: 'calc(3.5rem + var(--sea-safe-t, 0px))' }}
             >
-              <AlertTriangle className="w-3.5 h-3.5" />
-              Solo Quasi Finiti ({lowStockCount})
-            </Btn>
-          </Card>
-        )}
-
-        {/* ── TAB 1 & 2: elenco articoli (Materiali / Prodotti) ── */}
-        {(activeTab === 'materiali' || activeTab === 'prodotti') && (
-          <Card className="p-3 sm:p-4">
-            {filteredItems.length === 0 ? (
-              <EmptyState
-                icon={<Package className="w-6 h-6" />}
-                title="Nessun articolo trovato."
-                description="Modifica i filtri di ricerca oppure registra un nuovo articolo in magazzino."
-                action={
-                  <Btn variant="primary" onClick={() => handleOpenAddModal()}>
-                    <Plus className="w-4 h-4" />
-                    Nuovo Articolo
-                  </Btn>
-                }
-              />
-            ) : (
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {filteredItems.map((item) => {
-                  const statusInfo = getStockStatus(item);
-                  return (
-                    <div
-                      key={item.id}
-                      className="surface-raised p-4 flex flex-col gap-3 transition-colors hover:border-ink-600"
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1 min-w-0">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-mist-500 pointer-events-none" />
+                  <Input
+                    type="text"
+                    placeholder="Cerca articolo o fornitore..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="!pl-9 !pr-9"
+                  />
+                  {searchTerm && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchTerm('')}
+                      aria-label="Azzera ricerca"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-mist-500 hover:text-mist-100 transition-colors"
                     >
-                      {/* Nome e stato scorta */}
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="text-sm font-bold text-mist-100 truncate">{item.name}</div>
-                          <div className="mt-0.5 text-[11px] text-mist-500 truncate">
-                            {item.supplier || 'Fornitore non indicato'}
-                          </div>
-                        </div>
-                        <Badge tone={statusInfo.tone} className="shrink-0">
-                          {statusInfo.status === 'ok' ? (
-                            <Check className="w-3 h-3" />
-                          ) : (
-                            <AlertTriangle className="w-3 h-3" />
-                          )}
-                          {statusInfo.badge}
-                        </Badge>
-                      </div>
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
 
-                      {/* Categoria, note e scadenza */}
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge tone="neutral">{item.category}</Badge>
-                        {item.expirationDate && (
-                          <span className="inline-flex items-center gap-1 text-[11px] text-mist-500">
-                            <Calendar className="w-3 h-3" />
-                            Scadenza: {item.expirationDate}
-                          </span>
-                        )}
-                      </div>
-
-                      {item.notes && (
-                        <p className="text-[11px] leading-relaxed text-mist-500 line-clamp-2">
-                          {item.notes}
-                        </p>
-                      )}
-
-                      {/* Giacenza e soglia */}
-                      <div className="rounded-xl bg-ink-900 border border-ink-700 p-3 flex items-end justify-between gap-3">
-                        <div>
-                          <div className="section-title">Giacenza attuale</div>
-                          <div className="mt-1 flex items-baseline gap-1">
-                            <span className="text-xl font-bold tnum text-mist-100">
-                              {item.currentQuantity}
-                            </span>
-                            <span className="text-xs text-mist-500">{item.unit}</span>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="section-title">Soglia minima</div>
-                          <div className="mt-1 text-sm font-bold tnum text-amber-400">
-                            {item.minThreshold} {item.unit}
-                          </div>
-                        </div>
-                      </div>
-
-                      {item.costPrice ? (
-                        <div className="text-[11px] text-mist-500">
-                          Costo fornitore: <Amount value={item.costPrice} size="sm" />
-                        </div>
-                      ) : null}
-
-                      {/* Azioni rapide + / - e modifica */}
-                      <div className="mt-auto flex items-center justify-between gap-2 pt-1">
-                        <div className="flex items-center gap-1.5">
-                          <Btn
-                            variant="soft"
-                            size="sm"
-                            title="Scarica 1 unità"
-                            onClick={() => handleOpenQuickAdjust(item, -1)}
-                            className="!px-2.5 hover:!text-rose-400"
-                          >
-                            -1
-                          </Btn>
-                          <Btn
-                            variant="soft"
-                            size="sm"
-                            title="Carica 1 unità"
-                            onClick={() => handleOpenQuickAdjust(item, 1)}
-                            className="!px-2.5"
-                          >
-                            +1
-                          </Btn>
-                          <Btn
-                            variant="soft"
-                            size="sm"
-                            title="Carica 5 unità"
-                            onClick={() => handleOpenQuickAdjust(item, 5)}
-                            className="!px-2.5"
-                          >
-                            +5
-                          </Btn>
-                        </div>
-
-                        <div className="flex items-center gap-1">
-                          <Btn
-                            variant="ghost"
-                            size="sm"
-                            title="Modifica Articolo"
-                            onClick={() => handleOpenEditModal(item)}
-                            className="!px-2"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </Btn>
-                          <Btn
-                            variant="ghost"
-                            size="sm"
-                            title="Elimina"
-                            onClick={() => {
-                              if (confirm(`Sei sicuro di voler eliminare "${item.name}"?`)) {
-                                deleteInventoryItem(item.id);
-                              }
-                            }}
-                            className="!px-2 hover:!text-rose-400"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Btn>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                <Select
+                  value={typeFilter}
+                  onChange={(e) => setTypeFilter(e.target.value as TypeFilter)}
+                  className="!w-auto shrink-0"
+                  small
+                  aria-label="Filtra per tipologia"
+                >
+                  <option value="tutti">Tutti i tipi</option>
+                  <option value="materiale">Materiali</option>
+                  <option value="prodotto">Prodotti</option>
+                </Select>
               </div>
-            )}
-          </Card>
+
+              <div className="mt-2.5 flex items-center gap-1.5 overflow-x-auto scrollbar-none -mx-1 px-1 pb-0.5">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setAlertFilter((prev) => (prev === 'sotto_soglia' ? 'tutti' : 'sotto_soglia'))
+                  }
+                  className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide transition-colors ${
+                    alertFilter !== 'tutti'
+                      ? 'bg-amber-600/15 text-amber-400 border-amber-400/40'
+                      : 'bg-ink-900 text-mist-400 border-ink-700 hover:text-mist-100 hover:border-ink-600'
+                  }`}
+                >
+                  <AlertTriangle className="w-3 h-3 inline mr-1 -mt-0.5" />
+                  Sotto soglia ({lowStockCount})
+                </button>
+
+                <span className="w-px h-5 bg-ink-700 shrink-0" />
+
+                <FilterChip
+                  active={selectedCategory === 'tutti'}
+                  onClick={() => setSelectedCategory('tutti')}
+                >
+                  Tutte
+                </FilterChip>
+                {CATEGORIES.map((cat) => (
+                  <FilterChip
+                    key={cat.value}
+                    active={selectedCategory === cat.value}
+                    onClick={() => setSelectedCategory(cat.value)}
+                  >
+                    {cat.short}
+                  </FilterChip>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Elenco articoli ── */}
+            <Card className="p-2 sm:p-3">
+              {filteredItems.length === 0 ? (
+                inventory.length === 0 ? (
+                  <EmptyState
+                    icon={<Package className="w-6 h-6" />}
+                    title="Il magazzino è vuoto."
+                    description="Registra il primo articolo per iniziare a monitorare giacenze, soglie e consumi."
+                    action={
+                      <Btn variant="primary" onClick={handleOpenAddModal}>
+                        <Plus className="w-4 h-4" />
+                        Nuovo Articolo
+                      </Btn>
+                    }
+                  />
+                ) : (
+                  <EmptyState
+                    icon={<Search className="w-6 h-6" />}
+                    title="Nessun articolo corrisponde ai filtri."
+                    description="Prova a cambiare ricerca, tipologia o categoria per ritrovare quello che cerchi."
+                    action={
+                      <Btn variant="soft" onClick={resetFilters}>
+                        <X className="w-4 h-4" />
+                        Azzera i filtri
+                      </Btn>
+                    }
+                  />
+                )
+              ) : (
+                <>
+                  <div className="divide-y divide-ink-700">
+                    {filteredItems.map((item) => {
+                      const status = getStockStatus(item);
+                      const borderTone =
+                        status.tone === 'rose'
+                          ? 'border-l-rose-400'
+                          : status.tone === 'amber'
+                          ? 'border-l-amber-400'
+                          : 'border-l-ink-700';
+                      const barTone =
+                        status.tone === 'rose'
+                          ? 'bg-rose-400'
+                          : status.tone === 'amber'
+                          ? 'bg-amber-400'
+                          : 'bg-mint-400';
+                      const reference = Math.max(item.minThreshold * 2, item.currentQuantity, 1);
+                      const levelPct = Math.min(
+                        100,
+                        Math.max(0, (item.currentQuantity / reference) * 100)
+                      );
+                      const qtyColor =
+                        status.tone === 'rose'
+                          ? 'text-rose-400'
+                          : status.tone === 'amber'
+                          ? 'text-amber-400'
+                          : 'text-mist-100';
+
+                      return (
+                        <div
+                          key={item.id}
+                          className={`flex flex-col gap-3 border-l-4 ${borderTone} py-3 pl-3 pr-1 sm:flex-row sm:items-center sm:gap-4 sm:pr-2`}
+                        >
+                          {/* Nome, categoria e note */}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="text-sm font-bold text-mist-100 truncate max-w-full">
+                                {item.name}
+                              </h3>
+                              <Badge tone={status.tone}>{status.label}</Badge>
+                            </div>
+
+                            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-mist-500">
+                              <span className="inline-flex items-center gap-1">
+                                <Tag className="w-3 h-3" />
+                                {CATEGORY_LABEL[item.category]}
+                              </span>
+                              {item.supplier && (
+                                <span className="inline-flex items-center gap-1 truncate max-w-[12rem]">
+                                  <Scale className="w-3 h-3" />
+                                  {item.supplier}
+                                </span>
+                              )}
+                              {item.expirationDate && (
+                                <span className="inline-flex items-center gap-1">
+                                  <Calendar className="w-3 h-3" />
+                                  Scad. {formatDate(item.expirationDate)}
+                                </span>
+                              )}
+                              {item.costPrice ? (
+                                <span className="inline-flex items-center gap-1 sm:hidden">
+                                  <Euro className="w-3 h-3" />
+                                  {formatQty(item.costPrice)} €/unità
+                                </span>
+                              ) : null}
+                            </div>
+
+                            {item.notes && (
+                              <p className="mt-1 text-[11px] leading-relaxed text-mist-500 line-clamp-1">
+                                {item.notes}
+                              </p>
+                            )}
+
+                            {/* Livello di giacenza rispetto alla soglia */}
+                            <div className="mt-2 h-1 w-full max-w-[220px] overflow-hidden rounded-full bg-ink-700">
+                              <div
+                                className={`h-full rounded-full ${barTone}`}
+                                style={{ width: `${levelPct}%` }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Giacenza, soglia e costo */}
+                          <div className="flex items-end justify-between gap-4 sm:justify-end">
+                            <div className="text-left sm:text-right">
+                              <div className="section-title">Giacenza</div>
+                              <div className="mt-0.5 flex items-baseline gap-1">
+                                <span className={`text-lg font-bold tnum ${qtyColor}`}>
+                                  {formatQty(item.currentQuantity)}
+                                </span>
+                                <span className="text-[11px] text-mist-500">{item.unit}</span>
+                              </div>
+                            </div>
+
+                            <div className="text-left sm:text-right">
+                              <div className="section-title">Soglia min</div>
+                              <div className="mt-0.5 text-sm font-bold tnum text-mist-300">
+                                {formatQty(item.minThreshold)}
+                                <span className="text-[11px] font-normal text-mist-500">
+                                  {' '}
+                                  {item.unit}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="hidden text-left sm:block lg:text-right">
+                              <div className="section-title">Costo</div>
+                              <div className="mt-0.5">
+                                {item.costPrice ? (
+                                  <Amount value={item.costPrice} size="sm" />
+                                ) : (
+                                  <span className="text-xs text-mist-500">—</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Azioni rapide */}
+                          <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                            <Btn
+                              variant="soft"
+                              size="sm"
+                              title={`Scarica 1 ${item.unit}`}
+                              onClick={() => applyQuickAdjust(item, -1)}
+                              className="!px-2.5 hover:!text-rose-400"
+                            >
+                              <Minus className="w-3.5 h-3.5" />
+                              1
+                            </Btn>
+                            <Btn
+                              variant="soft"
+                              size="sm"
+                              title={`Carica 1 ${item.unit}`}
+                              onClick={() => applyQuickAdjust(item, 1)}
+                              className="!px-2.5"
+                            >
+                              1
+                              <Plus className="w-3.5 h-3.5" />
+                            </Btn>
+                            <Btn
+                              variant="ghost"
+                              size="sm"
+                              title="Rettifica quantità manualmente"
+                              onClick={() => handleOpenManualAdjust(item)}
+                              className="!px-2"
+                            >
+                              <SlidersHorizontal className="w-4 h-4" />
+                            </Btn>
+                            <Btn
+                              variant="ghost"
+                              size="sm"
+                              title="Modifica articolo"
+                              onClick={() => handleOpenEditModal(item)}
+                              className="!px-2"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </Btn>
+                            <Btn
+                              variant="ghost"
+                              size="sm"
+                              title="Elimina articolo"
+                              onClick={() => handleDeleteItem(item)}
+                              className="!px-2 hover:!text-rose-400"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Btn>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3 px-2 pt-3 text-[11px] text-mist-500">
+                    <span>
+                      {filteredItems.length} di {inventory.length} articoli
+                      {hasActiveFilters ? ' · filtri attivi' : ''}
+                    </span>
+                    {hasActiveFilters && (
+                      <Btn variant="ghost" size="sm" onClick={resetFilters}>
+                        <X className="w-3.5 h-3.5" />
+                        Azzera filtri
+                      </Btn>
+                    )}
+                  </div>
+                </>
+              )}
+            </Card>
+          </>
         )}
 
-        {/* ── TAB 3: registro movimenti & consumi ── */}
-        {activeTab === 'movimenti' && (
-          <Card className="p-4 sm:p-5 space-y-4">
-            <SectionTitle>Registro Modifiche &amp; Consumi Magazzino</SectionTitle>
-            <p className="text-xs text-mist-500">
+        {/* ══════════════════════════════════════════════════════
+            VISTA: MOVIMENTI
+            ══════════════════════════════════════════════════════ */}
+        {view === 'movimenti' && (
+          <Card className="p-3 sm:p-4">
+            <SectionTitle
+              action={
+                <Badge tone="neutral">
+                  {filteredLogs.length} di {inventoryLogs.length}
+                </Badge>
+              }
+            >
+              Registro Movimenti di Magazzino
+            </SectionTitle>
+            <p className="mt-1 text-xs text-mist-500">
               Storico completo di chi ha modificato le quantità, quando e per quale motivo.
             </p>
 
-            {inventoryLogs.length === 0 ? (
+            <div className="mt-3 flex items-center gap-1.5 overflow-x-auto scrollbar-none -mx-1 px-1 pb-0.5">
+              {CHANGE_TYPES.map((ct) => (
+                <FilterChip
+                  key={ct.value}
+                  active={changeFilter === ct.value}
+                  onClick={() => {
+                    setChangeFilter(ct.value);
+                    setLogLimit(50);
+                  }}
+                >
+                  {ct.label}
+                </FilterChip>
+              ))}
+            </div>
+
+            {filteredLogs.length === 0 ? (
               <EmptyState
                 icon={<History className="w-6 h-6" />}
-                title="Nessun movimento registrato finora."
-                description="I carichi e gli scarichi di magazzino compariranno qui."
+                title="Nessun movimento registrato."
+                description="I carichi, gli scarichi e le rettifiche di magazzino compariranno qui."
               />
             ) : (
-              <div className="divide-y divide-ink-700">
-                {inventoryLogs.map((log) => (
-                  <div
-                    key={log.id}
-                    className="py-3 flex items-center justify-between gap-3 text-xs sm:text-sm"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
+              <>
+                <div className="mt-3 divide-y divide-ink-700">
+                  {filteredLogs.slice(0, logLimit).map((log) => (
+                    <div key={log.id} className="flex items-start gap-3 py-3">
                       <div
                         className={`h-9 w-9 shrink-0 rounded-xl flex items-center justify-center border ${
                           log.deltaQuantity >= 0
@@ -587,46 +910,83 @@ export const MagazzinoView: React.FC = () => {
                         }`}
                       >
                         {log.deltaQuantity >= 0 ? (
-                          <ArrowUpRight className="w-5 h-5" />
+                          <ArrowUpRight className="w-4 h-4" />
                         ) : (
-                          <ArrowDownRight className="w-5 h-5" />
+                          <ArrowDownRight className="w-4 h-4" />
                         )}
                       </div>
-                      <div className="min-w-0">
-                        <div className="font-bold text-mist-100 truncate">{log.itemName}</div>
-                        <div className="text-xs text-mist-500 truncate">
-                          {log.reason || 'Movimento magazzino'} • Operatore:{' '}
-                          <span className="text-brand-300 font-semibold">{log.userName}</span>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-bold text-mist-100 truncate max-w-full">
+                            {log.itemName}
+                          </span>
+                          <ChangeBadge type={log.changeType} />
+                        </div>
+
+                        <div className="mt-0.5 text-[11px] text-mist-400 break-words">
+                          {log.reason || 'Movimento magazzino'}
+                        </div>
+
+                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-mist-500">
+                          <span className="inline-flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {formatDateTime(log.timestamp)}
+                          </span>
+                          <span className="inline-flex items-center gap-1">
+                            <Scale className="w-3 h-3" />
+                            {log.userName || 'Operatore'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <div
+                          className={`font-mono font-bold text-sm tnum ${
+                            log.deltaQuantity >= 0 ? 'text-mint-400' : 'text-rose-400'
+                          }`}
+                        >
+                          {log.deltaQuantity >= 0
+                            ? `+${formatQty(log.deltaQuantity)}`
+                            : formatQty(log.deltaQuantity)}
+                        </div>
+                        <div className="text-[11px] text-mist-500">
+                          Giacenza {formatQty(log.finalQuantity)}
                         </div>
                       </div>
                     </div>
+                  ))}
+                </div>
 
-                    <div className="text-right shrink-0">
-                      <div
-                        className={`font-mono font-bold text-sm tnum ${
-                          log.deltaQuantity >= 0 ? 'text-mint-400' : 'text-rose-400'
-                        }`}
-                      >
-                        {log.deltaQuantity >= 0 ? `+${log.deltaQuantity}` : log.deltaQuantity}
-                      </div>
-                      <div className="text-[11px] text-mist-500 flex items-center justify-end gap-1">
-                        <Clock className="w-3 h-3" />
-                        {formatDateTime(log.timestamp)}
-                      </div>
-                    </div>
+                {filteredLogs.length > logLimit && (
+                  <div className="mt-3 flex justify-center">
+                    <Btn
+                      variant="soft"
+                      size="sm"
+                      onClick={() => setLogLimit((prev) => prev + 50)}
+                    >
+                      Mostra altri {Math.min(50, filteredLogs.length - logLimit)} movimenti
+                    </Btn>
                   </div>
-                ))}
-              </div>
+                )}
+              </>
             )}
           </Card>
         )}
 
-        {/* ── TAB 4: inventario fisico ── */}
-        {activeTab === 'inventario_fisico' && (
-          <Card className="p-4 sm:p-5 space-y-4">
+        {/* ══════════════════════════════════════════════════════
+            VISTA: INVENTARIO FISICO
+            ══════════════════════════════════════════════════════ */}
+        {view === 'inventario' && (
+          <Card className="p-3 sm:p-4">
             <SectionTitle
               action={
-                <Btn variant="success" size="sm" onClick={handleApplyPhysicalInventory}>
+                <Btn
+                  variant="success"
+                  size="sm"
+                  onClick={handleApplyPhysicalInventory}
+                  disabled={physicalDiffCount === 0}
+                >
                   <CheckCircle2 className="w-4 h-4" />
                   Salva Rettifiche
                 </Btn>
@@ -635,48 +995,57 @@ export const MagazzinoView: React.FC = () => {
               Verifica &amp; Quadratura Inventario Fisico
             </SectionTitle>
 
-            <p className="text-xs text-mist-500">
-              Inserisci il conteggio reale fatto a mano in magazzino. Il sistema calcolerà le
-              differenze e rettificherà le giacenze automaticamente.
+            <p className="mt-1 text-xs text-mist-500">
+              Inserisci il conteggio reale fatto a mano in magazzino: il sistema calcola le
+              differenze e rettifica le giacenze.
             </p>
 
-            <Field label="Note sulla verifica">
-              <Input
-                type="text"
-                value={physicalNotes}
-                onChange={(e) => setPhysicalNotes(e.target.value)}
-                placeholder="Es. Inventario mensile fine mese, controllo celle frigorifere"
+            <div className="mt-3">
+              <Field label="Note sulla verifica">
+                <Input
+                  type="text"
+                  value={physicalNotes}
+                  onChange={(e) => setPhysicalNotes(e.target.value)}
+                  placeholder="Es. Inventario mensile fine mese, controllo celle frigorifere"
+                />
+              </Field>
+            </div>
+
+            {inventory.length === 0 ? (
+              <EmptyState
+                icon={<ClipboardCheck className="w-6 h-6" />}
+                title="Nessun articolo da verificare."
+                description="Registra prima gli articoli in magazzino, poi potrai quadrare le giacenze."
               />
-            </Field>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              {inventory.map((item) => {
-                const counted = physicalCounts[item.id] ?? item.currentQuantity;
-                const diff = counted - item.currentQuantity;
-                return (
-                  <div key={item.id} className="surface-raised p-3.5 space-y-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
+            ) : (
+              <div className="mt-4 divide-y divide-ink-700">
+                {inventory.map((item) => {
+                  const counted = physicalCounts[item.id] ?? item.currentQuantity;
+                  const diff = counted - item.currentQuantity;
+                  return (
+                    <div
+                      key={item.id}
+                      className="py-3 flex flex-col sm:flex-row sm:items-center gap-3"
+                    >
+                      <div className="min-w-0 flex-1">
                         <div className="text-sm font-bold text-mist-100 truncate">{item.name}</div>
-                        <div className="text-[11px] text-mist-500 capitalize">{item.type}</div>
+                        <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-mist-500">
+                          <span className="capitalize">{item.type}</span>
+                          <span className="inline-flex items-center gap-1">
+                            <Tag className="w-3 h-3" />
+                            {CATEGORY_LABEL[item.category]}
+                          </span>
+                        </div>
                       </div>
-                      {diff === 0 ? (
-                        <Badge tone="mint">Quadratura OK</Badge>
-                      ) : diff > 0 ? (
-                        <Badge tone="brand">Eccedenza +{diff}</Badge>
-                      ) : (
-                        <Badge tone="rose">Ammanco {diff}</Badge>
-                      )}
-                    </div>
 
-                    <div className="flex items-center justify-between gap-2 text-xs">
-                      <span className="text-mist-500">Quantità a sistema</span>
-                      <span className="font-bold tnum text-mist-300">
-                        {item.currentQuantity} {item.unit}
-                      </span>
-                    </div>
+                      <div className="text-left sm:text-right">
+                        <div className="section-title">A sistema</div>
+                        <div className="text-sm font-bold tnum text-mist-300">
+                          {formatQty(item.currentQuantity)}{' '}
+                          <span className="text-[11px] font-normal text-mist-500">{item.unit}</span>
+                        </div>
+                      </div>
 
-                    <Field label="Conteggio effettivo fisico">
                       <div className="flex items-center gap-2">
                         <Input
                           type="number"
@@ -686,20 +1055,31 @@ export const MagazzinoView: React.FC = () => {
                             const val = parseFloat(e.target.value) || 0;
                             setPhysicalCounts((prev) => ({ ...prev, [item.id]: val }));
                           }}
-                          className="!w-24 font-mono font-bold tnum"
+                          className="!w-20 font-mono font-bold tnum"
+                          aria-label={`Conteggio fisico di ${item.name}`}
                         />
                         <span className="text-xs text-mist-500">{item.unit}</span>
                       </div>
-                    </Field>
-                  </div>
-                );
-              })}
-            </div>
+
+                      <div className="shrink-0 sm:w-28 sm:text-right">
+                        {diff === 0 ? (
+                          <Badge tone="mint">Quadratura OK</Badge>
+                        ) : diff > 0 ? (
+                          <Badge tone="brand">Eccedenza +{formatQty(diff)}</Badge>
+                        ) : (
+                          <Badge tone="rose">Ammanco {formatQty(diff)}</Badge>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </Card>
         )}
       </div>
 
-      {/* ── MODALE: aggiunta / modifica articolo ── */}
+      {/* ══ MODALE: aggiunta / modifica articolo ══ */}
       <Modal
         open={isAddEditModalOpen}
         onClose={() => setIsAddEditModalOpen(false)}
@@ -724,24 +1104,26 @@ export const MagazzinoView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setFormData({ ...formData, type: 'materiale' })}
-                className={`rounded-xl px-3 py-2.5 font-bold border transition ${
+                className={`rounded-xl px-3 py-2.5 font-bold border transition flex items-center justify-center gap-2 ${
                   formData.type === 'materiale'
                     ? 'border-brand-500/50 bg-brand-500/15 text-brand-300'
                     : 'border-ink-700 bg-ink-900 text-mist-500 hover:text-mist-300'
                 }`}
               >
-                1. Materiale (Materia Prima)
+                <Boxes className="w-4 h-4" />
+                Materia prima
               </button>
               <button
                 type="button"
                 onClick={() => setFormData({ ...formData, type: 'prodotto' })}
-                className={`rounded-xl px-3 py-2.5 font-bold border transition ${
+                className={`rounded-xl px-3 py-2.5 font-bold border transition flex items-center justify-center gap-2 ${
                   formData.type === 'prodotto'
                     ? 'border-brand-500/50 bg-brand-500/15 text-brand-300'
                     : 'border-ink-700 bg-ink-900 text-mist-500 hover:text-mist-300'
                 }`}
               >
-                2. Prodotto (Finito / Bevanda)
+                <Package className="w-4 h-4" />
+                Prodotto finito
               </button>
             </div>
           </div>
@@ -766,11 +1148,11 @@ export const MagazzinoView: React.FC = () => {
                   setFormData({ ...formData, category: e.target.value as ItemCategory })
                 }
               >
-                <option value="cibo">Alimentare / Cibo</option>
-                <option value="bevande">Bevande &amp; Vini</option>
-                <option value="pulizia">Pulizia &amp; Igiene</option>
-                <option value="packaging">Packaging &amp; Asporto</option>
-                <option value="altro">Altro</option>
+                {CATEGORIES.map((cat) => (
+                  <option key={cat.value} value={cat.value}>
+                    {cat.label}
+                  </option>
+                ))}
               </Select>
             </Field>
 
@@ -779,11 +1161,11 @@ export const MagazzinoView: React.FC = () => {
                 value={formData.unit}
                 onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
               >
-                <option value="kg">kg (Chilogrammi)</option>
-                <option value="lt">lt (Litri)</option>
-                <option value="pz">pz (Pezzi / Porzioni)</option>
-                <option value="bt">bt (Bottiglie)</option>
-                <option value="conf">conf (Confezioni)</option>
+                {UNITS.map((u) => (
+                  <option key={u.value} value={u.value}>
+                    {u.label}
+                  </option>
+                ))}
               </Select>
             </Field>
           </div>
@@ -892,7 +1274,7 @@ export const MagazzinoView: React.FC = () => {
         </form>
       </Modal>
 
-      {/* ── MODALE: rettifica rapida quantità ── */}
+      {/* ══ MODALE: rettifica manuale quantità ══ */}
       <Modal
         open={!!quickAdjustModalItem}
         onClose={() => setQuickAdjustModalItem(null)}
@@ -900,7 +1282,7 @@ export const MagazzinoView: React.FC = () => {
         title={`Rettifica Scorta: ${quickAdjustModalItem?.name ?? ''}`}
         subtitle={
           quickAdjustModalItem
-            ? `Giacenza attuale: ${quickAdjustModalItem.currentQuantity} ${quickAdjustModalItem.unit}`
+            ? `Giacenza attuale: ${formatQty(quickAdjustModalItem.currentQuantity)} ${quickAdjustModalItem.unit}`
             : undefined
         }
         footer={
@@ -908,7 +1290,7 @@ export const MagazzinoView: React.FC = () => {
             <Btn variant="ghost" onClick={() => setQuickAdjustModalItem(null)}>
               Annulla
             </Btn>
-            <Btn variant="primary" onClick={handleConfirmQuickAdjust}>
+            <Btn variant="primary" onClick={handleConfirmQuickAdjust} disabled={adjustDelta === 0}>
               Conferma Movimento
             </Btn>
           </>
@@ -943,7 +1325,9 @@ export const MagazzinoView: React.FC = () => {
           <div className="surface-raised p-3 text-xs text-mist-300">
             Nuova giacenza finale prevista:{' '}
             <span className="font-bold text-brand-300 tnum">
-              {Math.max(0, (quickAdjustModalItem?.currentQuantity ?? 0) + adjustDelta)}{' '}
+              {formatQty(
+                Math.max(0, (quickAdjustModalItem?.currentQuantity ?? 0) + adjustDelta)
+              )}{' '}
               {quickAdjustModalItem?.unit}
             </span>
           </div>

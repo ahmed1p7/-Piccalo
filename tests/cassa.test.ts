@@ -8,6 +8,9 @@ import {
   summarizePayments,
   isFullyPaid,
   round2,
+  allocatePayment,
+  groupAllocationsByMethod,
+  selectedCashTotal,
 } from '../src/utils/cassa';
 
 let passed = 0;
@@ -85,6 +88,106 @@ check('100 coperti da 100 → coperto', isFullyPaid(100, 100));
 check('100 coperti da 99.99 → non coperto', !isFullyPaid(100, 99.99));
 check('100 coperti da 100.01 → coperto', isFullyPaid(100, 100.01));
 check('0 coperti da 0 → coperto', isFullyPaid(0, 0));
+
+
+// ═══════════════════════════════════════════════════════════════════
+// 👥 Divisione del conto — v1.6.0
+// ═══════════════════════════════════════════════════════════════════
+console.log('\n── Distribuzione del totale sulle persone ──');
+{
+  const shares = [
+    { amountDue: 30, amountPaid: 0, isPaid: false, method: 'contanti' },
+    { amountDue: 30, amountPaid: 0, isPaid: false, method: 'carta' },
+    { amountDue: 40, amountPaid: 0, isPaid: false, method: 'contanti' },
+  ];
+
+  // una persona paga per conto di due (una cash, una carta)
+  const allocs = allocatePayment(shares, [0, 1], 60);
+  check('2 quote coperte', allocs.length === 2, allocs);
+  check('importi corretti', allocs[0].amount === 30 && allocs[1].amount === 30, allocs);
+
+  const groups = groupAllocationsByMethod(allocs);
+  check('2 gruppi (uno per metodo)', groups.length === 2, groups);
+  check(
+    'il gruppo contanti totalizza 30 €',
+    groups.find((g) => g.method === 'contanti')?.amount === 30,
+    groups
+  );
+  check(
+    'il gruppo carta totalizza 30 €',
+    groups.find((g) => g.method === 'carta')?.amount === 30,
+    groups
+  );
+
+  // pagamento parziale: copre solo la prima quota
+  const partial = allocatePayment(shares, [0, 1, 2], 50);
+  check('il parziale copre la prima quota e parte della seconda', partial.length === 2, partial);
+  check('sommatoria = importo pagato', partial.reduce((s, a) => s + a.amount, 0) === 50, partial);
+
+  // totale contante delle quote selezionate (per il resto)
+  check(
+    'contante selezionato = 70 € (30 + 40, la carta esclusa)',
+    selectedCashTotal(shares, [0, 1, 2]) === 70,
+    selectedCashTotal(shares, [0, 1, 2])
+  );
+
+  // il resto su un pagamento per conto di due
+  const change = computeChange(100, 60);
+  check('resto corretto (100 - 60)', change === 40, change);
+
+  // divisione uguale con resto di arrotondamento
+  const eq = splitEqual(100, 3);
+  check('3 quote uguali', eq.length === 3);
+  check('la somma è il totale esatto', round2(eq.reduce((a, b) => a + b, 0)) === 100, eq);
+}// 👥 Divisione del conto — v1.6.0
+// ═══════════════════════════════════════════════════════════════════
+console.log('\n── Distribuzione del totale sulle persone ──');
+{
+  const shares = [
+    { amountDue: 30, amountPaid: 0, isPaid: false, method: 'contanti' },
+    { amountDue: 30, amountPaid: 0, isPaid: false, method: 'carta' },
+    { amountDue: 40, amountPaid: 0, isPaid: false, method: 'contanti' },
+  ];
+
+  // una persona paga per conto di due (una cash, una carta)
+  const allocs = allocatePayment(shares, [0, 1], 60);
+  check('2 quote coperte', allocs.length === 2, allocs);
+  check('importi corretti', allocs[0].amount === 30 && allocs[1].amount === 30, allocs);
+
+  const groups = groupAllocationsByMethod(allocs);
+  check('2 gruppi (uno per metodo)', groups.length === 2, groups);
+  check(
+    'il gruppo contanti totalizza 30 €',
+    groups.find((g) => g.method === 'contanti')?.amount === 30,
+    groups
+  );
+  check(
+    'il gruppo carta totalizza 30 €',
+    groups.find((g) => g.method === 'carta')?.amount === 30,
+    groups
+  );
+
+  // pagamento parziale: copre solo la prima quota
+  const partial = allocatePayment(shares, [0, 1, 2], 50);
+  check('il parziale copre la prima quota e parte della seconda', partial.length === 2, partial);
+  check('sommatoria = importo pagato', partial.reduce((s, a) => s + a.amount, 0) === 50, partial);
+
+  // totale contante delle quote selezionate (per il resto)
+  check(
+    'contante selezionato = 70 € (30 + 40, la carta esclusa)',
+    selectedCashTotal(shares, [0, 1, 2]) === 70,
+    selectedCashTotal(shares, [0, 1, 2])
+  );
+
+  // il resto su un pagamento per conto di due
+  const change = computeChange(100, 60);
+  check('resto corretto (100 - 60)', change === 40, change);
+
+  // divisione uguale con resto di arrotondamento
+  const eq = splitEqual(100, 3);
+  check('3 quote uguali', eq.length === 3);
+  check('la somma è il totale esatto', round2(eq.reduce((a, b) => a + b, 0)) === 100, eq);
+}
 
 console.log(`\n═══ Risultato: ${passed} test passati, ${failed} falliti ═══\n`);
 process.exit(failed > 0 ? 1 : 0);

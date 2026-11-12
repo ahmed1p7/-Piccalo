@@ -11,6 +11,7 @@ Requisiti:
      VITE_FIREBASE_DATABASE_URL="http://127.0.0.1:9000?ns=demo-sea-pos" npm run build
   3) app servita su http://127.0.0.1:4176/
 """
+import urllib.request
 import asyncio, sys, urllib.request
 from playwright.async_api import async_playwright
 
@@ -29,12 +30,26 @@ OUT = "/workspace/output"
 results = []
 
 
+def wipe_emulator():
+    """Svuota l'emulatore Realtime Database (dati di test precedenti)."""
+    try:
+        req = urllib.request.Request(
+            "http://127.0.0.1:9000/sea_pos.json?ns=demo-sea-pos-default-rtdb",
+            data=b"null", method="PUT",
+            headers={"Content-Type": "application/json"},
+        )
+        urllib.request.urlopen(req, timeout=10).read()
+    except Exception as e:
+        print(f"  (avviso: emulatore non raggiungibile: {e})")
+
+
 def check(name, ok, extra=""):
     results.append((name, ok))
     print(("  ✅ " if ok else "  ❌ ") + name + (f"  → {extra}" if extra else ""))
 
 
 async def main():
+    wipe_emulator()
     async with async_playwright() as p:
         browser = await p.chromium.launch(
             executable_path="/root/.cache/ms-playwright/chromium-1243/chrome-linux/chrome",
@@ -61,7 +76,7 @@ async def main():
         # A crea un tavolo
         await A.locator("button:has-text('Tavoli'):visible").first.click()
         await A.wait_for_timeout(1200)
-        await A.click("button:has-text('Aggiungi Nuovo Tavolo')")
+        await A.locator("button:has-text('Nuovo Tavolo'):visible").first.click()
         await A.wait_for_timeout(800)
         await A.click("button:has-text('Crea Tavolo')")
         await A.wait_for_timeout(2000)
