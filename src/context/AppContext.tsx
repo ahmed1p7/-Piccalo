@@ -33,7 +33,10 @@ import {
   snapshotSavedAt,
   readSnapshot,
 } from '../utils/localBackup';
-import { stripLegacyDemoUsersSafely } from '../sync/legacyData';
+import {
+  isLegacyDemoCollection,
+  stripLegacyDemoUsersSafely,
+} from '../sync/legacyData';
 import { isValidRid } from '../utils/identity';
 
 export type ActiveView =
@@ -661,6 +664,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setSyncWarning(firebaseSyncManager.getWarning());
     return remove;
   }, []);
+
+  // 🔐 Se l'UNICO amministratore è ancora l'account demo (Admin/5555) →
+  //    la password è pubblica: avviso esplicito in Impostazioni.
+  useEffect(() => {
+    if (!users.length) return;
+    if (!isLegacyDemoCollection('users', users)) return;
+    const demoAdmins = users.filter(
+      (u) => u.role === 'admin' && stripLegacyDemoUsersSafely([u]).removed > 0
+    );
+    if (!demoAdmins.length) return;
+    setSyncWarning(
+      "L'account demo (Admin/5555) è ancora l'unico amministratore: la sua password è pubblica. " +
+        'Cambialo ora (Impostazioni → Cambia password) o assegna il ruolo di amministratore al tuo account.'
+    );
+  }, [users]);
 
   // Se gli utenti arrivano dalla sincronizzazione (o il PIN cambia),
   // l'utente collegato viene aggiornato senza dover uscire e rientrare.
