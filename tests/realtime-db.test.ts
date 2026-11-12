@@ -41,12 +41,14 @@ async function main() {
   console.log('\n── Realtime Database: due dispositivi ──');
 
   // Telefono A
-  const A = new RealtimeDbTransport(config);
+  // 🏷️ dal 1.6.0 ogni ristorante ha il proprio spazio cloud
+  const SCOPE = 'r_test_emulatore';
+  const A = new RealtimeDbTransport(config, SCOPE);
   const aOk = await A.connect();
   check('A si connette', aOk);
 
   // Telefono B
-  const B = new RealtimeDbTransport(config);
+  const B = new RealtimeDbTransport(config, SCOPE);
   const bOk = await B.connect();
   check('B si connette', bOk);
 

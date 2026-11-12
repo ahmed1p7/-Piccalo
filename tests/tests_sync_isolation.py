@@ -77,6 +77,37 @@ def signup(page, name, user, pin):
     return True
 
 
+
+def assert_emulator_build():
+    """🛡️ Impedisce che i test scrivano sul CLOUD REALE.
+
+    I test devono girare contro la build con l'emulatore locale:
+    se il bundle servito contiene l'URL di produzione si esce subito.
+    """
+    import urllib.request
+    try:
+        with urllib.request.urlopen(BASE, timeout=10) as r:
+            html = r.read().decode("utf-8", "ignore")
+        import re
+        assets = re.findall(r'assets/index-[^"\']+\.js', html)
+        if not assets:
+            return
+        with urllib.request.urlopen(BASE + assets[0], timeout=20) as r:
+            js = r.read().decode("utf-8", "ignore")
+        if "sea-restaurant-default-rtdb" in js:
+            raise SystemExit(
+                "🛑 FERRATA: la preview serve la build DI PRODUZIONE. "
+                "I test scriverebbero sul cloud reale!\n"
+                "   Ricostruisci con l'emulatore:\n"
+                "   export $(grep -v '^#' .env | xargs) && "
+                "VITE_FIREBASE_DATABASE_URL='http://127.0.0.1:9000?ns=demo-sea-pos-default-rtdb' "
+                "npm run build"
+            )
+    except SystemExit:
+        raise
+    except Exception as e:
+        print(f"  (avviso: impossibile verificare la build: {e})")
+
 def main():
     print("\n═══ Test isolamento dei dati tra ristoranti (v1.6.0) ═══\n")
 
